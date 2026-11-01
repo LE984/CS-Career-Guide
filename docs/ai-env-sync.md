@@ -1,6 +1,6 @@
 # 单组件激活与后端 AI 配置同步
 
-本分支将原成对容器重建拆成 deploy-backend / deploy-frontend；服务器安装独立网关是前提。2026-10-26 的旧总开关/成对重建属于历史，不代表新分端部署已经启用。完整安装和回滚见[独立交付](split-delivery.md)。
+已合入 master 的部署使用 deploy-backend / deploy-frontend；服务器安装独立网关是前提。2026-11-01 已完成服务器网关切换、独立审计并开启分端部署开关，证据见[部署状态](deployment-status.md)。其他环境仍需按[独立交付](split-delivery.md)完成拓扑安装，不能只沿用 2026-10-26 的旧总开关。
 
 ## 门禁与版本
 

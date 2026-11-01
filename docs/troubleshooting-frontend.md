@@ -1,10 +1,10 @@
 # 前端与网关排障
 
-本分支将入口从frontend移至gateway；首次安装说明见[独立交付](split-delivery.md)。新frontend是纯静态镜像，独立启动不要求backend在线。历史服务器端口配置不能直接套在新静态前端上。
+入口已从 frontend 移至 gateway；首次安装说明见[独立交付](split-delivery.md)。新frontend是纯静态镜像，独立启动不要求backend在线。历史服务器端口配置不能直接套在新静态前端上。
 
 ## 端口和健康
 
-frontend和gateway均监听容器内8080，但只有gateway发布WEB_PORT（默认127.0.0.1:48080）。已有宿主80/48080映射应在经授权的拓扑维护时移到gateway，不发布backend。容器健康只验证内部端口，不证明宿主映射、API、数据库或AI。
+frontend和gateway均监听容器内8080，但只有gateway发布WEB_PORT（默认127.0.0.1:48080）。2026-11-01 的服务器切换已将原 80/48080 映射转交 gateway；其他环境按实际映射核查，不发布 backend。容器健康只验证内部端口，不证明宿主映射、API、数据库或AI。
 
 ## 定位
 
