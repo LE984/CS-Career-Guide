@@ -456,6 +456,8 @@ jobs:
           export SMOKE_FRONTEND_IMAGE="cs-career-guide-frontend:sha-${GITHUB_SHA::7}"
           python3 ci/demo_smoke.py --project "$SMOKE_PROJECT" --logs-dir "$RUNNER_TEMP/demo-smoke-logs"
           python3 ci/gateway_smoke.py --project "ci-gateway-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --backend-image "$SMOKE_BACKEND_IMAGE"
+          python3 -m pip install PyYAML
+          python3 ci/cutover_smoke.py
       - name: Upload demo integration logs
         if: always()
         uses: actions/upload-artifact@v4
