@@ -1,54 +1,637 @@
 <template>
-  <div class="business-page company-page">
-    <main class="career-container">
-      <BusinessPageHeader eyebrow="求职准备 / 企业与职位" title="找到值得进一步了解的机会" description="比较岗位要求、了解企业信息，把下一步准备落到具体的职位上。">
-        <router-link to="/resume" class="career-button">完善简历</router-link>
-        <router-link to="/company-reviews/senior-advice/form" class="career-button career-button-primary">分享经验</router-link>
-      </BusinessPageHeader>
-      <div class="business-tabs" role="tablist" aria-label="企业与职位内容">
-        <button v-for="tab in companyTabs" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" @click="switchTab(tab.id)">{{ tab.label }}</button>
-      </div>
-      <div class="company-layout">
-        <aside class="company-filters business-panel">
-          <div class="business-panel-head"><h2>筛选职位</h2><button type="button" class="career-link" @click="resetJobFilters">重置</button></div>
-          <div class="business-field"><label for="job-location">工作地点</label><select id="job-location" v-model="selectedJobLocation" @change="handleSearch"><option value="">全部地区</option><option v-for="location in jobLocationOptions" :key="location" :value="location">{{ location }}</option></select></div>
-          <div class="business-field"><label for="job-industry">行业方向</label><select id="job-industry" v-model="selectedJobIndustry" @change="handleSearch"><option value="">全部行业</option><option v-for="industry in jobIndustryOptions" :key="industry" :value="industry">{{ industry }}</option></select></div>
-          <div class="filter-note"><h3>先看要求，再做判断</h3><p>确认岗位职责、工作地点与申请渠道，结合自己的经历判断准备重点。</p><router-link to="/career-evaluation" class="career-link">查看我的职业规划 →</router-link></div>
-        </aside>
-        <section class="company-results" aria-label="职位与企业信息">
-          <template v-if="activeTab === 'recommended'">
-            <div class="job-search"><label class="sr-only" for="job-search">搜索职位</label><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><input id="job-search" v-model="searchKeyword" @input="handleSearch" type="search" placeholder="搜索职位、企业、地点或技能" /><button v-if="searchKeyword" type="button" class="career-link" @click="clearSearch">清空</button></div>
-            <div class="job-results-summary"><span>找到 <strong>{{ filteredJobs.length }}</strong> 个职位</span><span>先了解岗位，再决定是否申请</span></div>
-            <div v-if="jobsLoading" class="business-empty" role="status"><span class="loading loading-spinner loading-sm"></span><p>正在加载职位…</p></div>
-            <div v-else-if="!filteredJobs.length" class="business-empty"><h2>暂时没有匹配的职位</h2><p>可以调整关键词和筛选条件，或稍后再来查看。</p><button type="button" class="career-button" @click="resetJobFilters">重置筛选</button></div>
-            <div v-else class="job-results-list">
-              <article v-for="job in currentFilteredJobs" :key="job.id" class="job-result-row">
-                <div class="job-result-main"><h2>{{ job.title || '职位名称待补充' }}</h2><p class="job-company">{{ job.company }}</p><div class="job-tags"><span v-for="(tag,index) in job.tags" :key="index" class="business-tag">{{ tag }}</span></div><p class="job-description">{{ filterBrTags(job.jobDetails) || '暂无详细岗位说明，请查看招聘来源。' }}</p><p v-if="isCompanyDetailsValid(job.companyDetails)" class="job-company-detail">{{ filterBrTags(job.companyDetails) }}</p></div>
-                <div class="job-result-side"><strong>{{ job.salary || '薪资待确认' }}</strong><a v-if="job.jobSourceUrl" :href="job.jobSourceUrl" target="_blank" rel="noopener noreferrer" class="career-button">查看职位 ↗</a><span v-else class="business-muted">暂无来源链接</span></div>
-              </article>
-              <div v-if="filteredJobsTotalPages > 1" class="business-pagination"><button type="button" class="career-button" :disabled="jobsPage === 1" @click="handleJobsPageChange(jobsPage - 1)">上一页</button><span>{{ jobsPage }} / {{ filteredJobsTotalPages }}</span><button type="button" class="career-button" :disabled="jobsPage >= filteredJobsTotalPages" @click="handleJobsPageChange(jobsPage + 1)">下一页</button></div>
+  <div class="min-h-screen bg-gradient-to-r from-white to-purple-100 text-on-surface antialiased">
+    <main class="pt-24 pb-24 max-w-7xl mx-auto px-2">
+      <!-- Page Header -->
+      <header class="mb-16">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 class="text-5xl font-extrabold tracking-tight text-primary-container mb-4">企业招聘</h1>
+            <p class="text-xl text-on-primary-container max-w-3xl">精选计算机行业优质职位，结合学长学姐真实评价，助你精准对接理想 Offer</p>
+          </div>
+          <div class="flex gap-3">
+            <router-link to="/resume" class="px-10 py-4 bg-secondary-container text-black rounded-2xl font-bold hover:shadow-xl hover:shadow-secondary/60 transition-all active:scale-95 border-2 border-black">
+              简历优化
+            </router-link>
+          </div>
+        </div>
+      </header>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <!-- Main Content Area -->
+        <div class="lg:col-span-8 space-y-12">
+          <!-- Filter & Tabs -->
+          <section class="space-y-8">
+            <div class="flex flex-wrap items-center gap-2 p-1 bg-surface-container-low rounded-2xl w-fit">
+              <button 
+                @click="switchTab('recommended')"
+                :class="activeTab === 'recommended' ? 'px-8 py-2.5 bg-surface-container-lowest text-secondary font-bold rounded-xl shadow-sm rounded-2xl border-2 border-black' : 'px-8 py-2.5 text-on-surface-variant hover:text-secondary transition-all font-medium rounded-2xl border-2 border-black'"
+              >推荐职位</button>
+              <button 
+                @click="switchTab('red')"
+                :class="activeTab === 'red' ? 'px-8 py-2.5 bg-surface-container-lowest text-secondary font-bold rounded-2xl shadow-sm border-2 border-black' : 'px-8 py-2.5 text-on-surface-variant hover:text-secondary transition-all font-medium rounded-2xl border-2 border-black'"
+              >红榜 (推荐)</button>
+              <button 
+                @click="switchTab('black')"
+                :class="activeTab === 'black' ? 'px-8 py-2.5 bg-surface-container-lowest text-secondary font-bold rounded-2xl shadow-sm border-2 border-black' : 'px-8 py-2.5 text-on-surface-variant hover:text-secondary transition-all font-medium rounded-2xl border-2 border-black'"
+              >黑榜 (避坑)</button>
+              <button 
+                @click="switchTab('safety')"
+                :class="activeTab === 'safety' ? 'px-8 py-2.5 bg-surface-container-lowest text-secondary font-bold rounded-2xl shadow-sm border-2 border-black' : 'px-8 py-2.5 text-on-surface-variant hover:text-secondary transition-all font-medium rounded-2xl border-2 border-black'"
+              >求职安全</button>
+              <button 
+                @click="switchTab('advice')"
+                :class="activeTab === 'advice' ? 'px-8 py-2.5 bg-surface-container-lowest text-secondary font-bold rounded-2xl shadow-sm border-2 border-black' : 'px-8 py-2.5 text-on-surface-variant hover:text-secondary transition-all font-medium rounded-2xl border-2 border-black'"
+              >学长学姐建议</button>
             </div>
-          </template>
-          <section v-else-if="activeTab === 'red' || activeTab === 'black'" class="business-panel ranking-panel">
-            <div class="business-panel-head"><h2>{{ activeTab === 'red' ? '企业推荐参考' : '求职风险参考' }}</h2><span class="business-tag">历史整理资料</span></div>
-            <p class="business-muted">条目仅作了解企业与岗位的参考；招聘条件、薪资及评价需要结合原始信息核实。</p>
-            <div class="ranking-table-wrap"><table class="ranking-table"><thead><tr><th>岗位 / 企业</th><th>地点</th><th>薪资</th><th>参考说明</th></tr></thead><tbody><tr v-for="item in rankingRows" :key="item.rank"><td><strong>{{ item.position }}</strong><span>{{ item.company }}</span></td><td>{{ item.location }}</td><td>{{ item.salary || '未提供' }}</td><td>{{ item.reason }}</td></tr></tbody></table></div>
-            <div class="business-pagination"><button class="career-button" :disabled="rankingPage <= 1" @click="changeRankingPage(-1)">上一页</button><span>{{ rankingPage }} / {{ rankingPages }}</span><button class="career-button" :disabled="rankingPage >= rankingPages" @click="changeRankingPage(1)">下一页</button></div>
+           
           </section>
-          <section v-else-if="activeTab === 'safety'" class="business-panel safety-content"><h2>求职安全，先核对再行动</h2><p class="business-muted">遇到不确定的信息，先停下来核实，不用急着做决定。</p><article v-for="tip in safetyTips" :key="tip.title"><span class="safety-marker" aria-hidden="true"></span><div><h3>{{ tip.title }}</h3><p>{{ tip.text }}</p></div></article><div class="business-notice">保存招聘页面、沟通与付款记录；发生疑似诈骗时，通过平台官方渠道或当地公安机关求助。</div></section>
-          <section v-else-if="activeTab === 'advice'" class="business-panel">
-            <div class="business-panel-head"><h2>来自学长学姐的经验</h2><router-link to="/company-reviews/senior-advice/form" class="career-link">分享一条建议 →</router-link></div>
-            <div class="advice-search"><input v-model="adviceSearchKeyword" type="search" aria-label="搜索建议中的企业或职位" placeholder="搜索企业或职位" /><select v-model="adviceFilter" aria-label="建议排序"><option value="">全部建议</option><option value="recent">最近发布</option><option value="high-rating">评分较高</option></select></div>
-            <div v-if="adviceLoading" class="business-empty" role="status">正在加载建议…</div>
-            <div v-else-if="!filteredAdviceList.length" class="business-empty"><h3>还没有匹配的经验分享</h3><p>可以换个关键词，或分享自己经历过的求职过程。</p></div>
-            <article v-for="advice in filteredAdviceList" :key="advice.id" class="advice-row"><header><div><h3>{{ advice.company }}</h3><p>{{ advice.position }}</p></div><span class="business-tag">{{ advice.rating }} / 5</span></header><p class="advice-source">{{ advice.senior_name }} · {{ advice.graduation_year }} 届<span v-if="advice.current_company"> · {{ advice.current_company }}</span></p><p class="advice-body">{{ advice.advice }}</p><div class="advice-notes"><div v-if="advice.pros?.length"><strong>认可的方面</strong><p v-for="(item,index) in advice.pros" :key="index">{{ item }}</p></div><div v-if="advice.cons?.length"><strong>需要了解的方面</strong><p v-for="(item,index) in advice.cons" :key="index">{{ item }}</p></div></div></article>
-            <div v-if="adviceTotalPages > 1" class="business-pagination"><button class="career-button" :disabled="advicePage <= 1" @click="handleAdvicePageChange(advicePage - 1)">上一页</button><span>{{ advicePage }} / {{ adviceTotalPages }}</span><button class="career-button" :disabled="advicePage >= adviceTotalPages" @click="handleAdvicePageChange(advicePage + 1)">下一页</button></div>
+
+          
+          <!-- Job List Content -->
+          <section class="space-y-6">
+            <!-- 推荐职位 -->
+            <div v-if="activeTab === 'recommended'">
+              <!-- 搜索框 -->
+              <div class="mb-6">
+                <div class="relative">
+                  <input 
+                    v-model="searchKeyword" 
+                    @input="handleSearch"
+                    type="text" 
+                    placeholder="搜索职位、公司、地址或行业..."
+                    class="w-full px-4 py-3 pl-14 pr-12 bg-surface-container-lowest border border-outline/5 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                  >
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-outline">
+                    <span class="material-symbols-outlined">搜索：</span>
+                  </span>
+                  <button 
+                    v-if="searchKeyword"
+                    @click="clearSearch"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-secondary transition-colors"
+                  >
+                    <span class="material-symbols-outlined">清空</span>
+                  </button>
+                </div>
+              </div>
+              <div v-if="jobsLoading" class="flex items-center justify-center py-16">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary"></div>
+              </div>
+              <div v-else-if="filteredJobs.length === 0" class="text-center py-16">
+                <p class="text-on-surface-variant">{{ searchKeyword ? '没有找到匹配的职位' : '暂无职位数据' }}</p>
+              </div>
+              <div v-else class="space-y-6">
+                <div 
+                  v-for="job in currentFilteredJobs" 
+                  :key="job.id"
+                  class="bg-surface-container-lowest rounded-[1.5rem] p-6 border border-outline/5 hover:border-secondary/20 hover:shadow-xl hover:shadow-secondary/5 transition-all group"
+                >
+                  <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1">
+                      <div class="flex flex-wrap justify-between items-start mb-3 gap-4">
+                        <div>
+                          <h3 class="text-xl font-bold mb-1 group-hover:text-secondary transition-colors">{{ job.title }}</h3>
+                          <p class="text-on-primary-container font-medium">{{ job.company }}</p>
+                        </div>
+                        <div class="text-right">
+                          <span class="text-2xl font-black text-secondary">{{ job.salary }}</span>
+                        </div>
+                      </div>
+                      <div class="flex flex-wrap gap-2 mb-4">
+                        <span 
+                          v-for="(tag, index) in job.tags" 
+                          :key="index"
+                          class="px-3 py-1 bg-surface-container-low text-on-surface-variant text-xs rounded-lg font-medium truncate max-w-[480px]"
+                        >
+                          {{ tag }}
+                        </span>
+                      </div>
+                      <div class="mb-6">
+                        <p class="text-sm text-on-primary-container line-clamp-2">{{ filterBrTags(job.jobDetails) }}</p>
+                      </div>
+                      
+                      <div class="flex items-center justify-between pt-4 border-t border-outline/5">
+                        <div class="flex-1 min-w-0">
+                          <p v-if="isCompanyDetailsValid(job.companyDetails)" class="text-xs text-on-primary-container line-clamp-1">公司详细：{{ filterBrTags(job.companyDetails) }}</p>
+                        </div>
+                        <a 
+                          :href="job.jobSourceUrl" 
+                          target="_blank"
+                          class="ml-4 px-6 py-2 bg-primary-container text-black rounded-xl text-sm font-bold hover:bg-secondary transition-colors whitespace-nowrap"
+                        >
+                          立即申请
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- 职位分页 -->
+                <div v-if="filteredJobsTotalPages > 1" class="flex items-center justify-center gap-2 mt-8">
+                  <button 
+                    @click="handleJobsPageChange(jobsPage - 1)" 
+                    :disabled="jobsPage === 1"
+                    class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span class="material-symbols-outlined">上一页</span>
+                  </button>
+                  <span class="text-sm text-on-surface-variant mx-4">
+                    {{ jobsPage }} / {{ filteredJobsTotalPages }}
+                  </span>
+                  <button 
+                    @click="handleJobsPageChange(jobsPage + 1)" 
+                    :disabled="jobsPage >= filteredJobsTotalPages"
+                    class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span class="material-symbols-outlined">下一页</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 红榜内容 -->
+            <div v-else-if="activeTab === 'red'" class="bg-surface-container-lowest rounded-[2rem] p-8 border border-outline/5">
+              <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                红榜职位推荐
+                <span class="material-symbols-outlined text-red-500" style="font-variation-settings: 'FILL' 1;">Trending_up</span>
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-[1000px]">
+                  <thead>
+                    <tr class="border-b border-outline/10">
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 60px;">排名</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 120px;">岗位名称</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 220px;">公司名称</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 120px;">工作地点</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 120px;">薪资范围</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant">红榜理由</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in currentRedListData" :key="item.rank" class="border-b border-outline/5 hover:bg-surface-container-low transition-colors">
+                      <td class="py-3 px-3 font-bold text-secondary">{{ item.rank }}</td>
+                      <td class="py-3 px-3 font-medium">{{ item.position }}</td>
+                      <td class="py-3 px-3">{{ item.company }}</td>
+                      <td class="py-3 px-3 text-on-primary-container">{{ item.location }}</td>
+                      <td class="py-3 px-3 font-medium text-green-500">{{ item.salary || '-' }}</td>
+                      <td class="py-3 px-3 text-on-primary-container">{{ item.reason }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <!-- 红榜分页 -->
+              <div class="flex items-center justify-center gap-2 mt-8">
+                <button 
+                  @click="handleRedListPageChange(redListPage - 1)" 
+                  :disabled="redListPage === 1"
+                  class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span class="material-symbols-outlined">上一页</span>
+                </button>
+                <span class="text-sm text-on-surface-variant mx-4">
+                  {{ redListPage }} / {{ redListTotalPages }}
+                </span>
+                <button 
+                  @click="handleRedListPageChange(redListPage + 1)" 
+                  :disabled="redListPage >= redListTotalPages"
+                  class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span class="material-symbols-outlined">下一页</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 黑榜内容 -->
+            <div v-else-if="activeTab === 'black'" class="bg-surface-container-lowest rounded-[2rem] p-8 border border-outline/5">
+              <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                黑榜职位避坑
+                <span class="material-symbols-outlined text-red-500" style="font-variation-settings: 'FILL' 1;">Trending_down</span>
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-[1000px]">
+                  <thead>
+                    <tr class="border-b border-outline/10">
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 60px;">排名</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 120px;">岗位名称</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 220px;">公司名称</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 120px;">工作地点</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant" style="width: 120px;">薪资范围</th>
+                      <th class="text-left py-3 px-3 font-semibold text-on-surface-variant">黑榜理由</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in currentBlackListData" :key="item.rank" class="border-b border-outline/5 hover:bg-surface-container-low transition-colors">
+                      <td class="py-3 px-3 font-bold text-red-500">{{ item.rank }}</td>
+                      <td class="py-3 px-3 font-medium">{{ item.position }}</td>
+                      <td class="py-3 px-3">{{ item.company }}</td>
+                      <td class="py-3 px-3 text-on-primary-container">{{ item.location }}</td>
+                      <td class="py-3 px-3 font-medium text-red-500">{{ item.salary || '-' }}</td>
+                      <td class="py-3 px-3 text-on-primary-container">{{ item.reason }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <!-- 黑榜分页 -->
+              <div class="flex items-center justify-center gap-2 mt-8">
+                <button 
+                  @click="blackListPage--" 
+                  :disabled="blackListPage === 1"
+                  class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span class="material-symbols-outlined">上一页</span>
+                </button>
+                <span class="text-sm text-on-surface-variant mx-4">
+                  {{ blackListPage }} / {{ blackListTotalPages }}
+                </span>
+                <button 
+                  @click="blackListPage++" 
+                  :disabled="blackListPage >= blackListTotalPages"
+                  class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span class="material-symbols-outlined">下一页</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 求职安全 -->
+            <div v-else-if="activeTab === 'safety'" class="bg-surface-container-lowest rounded-[2rem] p-8 border border-outline/5">
+              <h3 class="text-xl font-bold mb-6 flex justify-center items-center gap-2">
+                求职安全指南
+                <span class="material-symbols-outlined text-blue-500" style="font-variation-settings: 'FILL' 1;">security</span>
+              </h3>
+              
+              <!-- 核心内容 -->
+              <div class="mb-8">
+                <h4 class="text-lg font-bold mb-4 text-blue-600 flex justify-center items-center gap-2">求职诈骗的四大类型与识别方法</h4>
+                <p class="text-on-primary-container mb-6">根据法治网、各地人社局及公安部门的通报，目前的求职诈骗呈现"技术化"和"集团化"特征。</p>
+                <p class="text-on-primary-container mb-6">以下是四类常见陷阱：</p>
+              </div>
+              
+              <!-- 诈骗类型卡片 -->
+              <div class="space-y-6 mb-8">
+                <!-- 招转培与培训贷 -->
+                <div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-red-500">
+                  <div class="flex items-start gap-4">
+                    <span class="material-symbols-outlined text-red-500 text-2xl mt-1">警惕培训贷骗局：</span>
+                    <div class="flex-1">
+                      <h5 class="font-bold text-lg mb-2">1. "招转培"与"培训贷"</h5>
+                      <p class="text-on-primary-container mb-3">这是目前高发的诈骗类型，通常以"高薪"、"零基础"、"内推"为诱饵。</p>
+                      <div class="space-y-2 mb-3">
+                        <div>
+                          <span class="font-semibold text-on-surface">诈骗手法：</span>
+                          <p class="text-on-primary-container">冒充猎头或大厂HR，声称提供免费的岗前实训，承诺"包就业、月薪过万"。实训结束后，以"就业服务费"名义诱导求职者签署合同，办理分期贷款（培训贷），费用高达2-3万元。一旦签约，即便未就业也难以退款。</p>
+                        </div>
+                        <div>
+                          <span class="font-semibold text-on-surface">识别要点：</span>
+                          <p class="text-on-primary-container">正规企业不会在入职前收取高额培训费；警惕"先学后付"的贷款诱导。</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 虚假招聘与违规收费 -->
+                <div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-orange-500">
+                  <div class="flex items-start gap-4">
+                    <span class="material-symbols-outlined text-orange-500 text-2xl mt-1">入职前不缴费：</span>
+                    <div class="flex-1">
+                      <h5 class="font-bold text-lg mb-2">2. 虚假招聘与违规收费</h5>
+                      <div class="space-y-2 mb-3">
+                        <div>
+                          <span class="font-semibold text-on-surface">诈骗手法：</span>
+                          <p class="text-on-primary-container">利用"高薪"、"轻松"、"急聘"等字眼吸引眼球，随后以押金、报名费、体检费、服装费、资料审核费等名义多次收费。还有的黑中介虚假宣传"保过拿证"、"内推落户"，利用求职者迫切心理收取巨额中介费后跑路。</p>
+                        </div>
+                        <div>
+                          <span class="font-semibold text-on-surface">识别要点：</span>
+                          <p class="text-on-primary-container">任何入职前要求转账到私人账户的行为，都是诈骗。</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 刷单返利与轻松兼职 -->
+                <div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-yellow-500">
+                  <div class="flex items-start gap-4">
+                    <span class="material-symbols-outlined text-yellow-500 text-2xl mt-1">刷单垫资是诈骗：</span>
+                    <div class="flex-1">
+                      <h5 class="font-bold text-lg mb-2">3. 刷单返利与"轻松兼职"</h5>
+                      <div class="space-y-2 mb-3">
+                        <div>
+                          <span class="font-semibold text-on-surface">诈骗手法：</span>
+                          <p class="text-on-primary-container">以"零门槛、高佣金、日结"为诱饵，诱导下载非官方App进行刷单。前期小额返利获取信任，后期以"连单任务"、"账户冻结"为由拒绝返款。</p>
+                        </div>
+                        <div>
+                          <span class="font-semibold text-on-surface">识别要点：</span>
+                          <p class="text-on-primary-container">凡是要求垫资的兼职都是诈骗；不要下载不明来源的App。</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 境外高薪与非法拘禁 -->
+                <div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-red-600">
+                  <div class="flex items-start gap-4">
+                    <span class="material-symbols-outlined text-red-600 text-2xl mt-1">境外高薪需警惕：</span>
+                    <div class="flex-1">
+                      <h5 class="font-bold text-lg mb-2">4. "境外高薪"与非法拘禁</h5>
+                      <div class="space-y-2 mb-3">
+                        <div>
+                          <span class="font-semibold text-on-surface">诈骗手法：</span>
+                          <p class="text-on-primary-container">打着"境外高薪招聘"、"月入数万"的旗号，甚至谎称是剧组招人、海外陪游，实则诱骗求职者偷渡出境，从事电信诈骗或面临非法拘禁。</p>
+                        </div>
+                        <div>
+                          <span class="font-semibold text-on-surface">识别要点：</span>
+                          <p class="text-on-primary-container">对于门槛极低、薪资极高且工作地点在境外的岗位，保持高度警惕。</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 防骗指南 -->
+              <div class="bg-primary-container rounded-xl p-6 text-black">
+                <h4 class="text-lg font-bold mb-4">二、 防骗"五防三要"指南</h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- 五防 -->
+                  <div>
+                    <h5 class="font-bold text-blue-700 mb-3 flex items-center gap-2">
+                      <span class="material-symbols-outlined">屏障</span>
+                      "五防"
+                    </h5>
+                    <ul class="space-y-2">
+                      <li class="flex items-start gap-2">
+                        <span><strong>防黑中介：</strong>核实资质，拒绝无证机构。</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span><strong>防乱收费：</strong>拒绝一切入职前的收费要求。</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span><strong>防培训贷：</strong>谨慎对待"包就业"培训，绝不轻易贷款。</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span><strong>防付费实习：</strong>正规实习不应收费。</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span><strong>防非法传销：</strong>警惕"拉人头"、"轻松赚大钱"的话术。</span>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <!-- 三要 -->
+                  <div>
+                    <h5 class="font-bold text-orange-700 mb-3 flex items-center gap-2">
+                      <span class="material-symbols-outlined">信息</span>
+                      "三要"
+                    </h5>
+                    <ul class="space-y-2">
+                      <li class="flex items-start gap-2">
+                        <span><strong>要核实：</strong>利用国家企业信用信息公示系统，核查企业资质。</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span><strong>要留证：</strong>保存聊天记录、转账凭证、合同协议。</span>
+                      </li>
+                      <li class="flex items-start gap-2">
+                        <span><strong>要报警：</strong>遭遇诈骗第一时间拨打110或向人社部门投诉。</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 学长学姐建议 -->
+            <div v-else-if="activeTab === 'advice'" class="bg-surface-container-lowest rounded-[2rem] p-8 border border-outline/5">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                  学长学姐建议
+                  <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">advice</span>
+                </h3>
+                <router-link to="/company-reviews/senior-advice/form" class="px-6 py-2 bg-secondary text-white rounded-xl text-sm font-bold hover:bg-secondary/90 transition-colors">
+                  提交建议
+                </router-link>
+              </div>
+              
+              <!-- 搜索和筛选 -->
+              <div class="flex flex-wrap gap-4 mb-6">
+                <div class="flex-1 min-w-[200px]">
+                  <input 
+                    v-model="adviceSearchKeyword" 
+                    type="text" 
+                    placeholder="搜索公司或职位..."
+                    class="w-full px-4 py-2 bg-surface-container-low border border-outline/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary/20"
+                  >
+                </div>
+                <div>
+                  <select v-model="adviceFilter" class="px-4 py-2 bg-surface-container-low border border-outline/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary/20">
+                    <option value="">全部</option>
+                    <option value="high-rating">评分最高</option>
+                    <option value="recent">最新提交</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- 建议列表 -->
+              <div v-if="adviceLoading" class="flex items-center justify-center py-16">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary"></div>
+              </div>
+              <div v-else-if="adviceList.length === 0" class="text-center py-16">
+                <p class="text-on-surface-variant">暂无学长学姐建议</p>
+                <router-link to="/company-reviews/senior-advice/form" class="inline-block mt-4 px-6 py-2 bg-secondary text-white rounded-xl text-sm font-bold hover:bg-secondary/90 transition-colors">
+                  成为第一个提交建议的人
+                </router-link>
+              </div>
+              <div v-else class="space-y-6">
+                <div 
+                  v-for="advice in filteredAdviceList" 
+                  :key="advice.id"
+                  class="bg-surface-container-low p-6 rounded-xl border border-outline/5 hover:border-secondary/20 hover:shadow-lg transition-all"
+                >
+                  <div class="flex flex-col md:flex-row md:items-start gap-6">
+                    <div class="flex-1">
+                      <div class="flex flex-wrap justify-between items-start mb-3 gap-4">
+                        <div>
+                          <h4 class="text-lg font-bold mb-1 text-secondary">{{ advice.company }}</h4>
+                          <p class="text-on-primary-container font-medium">{{ advice.position }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm text-on-surface-variant">评分:</span>
+                          <span class="text-lg font-bold text-secondary">{{ advice.rating }}/5</span>
+                        </div>
+                      </div>
+                      
+                      <div class="flex flex-wrap gap-2 mb-4">
+                        <span class="px-3 py-1 bg-surface-container-lowest text-on-surface-variant text-xs rounded-lg font-medium">
+                          {{ advice.senior_name }} ({{ advice.graduation_year }}届)
+                        </span>
+                        <span v-if="advice.current_company" class="px-3 py-1 bg-surface-container-lowest text-on-surface-variant text-xs rounded-lg font-medium">
+                          现就职: {{ advice.current_company }}
+                        </span>
+                        <span v-if="advice.salary_info" class="px-3 py-1 bg-surface-container-lowest text-on-surface-variant text-xs rounded-lg font-medium">
+                          薪资: {{ advice.salary_info }}
+                        </span>
+                      </div>
+                      
+                      <div class="mb-4">
+                        <p class="text-sm text-on-primary-container">{{ advice.advice }}</p>
+                      </div>
+                      
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-if="advice.pros && advice.pros.length > 0">
+                          <h5 class="text-sm font-semibold text-green-600 mb-2">优点:</h5>
+                          <ul class="text-sm text-on-primary-container space-y-1">
+                            <li v-for="(pro, index) in advice.pros" :key="index" class="text-sm text-on-primary-container">
+                              {{ pro }}
+                            </li>
+                          </ul>
+                        </div>
+                        <div v-if="advice.cons && advice.cons.length > 0">
+                          <h5 class="text-sm font-semibold text-red-600 mb-2">缺点:</h5>
+                          <ul class="text-sm text-on-primary-container space-y-1">
+                            <li v-for="(con, index) in advice.cons" :key="index" class="text-sm text-on-primary-container">
+                              {{ con }}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 分页 -->
+                <div v-if="adviceTotalPages > 1" class="flex items-center justify-center gap-2 mt-8">
+                  <button 
+                    @click="handleAdvicePageChange(advicePage - 1)" 
+                    :disabled="advicePage === 1"
+                    class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span class="material-symbols-outlined">上一页</span>
+                  </button>
+                  <span class="text-sm text-on-surface-variant mx-4">
+                    {{ advicePage }} / {{ adviceTotalPages }}
+                  </span>
+                  <button 
+                    @click="handleAdvicePageChange(advicePage + 1)" 
+                    :disabled="advicePage >= adviceTotalPages"
+                    class="px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline/20 hover:bg-surface-container-low transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span class="material-symbols-outlined">下一页</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </section>
-        </section>
-        <aside class="business-stack company-context">
-          <section class="business-panel"><div class="business-panel-head"><h2>校园双选会</h2><span class="business-tag">招聘资讯</span></div><p v-if="loading" class="business-muted">正在加载…</p><p v-else-if="!jobFairs.length" class="business-muted">暂无双选会信息。</p><div v-for="fair in jobFairs" :key="fair.id" class="fair-row"><h3>{{ getUniversityName(fair.university) }}</h3><a :href="fair.university_url" target="_blank" rel="noopener noreferrer" class="career-link">{{ fair.name }} ↗</a></div><div v-if="totalCount > pageSize" class="business-pagination"><button class="career-button" :disabled="currentPage <= 1" @click="handlePageChange(currentPage - 1)">←</button><span>{{ currentPage }} / {{ Math.ceil(totalCount / pageSize) }}</span><button class="career-button" :disabled="currentPage >= Math.ceil(totalCount / pageSize)" @click="handlePageChange(currentPage + 1)">→</button></div></section>
-          <section class="business-panel"><h2>地区招聘资讯</h2><p v-if="!locationJobs.length" class="business-muted context-note">暂无地区资讯。可使用左侧工作地点筛选查看现有职位。</p><div v-for="job in locationJobs.slice(0,3)" :key="job.id" class="fair-row"><h3>{{ job.position_name }}</h3><p class="business-muted">{{ job.company_name }} · {{ job.address }}</p><span v-if="job.salary_range" class="business-tag">{{ job.salary_range }}</span></div></section>
-          <section class="company-preparation"><p class="career-eyebrow">下一步准备</p><h2>对照岗位，整理自己的经历</h2><p>先写清负责的任务、做过的选择与验证结果，再练习如何把它们讲出来。</p><router-link to="/interview" class="career-link">练习一次模拟面试 →</router-link></section>
+
+        </div>
+        <!-- Sidebar Section -->
+        <aside class="lg:col-span-4 space-y-8 mr-1">
+          <!-- 湖南高校双选会 -->
+          <div class="bg-surface-container-low rounded-[2rem] p-8">
+            <h3 class="text-lg font-bold mb-6 flex items-center gap-1">
+              湖南高校双选会
+              <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">school</span>
+            </h3>
+            <div v-if="loading" class="flex items-center justify-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+            </div>
+            <div v-else-if="jobFairs.length === 0" class="text-center py-8">
+              <p class="text-on-surface-variant">暂无双选会数据</p>
+            </div>
+            <div v-else class="space-y-4">
+              <div 
+                v-for="(fair, index) in jobFairs" 
+                :key="fair.id"
+                class="flex items-center gap-4 group cursor-pointer"
+              >
+                <span class="text-2xl font-extrabold text-outline/30 group-hover:text-secondary transition-colors italic">{{ (currentPage - 1) * pageSize + index + 1 }}</span>
+                <div class="flex-1">
+                  <h4 class="font-bold text-on-surface group-hover:text-secondary transition-colors">{{ getUniversityName(fair.university) }}</h4>
+                  <a 
+                    :href="fair.university_url" 
+                    target="_blank" 
+                    class="text-xs text-secondary hover:underline flex items-center gap-1"
+                  >
+                    {{ fair.name }}
+                  </a>
+                </div>
+              </div>
+              
+              <!-- 分页 -->
+              <div v-if="totalCount > pageSize" class="flex items-center justify-center gap-2 mt-8">
+                <button 
+                  @click="handlePageChange(currentPage - 1)" 
+                  :disabled="currentPage === 1"
+                  class="px-3 py-1 rounded-lg border border-outline/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  上一页
+                </button>
+                <span class="text-sm text-on-surface-variant">
+                  {{ currentPage }} / {{ Math.ceil(totalCount / pageSize) }}
+                </span>
+                <button 
+                  @click="handlePageChange(currentPage + 1)" 
+                  :disabled="currentPage >= Math.ceil(totalCount / pageSize)"
+                  class="px-3 py-1 rounded-lg border border-outline/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Local Recruitment News -->
+          <div class="bg-surface-container-low rounded-[2rem] p-8 border border-outline/5">
+            <h3 class="text-lg font-bold mb-6 flex items-center gap-1">
+              地区招聘资讯
+              <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">location</span>
+            </h3>
+            
+            <div v-if="locationStatus === 'loading'" class="flex items-center justify-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+            </div>
+            
+            <div v-else-if="locationStatus === 'denied'" class="text-center py-8">
+              <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl text-red-400">location_disabled</span>
+              </div>
+              <p class="text-on-surface-variant text-sm">用户未授权位置权限</p>
+            </div>
+            
+            <div v-else-if="locationStatus === 'success' && locationJobs.length === 0" class="text-center py-8">
+              <p class="text-on-surface-variant text-sm">{{ currentCity }}暂无相关职位</p>
+            </div>
+            
+            <div v-else-if="locationStatus === 'success'" class="space-y-4">
+              <div 
+                v-for="job in locationJobs.slice(0, 3)" 
+                :key="job.id"
+                class="p-4 bg-surface-container-lowest rounded-2xl border border-outline/10 hover:border-secondary transition-all cursor-pointer group"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <span class="px-2 py-0.5 bg-secondary/10 text-secondary text-[10px] font-bold rounded">职位</span>
+                  <span v-if="job.salary_range" class="text-[10px] text-secondary font-medium">{{ job.salary_range }}</span>
+                </div>
+                <h4 class="font-bold text-on-surface mb-2 group-hover:text-secondary transition-colors">{{ job.position_name }}</h4>
+                <div class="flex items-center gap-2 text-xs text-on-primary-container">
+                  <span class="material-symbols-outlined text-sm">business</span>
+                  <span>{{ job.company_name }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-on-primary-container mt-1">
+                  <span class="material-symbols-outlined text-sm">location_on</span>
+                  <span>{{ job.address }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Career Tip Card -->
+          <div class="bg-base-container rounded-[2rem] p-8 text-white relative group overflow-hidden">
+            <div class="relative z-10">
+              <p class="font-headline text-lg font-bold mb-4 text-blue-400">“选择第一份实习工作时，实习经历远比多出 2k 的薪资更重要”</p>
+            </div>
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <span class="material-symbols-outlined text-6xl">terminal</span>
+            </div>
+          </div>
         </aside>
       </div>
     </main>
@@ -56,7 +639,6 @@
 </template>
 
 <script setup>
-import BusinessPageHeader from '@/components/BusinessPageHeader.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { jobFairAPI, computerCareerAPI, apiFetch } from '@/api'
@@ -125,7 +707,7 @@ const getCityFromIP = async () => {
     const response = await fetch(IP_GEOLOCATION_URL)
     const data = await response.json()
     console.log('[Geolocation Debug] IP 地理定位响应:', data)
-
+    
     if (data.status === 'success') {
       // 只使用 city 字段，确保只精确到市级别
       if (data.city && data.city.trim()) {
@@ -148,14 +730,14 @@ const getCityFromIP = async () => {
 
 const getLocationAndLoadJobs = async () => {
   console.log('[Geolocation Debug] 开始获取位置信息（使用免费 IP 定位）')
-
+  
   try {
     // 直接使用 IP 定位（免费服务）
     const city = await getCityFromIP()
     currentCity.value = city
     console.log(`[Geolocation Debug] IP定位获取城市: ${city}`)
     await loadJobsByCity(city)
-
+    
   } catch (error) {
     console.error('[Geolocation Debug] IP定位失败:', error)
     // 使用默认城市
@@ -176,53 +758,53 @@ const regionHierarchy = {
   '长沙县': { city: '长沙市', province: '湖南省' },
   '宁乡市': { city: '长沙市', province: '湖南省' },
   '浏阳市': { city: '长沙市', province: '湖南省' },
-
+  
   // 益阳地区
   '赫山区': { city: '益阳市', province: '湖南省' },
   '赫山': { city: '益阳市', province: '湖南省' },
   '资阳区': { city: '益阳市', province: '湖南省' },
   '沅江市': { city: '益阳市', province: '湖南省' },
-
+  
   // 北京
   '北京': { city: '北京市', province: '北京市' },
   '东城区': { city: '北京市', province: '北京市' },
   '西城区': { city: '北京市', province: '北京市' },
   '朝阳区': { city: '北京市', province: '北京市' },
   '海淀区': { city: '北京市', province: '北京市' },
-
+  
   // 上海
   '上海': { city: '上海市', province: '上海市' },
   '黄浦区': { city: '上海市', province: '上海市' },
   '徐汇区': { city: '上海市', province: '上海市' },
   '浦东新区': { city: '上海市', province: '上海市' },
-
+  
   // 广州
   '广州': { city: '广州市', province: '广东省' },
   '天河区': { city: '广州市', province: '广东省' },
   '越秀区': { city: '广州市', province: '广东省' },
   '海珠区': { city: '广州市', province: '广东省' },
-
+  
   // 深圳
   '深圳': { city: '深圳市', province: '广东省' },
   '南山区': { city: '深圳市', province: '广东省' },
   '福田区': { city: '深圳市', province: '广东省' },
   '宝安区': { city: '深圳市', province: '广东省' },
-
+  
   // 杭州
   '杭州': { city: '杭州市', province: '浙江省' },
   '西湖区': { city: '杭州市', province: '浙江省' },
   '滨江区': { city: '杭州市', province: '浙江省' },
-
+  
   // 成都
   '成都': { city: '成都市', province: '四川省' },
   '锦江区': { city: '成都市', province: '四川省' },
   '高新区': { city: '成都市', province: '四川省' },
-
+  
   // 武汉
   '武汉': { city: '武汉市', province: '湖北省' },
   '武昌区': { city: '武汉市', province: '湖北省' },
   '洪山区': { city: '武汉市', province: '湖北省' },
-
+  
   // 湖南省其他城市
   '益阳市': { city: '益阳市', province: '湖南省' },
   '岳阳市': { city: '岳阳市', province: '湖南省' },
@@ -236,7 +818,7 @@ const regionHierarchy = {
   '娄底市': { city: '娄底市', province: '湖南省' },
   '怀化市': { city: '怀化市', province: '湖南省' },
   '张家界市': { city: '张家界市', province: '湖南省' },
-
+  
   // 城市直接映射
   '长沙市': { city: '长沙市', province: '湖南省' },
   '北京市': { city: '北京市', province: '北京市' },
@@ -246,7 +828,7 @@ const regionHierarchy = {
   '杭州市': { city: '杭州市', province: '浙江省' },
   '成都市': { city: '成都市', province: '四川省' },
   '武汉市': { city: '武汉市', province: '湖北省' },
-
+  
   // 省级直接映射
   '湖南省': { city: '湖南省', province: '湖南省' },
   '广东省': { city: '广东省', province: '广东省' },
@@ -265,7 +847,7 @@ const regionHierarchy = {
 // 获取地区层级信息
 const getRegionHierarchy = (location) => {
   if (!location) return { district: null, city: null, province: null }
-
+  
   // 如果在映射表中找到
   if (regionHierarchy[location]) {
     return {
@@ -273,7 +855,7 @@ const getRegionHierarchy = (location) => {
       ...regionHierarchy[location]
     }
   }
-
+  
   // 尝试去除后缀后查找
   const suffixes = ['区', '县', '市', '市辖区', '自治县', '旗']
   for (const suffix of suffixes) {
@@ -287,7 +869,7 @@ const getRegionHierarchy = (location) => {
       }
     }
   }
-
+  
   // 默认返回
   return {
     district: location,
@@ -300,14 +882,14 @@ const getRegionHierarchy = (location) => {
 const loadJobsByCity = async (location) => {
   try {
     console.log(`[Geolocation Debug] 开始逐级查询职位，起点: ${location}`)
-
+    
     // 获取地区层级
     const hierarchy = getRegionHierarchy(location)
     console.log(`[Geolocation Debug] 地区层级:`, hierarchy)
-
+    
     // 查询顺序：区 → 市 → 省
     const searchLevels = []
-
+    
     if (hierarchy.district && hierarchy.district !== hierarchy.city) {
       searchLevels.push({ level: 'district', value: hierarchy.district, label: `${hierarchy.district}(区/县)` })
     }
@@ -317,17 +899,17 @@ const loadJobsByCity = async (location) => {
     if (hierarchy.province && hierarchy.province !== hierarchy.city) {
       searchLevels.push({ level: 'province', value: hierarchy.province, label: `${hierarchy.province}(省)` })
     }
-
+    
     console.log(`[Geolocation Debug] 查询层级顺序:`, searchLevels.map(s => s.label))
-
+    
     // 逐级查询
     for (const level of searchLevels) {
       console.log(`[Geolocation Debug] 正在查询 ${level.label}: ${level.value}`)
-
+      
       // 使用后端API的address参数进行查询
       const searchUrl = `/career-evaluation/computer-careers/?address=${encodeURIComponent(level.value)}`
       console.log(`[Geolocation Debug] API地址: ${searchUrl}`)
-
+      
       try {
         const searchResponse = await apiFetch(searchUrl, {
           method: 'GET',
@@ -335,17 +917,17 @@ const loadJobsByCity = async (location) => {
             'Content-Type': 'application/json'
           }
         })
-
+        
         console.log(`[Geolocation Debug] HTTP状态码: ${searchResponse.status}`)
-
+        
         if (!searchResponse.ok) {
           console.error(`[Geolocation Debug] HTTP错误: ${searchResponse.status} - ${searchResponse.statusText}`)
           continue
         }
-
+        
         const searchData = await searchResponse.json()
         console.log(`[Geolocation Debug] ${level.label}查询结果:`, searchData)
-
+        
         if (searchData.results && searchData.results.length > 0) {
           locationJobs.value = searchData.results
           currentCity.value = level.value
@@ -353,28 +935,28 @@ const loadJobsByCity = async (location) => {
           locationStatus.value = 'success'
           return
         }
-
+        
       } catch (fetchError) {
         console.error(`[Geolocation Debug] ${level.label}查询失败:`, fetchError)
       }
-
+      
       console.log(`[Geolocation Debug] ❌ ${level.label} 级别没有找到职位，继续上一级`)
     }
-
+    
     // 如果所有级别都没有结果，尝试直接查询所有数据并在前端筛选
     console.log('[Geolocation Debug] 尝试获取所有职位数据进行前端筛选')
     try {
       const allJobsResponse = await computerCareerAPI.getComputerCareers(1, 100)
       console.log('[Geolocation Debug] 获取所有职位总数:', allJobsResponse.results?.length || 0)
-
+      
       if (allJobsResponse.results && allJobsResponse.results.length > 0) {
         // 在前端进行模糊匹配
         for (const level of searchLevels) {
-          const matched = allJobsResponse.results.filter(job =>
+          const matched = allJobsResponse.results.filter(job => 
             job.address && (job.address.includes(level.value) || level.value.includes(job.address))
           )
           console.log(`[Geolocation Debug] 前端筛选 ${level.label} (${level.value}): ${matched.length} 条`)
-
+          
           if (matched.length > 0) {
             locationJobs.value = matched
             currentCity.value = level.value
@@ -387,13 +969,13 @@ const loadJobsByCity = async (location) => {
     } catch (error) {
       console.error('[Geolocation Debug] 获取所有职位失败:', error)
     }
-
+    
     // 如果所有级别都没有结果
     console.log('[Geolocation Debug] ❌ 所有级别都没有找到职位')
     locationJobs.value = []
     currentCity.value = location
     locationStatus.value = 'success'
-
+    
   } catch (error) {
     console.error('[Geolocation Debug] 职位查询失败:', error)
     locationJobs.value = []
@@ -412,24 +994,21 @@ const jobsTotalCount = ref(0)
 const searchKeyword = ref('')
 
 // 过滤后的职位数据
-const selectedJobLocation = ref('')
-const selectedJobIndustry = ref('')
-const jobLocationOptions = computed(() => [...new Set(jobs.value.map(job => job.tags?.[0]).filter(Boolean))].sort())
-const jobIndustryOptions = computed(() => [...new Set(jobs.value.map(job => job.tags?.[1]).filter(Boolean))].sort())
 const filteredJobs = computed(() => {
+  if (!searchKeyword.value.trim()) {
+    return jobs.value
+  }
   const keyword = searchKeyword.value.toLowerCase().trim()
   return jobs.value.filter(job => {
-    if (selectedJobLocation.value && job.tags?.[0] !== selectedJobLocation.value) return false
-    if (selectedJobIndustry.value && job.tags?.[1] !== selectedJobIndustry.value) return false
-    return !keyword || [job.title, job.company, ...(job.tags || []), job.jobDetails, job.companyDetails]
-      .some(value => String(value || '').toLowerCase().includes(keyword))
+    return (
+      job.title.toLowerCase().includes(keyword) ||
+      job.company.toLowerCase().includes(keyword) ||
+      job.tags.some(tag => tag.toLowerCase().includes(keyword)) ||
+      (job.jobDetails && job.jobDetails.toLowerCase().includes(keyword)) ||
+      (job.companyDetails && job.companyDetails.toLowerCase().includes(keyword))
+    )
   })
 })
-function resetJobFilters() {
-  selectedJobLocation.value = ''
-  selectedJobIndustry.value = ''
-  clearSearch()
-}
 
 // 搜索处理
 const handleSearch = async () => {
@@ -551,18 +1130,18 @@ const filteredAdviceList = computed(() => {
   let filtered = adviceList.value
   if (adviceSearchKeyword.value) {
     const keyword = adviceSearchKeyword.value.toLowerCase()
-    filtered = filtered.filter(advice =>
+    filtered = filtered.filter(advice => 
       advice.company.toLowerCase().includes(keyword) ||
       advice.position.toLowerCase().includes(keyword)
     )
   }
-
+  
   if (adviceFilter.value === 'high-rating') {
     filtered.sort((a, b) => b.rating - a.rating)
   } else if (adviceFilter.value === 'recent') {
     filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }
-
+  
   return filtered
 })
 
@@ -616,24 +1195,24 @@ const fetchJobs = async () => {
       const firstPageResponse = await computerCareerAPI.getComputerCareers(1, 100)
       let allJobs = firstPageResponse.results
       const totalCount = firstPageResponse.count
-
+      
       // 计算需要获取的页数
       const totalPages = Math.ceil(totalCount / 100)
-
+      
       // 如果有更多页，继续获取
       if (totalPages > 1) {
         const fetchPromises = []
         for (let page = 2; page <= totalPages; page++) {
           fetchPromises.push(computerCareerAPI.getComputerCareers(page, 100))
         }
-
+        
         // 并行获取所有页数据
         const responses = await Promise.all(fetchPromises)
         responses.forEach(response => {
           allJobs = [...allJobs, ...response.results]
         })
       }
-
+      
       // 转换数据结构
       jobs.value = allJobs.map(item => ({
         id: item.id,
@@ -696,7 +1275,7 @@ onMounted(async () => {
       loadAdviceData(),
       getLocationAndLoadJobs()
     ])
-
+    
     console.log('所有数据加载完成')
   } catch (error) {
     console.error('数据加载失败:', error)
@@ -808,398 +1387,57 @@ const isCompanyDetailsValid = (companyDetails) => {
   const cleaned = companyDetails.trim().toLowerCase()
   return cleaned !== 'nan' && cleaned !== 'null' && cleaned !== 'undefined'
 }
-
-const companyTabs = [
-  { id: 'recommended', label: '推荐职位' }, { id: 'red', label: '企业推荐参考' },
-  { id: 'black', label: '风险参考' }, { id: 'safety', label: '求职安全' }, { id: 'advice', label: '学长学姐建议' },
-]
-const safetyTips = [
-  { title: '先核实企业与招聘渠道', text: '通过企业官网和正式招聘页面核对岗位，注意沟通账号与招聘主体是否一致。' },
-  { title: '谨慎对待付费与贷款要求', text: '遇到押金、培训贷款、付费内推等要求，先暂停操作并通过官方渠道核实。' },
-  { title: '保护个人信息和账户', text: '不向陌生人提供验证码、支付密码或远程控制权限，谨慎提交超出招聘所需的资料。' },
-  { title: '仔细确认书面约定', text: '核对工作地点、岗位职责、薪资结构、试用期及合同主体，保留沟通记录。' },
-]
-const rankingRows = computed(() => activeTab.value === 'red' ? currentRedListData.value : currentBlackListData.value)
-const rankingPage = computed(() => activeTab.value === 'red' ? redListPage.value : blackListPage.value)
-const rankingPages = computed(() => activeTab.value === 'red' ? redListTotalPages.value : Math.max(1, Math.ceil(blackListData.value.length / blackListPageSize.value)))
-function changeRankingPage(delta) {
-  if (activeTab.value === 'red') handleRedListPageChange(redListPage.value + delta)
-  else blackListPage.value += delta
-}
 </script>
 
 <style scoped>
-.company-layout {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 260px;
-  gap: 22px;
-  align-items: start;
-}
-.company-filters {
-  position: sticky;
-  top: 86px;
-  padding: 18px;
-}
-.company-filters .business-field {
-  margin-top: 20px;
-}
-.company-filters select {
-  font-size: 13px;
-}
-.company-filters .business-panel-head {
-  margin-bottom: 0;
-}
-.company-filters .business-panel-head h2 {
-  font-size: 14px;
-}
-.company-filters .business-panel-head button {
-  font-size: 12px;
-}
-.filter-note {
-  border-top: 1px solid var(--career-border);
-  padding-top: 20px;
-  margin-top: 24px;
-}
-.filter-note h3 {
-  font-size: 13px;
-  font-weight: 500;
-}
-.filter-note p {
-  margin: 8px 0 15px;
-  color: var(--career-muted);
-  font-size: 12px;
-  line-height: 1.9;
-}
-.filter-note a {
-  font-size: 12px;
-}
-.company-results {
-  min-width: 0;
-}
-.job-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid #ccd7e5;
-  border-radius: 6px;
-  background: #fff;
-  padding: 0 12px;
-}
-.job-search svg {
-  width: 17px;
-  height: 17px;
-  color: #8190a3;
-  flex: none;
-}
-.job-search input {
-  width: 100%;
-  min-height: 42px;
-  border: 0;
-  padding-inline: 0;
-  background: transparent;
-  outline-offset: 0;
-}
-.job-search button {
-  flex: none;
-  font-size: 12px;
-}
-.job-results-summary {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 16px 0 12px;
-  font-size: 12px;
-  color: #7a8799;
-}
-.job-results-summary strong {
-  color: #344054;
-  font-weight: 600;
-}
-.job-results-list {
-  display: grid;
-  gap: 10px;
-}
-.job-result-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 122px;
-  gap: 14px;
-  padding: 19px;
-  border: 1px solid var(--career-border);
-  border-radius: 7px;
-  background: #fff;
-}
-.job-result-row:hover {
-  border-color: #b9c9dc;
-}
-.job-result-row h2 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #27374d;
-}
-.job-company {
-  color: #667085;
-  font-size: 13px;
-  margin-top: 6px;
-}
-.job-tags {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.job-description {
+.line-clamp-2 {
   display: -webkit-box;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.8;
-  margin-top: 12px;
 }
-.job-company-detail {
-  color: #8a97a8;
-  font-size: 12px;
-  margin-top: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-.job-result-side {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-direction: column;
-  gap: 18px;
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
 }
-.job-result-side > strong {
-  color: #344054;
-  font-size: 14px;
-  font-weight: 500;
-  text-align: right;
-  line-height: 1.7;
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
 }
-.job-result-side .career-button {
-  min-height: 30px;
-  padding: 6px 10px;
-  font-size: 12px;
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
-.company-context .business-panel {
-  padding: 18px;
-}
-.company-context h2 {
-  font-size: 14px;
-}
-.fair-row {
-  padding: 14px 0;
-  border-top: 1px solid #edf0f4;
-}
-.fair-row h3 {
-  font-size: 13px;
-  font-weight: 500;
-}
-.fair-row a {
-  display: inline-block;
-  margin-top: 7px;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.fair-row p {
-  font-size: 12px;
-  margin: 7px 0;
-}
-.context-note {
-  margin-top: 14px;
-}
-.company-preparation {
-  padding: 3px 12px;
-}
-.company-preparation h2 {
-  color: #475467;
-  font-size: 15px;
-  line-height: 1.7;
-  margin: 10px 0;
-}
-.company-preparation p:not(.career-eyebrow) {
-  color: #7a8799;
-  font-size: 13px;
-  line-height: 1.9;
-}
-.company-preparation a {
-  display: inline-block;
-  margin-top: 15px;
-  font-size: 13px;
-}
-.ranking-panel {
-  padding: 20px;
-}
-.ranking-table-wrap {
-  overflow-x: auto;
-  margin-top: 20px;
-}
-.ranking-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 12px;
-}
-.ranking-table th {
-  font-size: 12px;
-  font-weight: 500;
-  color: #7a8799;
-  padding: 10px 8px;
-  background: #f5f7fa;
-  white-space: nowrap;
-}
-.ranking-table td {
-  padding: 14px 8px;
-  color: #667085;
-  border-bottom: 1px solid #edf0f4;
-  vertical-align: top;
-  line-height: 1.8;
-}
-.ranking-table td:first-child {
-  min-width: 130px;
-}
-.ranking-table td:last-child {
-  min-width: 150px;
-}
-.ranking-table td strong {
-  display: block;
-  color: #344054;
-  font-size: 13px;
-  font-weight: 500;
-}
-.ranking-table td span {
-  display: block;
-  margin-top: 5px;
-}
-.ranking-table td:nth-child(3) {
-  min-width: 85px;
-}
-.safety-content > .business-muted {
-  margin-top: 9px;
-}
-.safety-content > article {
-  display: flex;
-  gap: 14px;
-  padding: 22px 0;
-  border-bottom: 1px solid var(--career-border);
-}
-.safety-content article p {
-  color: #667085;
-  font-size: 13px;
-  margin-top: 8px;
-}
-.safety-marker {
-  width: 7px;
-  height: 7px;
-  margin-top: 8px;
-  border: 1px solid #b0874a;
-  border-radius: 50%;
-  flex: none;
-}
-.safety-content .business-notice {
-  margin-top: 20px;
-}
-.advice-search {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-.advice-search input {
-  min-width: 0;
-  flex: 1;
-}
-.advice-search select {
-  font-size: 13px;
-}
-.advice-row {
-  border-top: 1px solid var(--career-border);
-  padding: 22px 0 4px;
-  margin-top: 18px;
-}
-.advice-row header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.advice-row header p {
-  color: #667085;
-  font-size: 13px;
-  margin-top: 4px;
-}
-.advice-source {
-  font-size: 12px !important;
-  color: #8a97a8;
-  margin-top: 12px;
-}
-.advice-body {
-  margin-top: 12px;
-  color: #586577;
-  white-space: pre-line;
-}
-.advice-notes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 16px;
-}
-.advice-notes strong {
-  color: #667085;
-  font-size: 12px;
-  font-weight: 500;
-}
-.advice-notes p {
-  color: #7a8799;
-  font-size: 12px;
-}
-@media (max-width: 1180px) {
-  .company-layout {
-    grid-template-columns: 180px minmax(0, 1fr) 230px;
-    gap: 16px;
-  }
-  .job-result-row {
-    grid-template-columns: minmax(0, 1fr) 100px;
-    padding: 16px;
-  }
-}
-@media (max-width: 980px) {
-  .company-layout {
-    grid-template-columns: 180px minmax(0, 1fr);
-  }
-  .company-context {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .company-filters {
-    position: static;
-  }
-}
-@media (max-width: 760px) {
-  .company-layout {
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .grid-cols-12 {
     grid-template-columns: 1fr;
   }
-  .company-context {
-    grid-template-columns: 1fr;
+  
+  .lg\:col-span-8,
+  .lg\:col-span-4 {
+    grid-column: span 1;
   }
-  .company-filters {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+  
+  .text-5xl {
+    font-size: 2.5rem;
   }
-  .company-filters .business-panel-head {
-    grid-column: 1 / -1;
+  
+  .rounded-\[2rem\] {
+    border-radius: 1rem;
   }
-  .filter-note {
-    display: none;
-  }
-  .job-result-row {
-    grid-template-columns: minmax(0,1fr) 100px;
-  }
-  .job-results-summary > span:last-child {
-    display: none;
+  
+  .rounded-\[2\.5rem\] {
+    border-radius: 1.5rem;
   }
 }
 </style>

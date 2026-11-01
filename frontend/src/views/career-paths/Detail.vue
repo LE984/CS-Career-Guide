@@ -1,19 +1,99 @@
 <template>
-  <div class="business-page direction-detail-page"><main class="career-container">
-    <BusinessPageHeader :eyebrow="'职业路径 / ' + pathInfo.title" :title="pathInfo.title + '，先了解需要准备什么'" :description="pathInfo.subtitle"><router-link to="/career-paths" class="career-button">比较其他方向</router-link><button class="career-button career-button-primary" type="button" @click="startAssessment">梳理个人背景 →</button></BusinessPageHeader>
-    <div class="direction-detail-layout"><div class="business-stack"><section class="business-panel"><div class="business-panel-head"><h2>方向说明</h2></div><p class="direction-detail-copy">{{ pathInfo.description }}</p></section><section class="business-panel"><div class="business-panel-head"><h2>准备建议</h2></div><ol class="direction-suggestions"><li v-for="(item,index) in pathInfo.suggestions" :key="index"><span>0{{ index + 1 }}</span><p>{{ item }}</p></li></ol></section><section class="business-panel"><div class="business-panel-head"><h2>继续了解的资源</h2><span class="business-tag">外部资源</span></div><div class="direction-resources"><a v-for="resource in pathInfo.resources" :key="resource.url" :href="resource.url" target="_blank" rel="noopener noreferrer"><h3>{{ resource.name }} <span aria-hidden="true">↗</span></h3><p>{{ resource.description }}</p></a></div></section></div><aside class="business-stack"><section class="business-panel"><h2>从自己的条件开始</h2><p class="business-muted direction-next">整理教育、技能、经历与个人偏好，看看当前有哪些基础，又需要补充什么。</p><button type="button" class="career-button" @click="startAssessment">填写个人背景</button></section><section v-if="pathInfo.hasAssessment" class="business-panel"><h2>已有明确的岗位目标？</h2><p class="business-muted direction-next">可以直接了解相关企业与职位。</p><label class="sr-only" for="direction-target">目标岗位</label><input id="direction-target" v-model="targetCareer" type="text" placeholder="例如：Java 后端实习" /><button type="button" class="career-button" :disabled="!targetCareer.trim()" @click="goToCompanyReviews">查看相关企业 →</button></section></aside></div>
-  </main></div>
+  <div class="min-h-screen bg-white relative">
+    <!-- Starry Background -->
+    <div class="absolute inset-0 z-0">
+      <canvas ref="starCanvas" class="w-full h-full"></canvas>
+    </div>
+    
+    <!-- Content -->
+    <div class="relative z-10 space-y-8 p-4 lg:p-8">
+      <div class="card glass bg-transparent backdrop-blur-lg border border-black/10 text-black">
+        <div class="card-body">
+          <div class="flex items-center justify-center gap-4 mb-4">
+            <span class="text-6xl">{{ pathInfo.icon }}</span>
+            <div class="text-center">
+              <h1 class="text-4xl font-bold">{{ pathInfo.title }}</h1>
+              <p class="text-lg text-black/70">{{ pathInfo.subtitle }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="pathInfo.hasAssessment" class="card glass bg-transparent backdrop-blur-lg border border-black/10 text-black">
+        <div class="card-body">
+          <h2 class="card-title text-2xl mb-6">{{ pathInfo.assessment.title }}</h2>
+          <p class="mb-4">{{ pathInfo.assessment.description }}</p>
+          <button class="btn btn-primary" @click="startAssessment">开始测评</button>
+          
+          <div class="mt-6">
+            <h3 class="font-bold mb-2 ">倘若目标清晰，那我们就该考虑入职企业问题了</h3>
+            <div class="flex gap-2 flex-wrap">
+              <input 
+                v-model="targetCareer" 
+                type="text" 
+                placeholder="直接填写职业" 
+                class="input input-bordered max-w-md bg-black/10 border-black/20 text-black placeholder-black/40"
+              >
+              <button 
+                class="btn btn-secondary whitespace-nowrap" 
+                @click="goToCompanyReviews"
+                :disabled="!targetCareer.trim()"
+              >
+                查看相关企业
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card glass bg-transparent backdrop-blur-lg border border-black/10 text-black">
+        <div class="card-body">
+          <h2 class="card-title text-2xl mb-4">路径说明</h2>
+          <p>{{ pathInfo.description }}</p>
+        </div>
+      </div>
+
+      <div class="card glass bg-transparent backdrop-blur-lg border border-black/10 text-black">
+        <div class="card-body">
+          <h2 class="card-title text-2xl mb-4">准备建议</h2>
+          <ul class="space-y-3">
+            <li v-for="(item, index) in pathInfo.suggestions" :key="index" class="flex items-start gap-3">
+              <span class="text-primary">✓</span>
+              <span>{{ item }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card glass bg-transparent backdrop-blur-lg border border-black/10 text-black">
+        <div class="card-body">
+          <h2 class="card-title text-2xl mb-4">相关资源</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a v-for="(resource, index) in pathInfo.resources" :key="index" :href="resource.url" target="_blank" class="card glass bg-transparent hover:bg-black/5 transition-colors border border-black/5">
+              <div class="card-body">
+                <h3 class="font-bold">{{ resource.name }}</h3>
+                <p class="text-sm text-black/70">{{ resource.description }}</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import BusinessPageHeader from '@/components/BusinessPageHeader.vue'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 const type = route.params.type
 const targetCareer = ref('')
+const starCanvas = ref(null)
+let starCtx = null
+let stars = []
+let animationId = null
 
 function startAssessment() {
   // 所有职业路径类型都先跳转到自我介绍页面
@@ -134,99 +214,71 @@ const pathInfo = computed(() => {
       ]
     }
   }
-
+  
   return paths[type] || paths.employment
 })
 
-</script>
+// Starry background functions
+function createStars() {
+  stars = []
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * starCanvas.value.width,
+      y: Math.random() * starCanvas.value.height,
+      size: Math.random() * 2 + 1,
+      speed: Math.random() * 0.5 + 0.1,
+      opacity: Math.random() * 0.8 + 0.2
+    })
+  }
+}
 
-<style scoped>
-.direction-detail-layout {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 280px;
-  gap: 26px;
-  max-width: 1180px;
+function animateStars() {
+  if (!starCtx || !starCanvas.value) return
+  
+  starCtx.clearRect(0, 0, starCanvas.value.width, starCanvas.value.height)
+  
+  stars.forEach(star => {
+    starCtx.beginPath()
+    starCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2)
+    starCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`
+    starCtx.fill()
+    
+    star.y -= star.speed
+    if (star.y < 0) {
+      star.y = starCanvas.value.height
+    }
+  })
+  
+  animationId = requestAnimationFrame(animateStars)
 }
-.direction-detail-layout .business-panel {
-  padding: 25px;
-}
-.direction-detail-copy {
-  color: #667085;
-  line-height: 2 !important;
-}
-.direction-suggestions {
-  display: grid;
-  gap: 0;
-}
-.direction-suggestions > li {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 17px 0;
-  border-top: 1px solid #edf0f4;
-}
-.direction-suggestions > li:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-.direction-suggestions span {
-  font-size: 11px;
-  color: #8ba0b9;
-  padding-top: 5px;
-}
-.direction-suggestions p {
-  font-size: 14px;
-  color: #667085;
-}
-.direction-resources {
-  display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
-  gap: 0 24px;
-}
-.direction-resources > a {
-  padding: 18px 0;
-  border-top: 1px solid #edf0f4;
-}
-.direction-resources h3 {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: 500;
-}
-.direction-resources h3 span {
-  color: #7e9fc5;
-  font-weight: 400;
-}
-.direction-resources p {
-  color: #8a97a8;
-  font-size: 13px;
-  margin-top: 7px;
-}
-.direction-next {
-  margin: 14px 0 20px;
-  font-size: 13px !important;
-}
-.direction-detail-layout aside {
-  position: sticky;
-  top: 88px;
-}
-.direction-detail-layout aside h2 {
-  font-size: 14px;
-}
-.direction-detail-layout aside input {
-  width: 100%;
-  margin-bottom: 13px;
-  font-size: 13px;
-}
-.direction-detail-layout aside .career-button {
-  width: 100%;
-}
-@media (max-width: 900px) {
-  .direction-detail-layout {
-    grid-template-columns: 1fr;
-  }
-  .direction-detail-layout aside {
-    position: static;
+
+function resizeCanvas() {
+  if (starCanvas.value) {
+    starCanvas.value.width = starCanvas.value.offsetWidth
+    starCanvas.value.height = starCanvas.value.offsetHeight
+    createStars()
   }
 }
-</style>
+
+// Lifecycle hooks
+onMounted(() => {
+  // Initialize starry background
+  if (starCanvas.value) {
+    starCtx = starCanvas.value.getContext('2d')
+    resizeCanvas()
+    animateStars()
+  }
+  
+  // Add event listeners
+  window.addEventListener('resize', resizeCanvas)
+})
+
+onUnmounted(() => {
+  // Clean up
+  if (animationId) {
+    cancelAnimationFrame(animationId)
+  }
+  
+  window.removeEventListener('resize', resizeCanvas)
+})
+</script>
