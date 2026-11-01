@@ -1,25 +1,211 @@
-<template>
-  <div class="business-page plan-page"><main class="career-container">
-    <BusinessPageHeader eyebrow="背景与规划 / 职业规划报告" title="把职业方向，拆成下一步行动" :description="targetJob ? '本次目标：' + targetJob + '。结合已填写的背景，查看准备重点与阶段安排。' : '先梳理背景并选择目标方向，再查看对应的准备建议。'"><router-link to="/career-evaluation" class="career-button">调整目标方向</router-link><router-link to="/resume" class="career-button career-button-primary">整理简历 →</router-link></BusinessPageHeader>
-    <div v-if="loading" class="business-panel plan-state" role="status"><span class="loading loading-spinner loading-sm"></span><h2>正在生成职业规划</h2><p>根据已填写的个人背景和目标方向整理建议，请稍候。</p></div>
-    <div v-else-if="error" class="business-panel plan-state"><h2>这份报告还没有准备好</h2><p class="business-muted">{{ error }}</p><router-link to="/career-paths/employment/self-introduction" class="career-button">返回填写个人背景</router-link></div>
-    <div v-else class="plan-layout">
-      <nav class="plan-toc" aria-label="报告目录"><p>报告目录</p><a href="#plan-profile">个人画像与匹配</a><a href="#plan-market">市场与城市参考</a><a href="#plan-roadmap">阶段成长路线</a><a href="#plan-learning">学习重点</a><a href="#plan-strategy">求职策略与提醒</a><a href="#plan-schedule">近期行动计划</a></nav>
-      <div class="business-stack plan-body">
-        <section id="plan-profile" class="business-panel"><div class="report-section-label">01 / 从当前背景出发</div><h2>个人画像与匹配</h2><p class="report-intro">{{ report.profile?.talent_portrait || '本次未提供个人画像。' }}</p><p class="report-intro">{{ report.profile?.personality_job_fit }}</p><div class="report-pair"><div><h3>可以发挥的优势</h3><ul><li v-for="(item,index) in report.profile?.strengths || []" :key="index">{{ item }}</li></ul></div><div><h3>优先补充的地方</h3><ul><li v-for="(item,index) in report.profile?.weaknesses || []" :key="index">{{ item }}</li></ul></div></div></section>
-        <section id="plan-market" class="business-panel"><div class="report-section-label">02 / 了解外部机会</div><div class="business-panel-head"><h2>市场与城市参考</h2><span v-if="report.market?.market_heat" class="business-tag">{{ report.market.market_heat }}</span></div><p class="report-note">以下为本次报告提供的参考建议，具体薪资与招聘条件应结合实际岗位核实。</p><table v-if="report.market?.salary_growth_forecast?.length" class="report-table"><thead><tr><th>阶段</th><th>薪资参考</th><th>条件与前提</th></tr></thead><tbody><tr v-for="(item,index) in report.market.salary_growth_forecast" :key="index"><td>{{ item.year }}</td><td>{{ item.range }}</td><td>{{ item.condition }}</td></tr></tbody></table><div class="report-city-list"><article v-for="(item,index) in report.market?.city_suggestions || []" :key="index"><h3>{{ item.city }}<span v-if="item.fit_score !== undefined">适配参考 {{ item.fit_score }}</span></h3><p>{{ item.reason }}</p></article></div></section>
-        <section id="plan-roadmap" class="business-panel"><div class="report-section-label">03 / 分阶段准备</div><h2>阶段成长路线</h2><ol class="report-roadmap"><li v-for="(item,index) in report.growth_plan?.to_graduation_roadmap || []" :key="index"><span class="report-roadmap-node" aria-hidden="true"></span><div><span class="business-tag">{{ item.phase }}</span><h3>{{ item.goal }}</h3><ul><li v-for="(action,i) in item.actions || []" :key="i">{{ action }}</li></ul></div></li></ol></section>
-        <section id="plan-learning" class="business-panel"><div class="report-section-label">04 / 补充学习与实践</div><h2>学习重点</h2><article v-for="(item,index) in report.growth_plan?.learning_path || []" :key="index" class="report-learning-row"><h3>{{ item.stage }}</h3><div class="report-topics"><span v-for="(topic,i) in item.topics || []" :key="i" class="business-tag">{{ topic }}</span></div><p v-if="item.projects?.length">实践项目：{{ item.projects.join('、') }}</p></article></section>
-        <section id="plan-strategy" class="business-panel"><div class="report-section-label">05 / 准备求职材料</div><h2>求职策略与提醒</h2><div class="report-pair"><div><h3>可以尝试的行动</h3><ul><li v-for="(item,index) in report.strategy?.job_hunting_strategy || []" :key="index">{{ item }}</li></ul></div><div><h3>需要留意的问题</h3><ul><li v-for="(item,index) in report.strategy?.risk_alerts || []" :key="index">{{ item }}</li></ul></div></div></section>
-        <section id="plan-schedule" class="business-panel"><div class="report-section-label">06 / 从近期行动开始</div><h2>近期行动计划</h2><h3 class="report-schedule-title">本周重点</h3><p class="report-intro">{{ report.weekly_plan?.focus || '本次未提供周计划重点。' }}</p><table v-if="report.weekly_plan?.schedule?.length" class="report-table"><thead><tr><th>时间</th><th>准备事项</th><th>建议投入</th></tr></thead><tbody><tr v-for="(item,index) in report.weekly_plan.schedule" :key="index"><td>{{ item.day }}</td><td>{{ item.task }}</td><td>{{ item.hours }} 小时</td></tr></tbody></table><h3 class="report-schedule-title">本月目标</h3><p class="report-intro">{{ report.monthly_plan?.theme || '本次未提供月计划主题。' }}</p><ul><li v-for="(item,index) in report.monthly_plan?.targets || []" :key="index">{{ item }}</li></ul></section>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+  <div class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-6 md:p-10">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <header class="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-purple-500/5">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">职业生涯规划报告</h1>
+            <div class="flex flex-wrap items-center gap-3 mt-3">
+              <p class="text-slate-300 text-lg">目标职业：<span class="text-cyan-400 font-medium">{{ targetJob || '未选择' }}</span></p>
+              <span v-if="cacheHit" class="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-green-400 text-sm">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                </svg>
+                缓存命中
+              </span>
+            </div>
+          </div>
+          <router-link 
+            to="/company-reviews" 
+            class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            查看企业榜单
+          </router-link>
+        </div>
+      </header>
+
+      <div v-if="loading" class="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 flex items-center justify-center shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-slate-200">正在生成报告，请稍候...</span>
+        </div>
       </div>
-      <aside class="business-stack plan-context"><section class="business-panel"><h2>这份计划的起点</h2><dl><div><dt>目标方向</dt><dd>{{ targetJob }}</dd></div><div><dt>报告来源</dt><dd>{{ cacheHit ? '已保存的分析结果' : '本次生成' }}</dd></div></dl><p class="business-muted">建议结合自己的时间与真实机会调整，不必同时完成所有事项。</p></section><section class="plan-next-step"><h2>从一件具体的事开始</h2><router-link to="/resume" class="career-link">完善一段简历经历 →</router-link><router-link to="/company-reviews" class="career-link">了解相关企业与职位 →</router-link><router-link to="/interview" class="career-link">练习讲清一个项目 →</router-link></section></aside>
+      <div v-else-if="error" class="bg-red-950/30 border border-red-800/50 rounded-2xl p-6 text-red-200">{{ error }}</div>
+
+      <template v-else>
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <article class="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <h2 class="text-xl font-bold text-white">人才画像与匹配</h2>
+            </div>
+            <p class="text-slate-300 mb-3 leading-relaxed">{{ report.profile?.talent_portrait }}</p>
+            <p class="text-slate-300 leading-relaxed">{{ report.profile?.personality_job_fit }}</p>
+            <div class="mt-5">
+              <h3 class="font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>优势
+              </h3>
+              <ul class="list-disc ml-5 text-slate-300 space-y-2">
+                <li v-for="(item, idx) in report.profile?.strengths || []" :key="`s-${idx}`" class="hover:text-slate-100 transition-colors">{{ item }}</li>
+              </ul>
+            </div>
+            <div class="mt-5">
+              <h3 class="font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                <span class="w-2 h-2 bg-orange-400 rounded-full"></span>短板
+              </h3>
+              <ul class="list-disc ml-5 text-slate-300 space-y-2">
+                <li v-for="(item, idx) in report.profile?.weaknesses || []" :key="`w-${idx}`" class="hover:text-slate-100 transition-colors">{{ item }}</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+              </div>
+              <h2 class="text-xl font-bold text-white">市场与城市建议</h2>
+            </div>
+            <div class="flex items-center gap-2 mb-4">
+              <span class="text-slate-400">市场热度：</span>
+              <span class="px-3 py-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 rounded-full text-amber-400 text-sm font-medium">{{ report.market?.market_heat }}</span>
+            </div>
+            <h3 class="font-semibold text-blue-400 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-blue-400 rounded-full"></span>薪资成长预测
+            </h3>
+            <ul class="list-disc ml-5 text-slate-300 space-y-2">
+              <li v-for="(item, idx) in report.market?.salary_growth_forecast || []" :key="`pay-${idx}`" class="hover:text-slate-100 transition-colors">
+                <span class="text-cyan-300">{{ item.year }}</span>：{{ item.range }}（{{ item.condition }}）
+              </li>
+            </ul>
+            <h3 class="font-semibold text-green-400 mt-5 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-green-400 rounded-full"></span>城市建议
+            </h3>
+            <ul class="list-disc ml-5 text-slate-300 space-y-2">
+              <li v-for="(item, idx) in report.market?.city_suggestions || []" :key="`city-${idx}`" class="hover:text-slate-100 transition-colors">
+                <span class="text-purple-300 font-medium">{{ item.city }}</span>（<span class="text-yellow-400">{{ item.fit_score }}</span>分）：{{ item.reason }}
+              </li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-xl flex items-center justify-center">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white">至毕业成长路线 & 学习路径</h2>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 class="font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>成长路线
+              </h3>
+              <ul class="space-y-4">
+                <li v-for="(item, idx) in report.growth_plan?.to_graduation_roadmap || []" :key="`road-${idx}`" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-cyan-500/50 transition-all duration-300">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs font-bold rounded-full">{{ item.phase }}</span>
+                    <span class="font-semibold text-white">{{ item.goal }}</span>
+                  </div>
+                  <ul class="list-disc ml-5 text-slate-300 space-y-1">
+                    <li v-for="(a, i2) in item.actions || []" :key="`a-${idx}-${i2}`" class="text-sm">{{ a }}</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-semibold text-purple-400 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 bg-purple-400 rounded-full"></span>学习路径
+              </h3>
+              <ul class="space-y-4">
+                <li v-for="(item, idx) in report.growth_plan?.learning_path || []" :key="`learn-${idx}`" class="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-purple-500/50 transition-all duration-300">
+                  <div class="font-semibold text-white mb-2">{{ item.stage }}</div>
+                  <div class="flex flex-wrap gap-2 mb-2">
+                    <span v-for="(topic, tIdx) in item.topics || []" :key="`t-${idx}-${tIdx}`" class="px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs rounded-full">{{ topic }}</span>
+                  </div>
+                  <div class="text-slate-400 text-sm">
+                    <span class="text-slate-500">项目：</span>{{ (item.projects || []).join('、') || '暂无' }}
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <article class="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <h2 class="text-xl font-bold text-white">求职策略与风险提醒</h2>
+            </div>
+            <h3 class="font-semibold text-green-400 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-green-400 rounded-full"></span>求职策略
+            </h3>
+            <ul class="list-disc ml-5 text-slate-300 space-y-2">
+              <li v-for="(item, idx) in report.strategy?.job_hunting_strategy || []" :key="`st-${idx}`" class="hover:text-slate-100 transition-colors">{{ item }}</li>
+            </ul>
+            <h3 class="font-semibold text-red-400 mt-5 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-red-400 rounded-full"></span>风险提醒
+            </h3>
+            <ul class="list-disc ml-5 text-slate-300 space-y-2">
+              <li v-for="(item, idx) in report.strategy?.risk_alerts || []" :key="`r-${idx}`" class="hover:text-slate-100 transition-colors">{{ item }}</li>
+            </ul>
+          </article>
+
+          <article class="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-lg hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <h2 class="text-xl font-bold text-white">计划生成</h2>
+            </div>
+            <h3 class="font-semibold text-amber-400 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-amber-400 rounded-full"></span>周计划
+            </h3>
+            <div class="bg-slate-800/50 rounded-lg p-3 mb-3">
+              <span class="text-slate-400 text-sm">重点：</span>
+              <span class="text-amber-300 font-medium">{{ report.weekly_plan?.focus || '未设置' }}</span>
+            </div>
+            <ul class="list-disc ml-5 text-slate-300 space-y-2">
+              <li v-for="(item, idx) in report.weekly_plan?.schedule || []" :key="`week-${idx}`" class="hover:text-slate-100 transition-colors">
+                <span class="text-cyan-300">{{ item.day }}</span>：{{ item.task }}（<span class="text-amber-400">{{ item.hours }}h</span>）
+              </li>
+            </ul>
+            <h3 class="font-semibold text-orange-400 mt-5 mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 bg-orange-400 rounded-full"></span>月计划
+            </h3>
+            <div class="bg-slate-800/50 rounded-lg p-3 mb-2">
+              <span class="text-slate-400 text-sm">主题：</span>
+              <span class="text-orange-300 font-medium">{{ report.monthly_plan?.theme || '未设置' }}</span>
+            </div>
+            <ul class="list-disc ml-5 text-slate-300 space-y-2">
+              <li v-for="(item, idx) in report.monthly_plan?.targets || []" :key="`month-${idx}`" class="hover:text-slate-100 transition-colors">{{ item }}</li>
+            </ul>
+          </article>
+        </section>
+      </template>
     </div>
-  </main></div>
+  </div>
 </template>
 
 <script setup>
-import BusinessPageHeader from '@/components/BusinessPageHeader.vue'
 import { onMounted, ref } from 'vue'
 import { aiAPI } from '@/api'
 
@@ -150,267 +336,85 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.plan-layout {
-  display: grid;
-  grid-template-columns: 155px minmax(0, 1fr) 230px;
-  gap: 24px;
-  align-items: start;
-}
-.plan-toc {
-  display: grid;
-  gap: 4px;
-  position: sticky;
-  top: 88px;
-}
-.plan-toc > p {
-  font-size: 11px;
-  color: #98a2b3;
-  padding: 5px 9px 12px;
-}
-.plan-toc a {
-  padding: 10px 9px;
-  color: #667085;
-  font-size: 12px;
-  border-radius: 4px;
-  line-height: 1.7;
-}
-.plan-toc a:hover {
-  color: #1768c4;
-  background: #edf4ff;
-}
-.plan-body section {
-  scroll-margin-top: 88px;
-}
-.plan-body .business-panel {
-  padding: 25px;
-}
-.report-section-label {
-  font-size: 11px;
-  color: #8a97a8;
-  margin-bottom: 11px;
-}
-.plan-body h2 {
-  font-size: 19px;
-  margin-bottom: 16px;
-}
-.report-intro {
-  color: #667085;
-  font-size: 14px;
-  line-height: 1.95;
-  margin: 10px 0;
-}
-.report-pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 26px;
-  padding-top: 20px;
-  margin-top: 20px;
-  border-top: 1px solid #e5eaf1;
-}
-.report-pair h3 {
-  font-size: 13px;
-  font-weight: 500;
-  color: #475467;
-}
-.plan-body ul {
-  list-style: disc;
-  padding-left: 18px;
-  margin-top: 12px;
-}
-.plan-body ul > li {
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.9;
-  margin-top: 8px;
-}
-.report-note {
-  color: #8a97a8;
-  font-size: 12px !important;
-  line-height: 1.8;
-}
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-  text-align: left;
-}
-.report-table th {
-  padding: 10px;
-  font-size: 12px;
-  color: #8a97a8;
-  font-weight: 500;
-  background: #f5f7fa;
-}
-.report-table td {
-  padding: 12px 10px;
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.8;
-  border-bottom: 1px solid #edf0f4;
-}
-.report-table td:first-child {
-  color: #475467;
-  white-space: nowrap;
-}
-.report-city-list article {
-  padding: 18px 0 0;
-  margin-top: 18px;
-  border-top: 1px solid #edf0f4;
-}
-.report-city-list h3 {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.report-city-list h3 span {
-  color: #8a97a8;
-  font-size: 11px;
-  font-weight: 400;
-}
-.report-city-list p {
-  font-size: 13px;
-  color: #667085;
-  margin-top: 8px;
-}
-.report-roadmap {
-  display: grid;
-  gap: 24px;
-  margin-top: 25px;
-}
-.report-roadmap > li {
-  display: grid;
-  grid-template-columns: 14px minmax(0,1fr);
-  gap: 15px;
-  position: relative;
-}
-.report-roadmap > li:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  width: 1px;
-  top: 12px;
-  bottom: -24px;
-  background: #d4e1f0;
-}
-.report-roadmap-node {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 2px solid #739fce;
-  background: #fff;
-  margin-top: 6px;
-  z-index: 1;
-}
-.report-roadmap h3 {
-  margin-top: 10px;
-  font-size: 14px;
-}
-.report-roadmap ul {
-  margin-top: 8px;
-}
-.report-learning-row {
-  padding-top: 20px;
-  margin-top: 20px;
-  border-top: 1px solid #edf0f4;
-}
-.report-learning-row h3 {
-  font-size: 14px;
-}
-.report-topics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-}
-.report-learning-row p {
-  color: #7a8799;
-  font-size: 13px;
-  margin-top: 12px;
-}
-.report-schedule-title {
-  font-size: 14px;
-  margin-top: 24px;
-  color: #475467;
-}
-.plan-context {
-  position: sticky;
-  top: 88px;
-}
-.plan-context .business-panel {
-  padding: 20px;
-}
-.plan-context h2 {
-  font-size: 14px;
-}
-.plan-context dl {
-  margin-top: 18px;
-}
-.plan-context dl > div {
-  padding: 11px 0;
-  border-top: 1px solid #edf0f4;
-}
-.plan-context dt {
-  font-size: 11px;
-  color: #8a97a8;
-}
-.plan-context dd {
-  font-size: 13px;
-  color: #475467;
-  margin-top: 6px;
-  overflow-wrap: anywhere;
-}
-.plan-context .business-muted {
-  margin-top: 14px;
-  font-size: 12px;
-}
-.plan-next-step {
-  padding: 4px 12px;
-}
-.plan-next-step h2 {
-  font-size: 14px;
-  color: #667085;
-  margin-bottom: 16px;
-}
-.plan-next-step > a {
-  display: block;
-  font-size: 12px;
-  margin-top: 15px;
-}
-.plan-state {
-  text-align: center;
-  padding: 60px 24px;
-}
-.plan-state h2 {
-  margin: 16px 0 10px;
-}
-.plan-state p {
-  color: #7a8799;
-  font-size: 14px;
-}
-.plan-state .career-button {
-  margin-top: 22px;
-}
-@media (max-width: 1100px) {
-  .plan-layout {
-    grid-template-columns: 145px minmax(0,1fr);
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-  .plan-context {
-    display: none;
+  to {
+    transform: rotate(360deg);
   }
 }
-@media (max-width: 760px) {
-  .plan-layout {
-    grid-template-columns: 1fr;
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+article {
+  transition: all 0.3s ease;
+}
+
+article:hover {
+  transform: translateY(-2px);
+}
+
+ul {
+  list-style-position: outside;
+}
+
+ul li::marker {
+  color: #60a5fa;
+}
+
+.list-disc li::marker {
+  color: #60a5fa;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+h3 {
+  font-size: 1rem;
+}
+
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+section {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  .plan-toc {
-    display: none;
-  }
-  .report-pair {
-    grid-template-columns: 1fr;
-  }
-  .report-table td {
-    font-size: 12px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
+
+section:nth-child(2) { animation-delay: 0.1s; }
+section:nth-child(3) { animation-delay: 0.2s; }
+section:nth-child(4) { animation-delay: 0.3s; }
+section:nth-child(5) { animation-delay: 0.4s; }
+section:nth-child(6) { animation-delay: 0.5s; }
 </style>
 

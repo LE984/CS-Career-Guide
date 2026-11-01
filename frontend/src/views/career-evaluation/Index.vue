@@ -1,23 +1,456 @@
 <template>
-  <div class="business-page evaluation-page"><main class="career-container">
-    <BusinessPageHeader eyebrow="背景与规划 / 职业方向" title="把方向选得更具体一些" description="先查看已有的职业建议，再选一个想进一步了解的方向，生成可执行的准备计划。"><router-link to="/career-paths/employment/self-introduction" class="career-button">填写或修改背景</router-link></BusinessPageHeader>
-    <div class="evaluation-layout">
-      <nav class="evaluation-nav" aria-label="背景与规划流程"><router-link to="/career-paths/employment/self-introduction"><span>01</span><div>梳理背景<small>经历、技能与目标</small></div></router-link><a href="#career-recommendations" class="is-current"><span>02</span><div>选择职业方向<small>结合建议自主选择</small></div></a><router-link to="/career-plan"><span>03</span><div>查看准备计划<small>行动安排与学习重点</small></div></router-link><div class="evaluation-nav-note">推荐是了解方向的起点，选择可以随着经历和兴趣继续调整。</div></nav>
-      <div class="business-stack">
-        <section id="career-recommendations" class="business-panel"><div class="business-panel-head"><div><h2>结合个人背景的职业建议</h2><p class="business-muted recommendation-hint">推荐理由比一个分数更重要，可以先看看哪些经历与岗位相连。</p></div><button v-if="careerAnalysis" type="button" class="career-link analysis-toggle" :aria-expanded="isAccordionOpen" @click="toggleAccordion">{{ isAccordionOpen ? '收起分析' : '查看详细分析' }}</button></div>
-          <div v-if="recommendations.length" class="recommendation-list"><button v-for="(rec,index) in recommendations" :key="index" type="button" class="recommendation-option role-item" :class="{ selected: selectedCareers.includes(rec.career) }" :aria-pressed="selectedCareers.includes(rec.career)" @click="toggleSelection($event)"><span class="recommendation-career">{{ rec.career }}</span><span v-if="rec.matchScore !== null && rec.matchScore !== undefined" class="recommendation-score">匹配参考 {{ String(rec.matchScore).replace(/%$/, '') }}%</span><p>{{ rec.reason || '查看个人背景，结合岗位要求进一步判断。' }}</p><span class="recommendation-select">{{ selectedCareers.includes(rec.career) ? '已选择此方向' : '选择此方向 →' }}</span></button></div>
-          <div v-else class="business-empty"><h3>还没有你的职业推荐</h3><p>先填写个人背景，或直接从下方职业分类里选择一个想了解的方向。</p><router-link to="/career-paths/employment/self-introduction" class="career-button">梳理个人背景 →</router-link></div>
-          <div v-if="careerAnalysis && isAccordionOpen" class="business-prose career-analysis" v-html="renderedCareerAnalysis"></div>
-        </section>
-        <section class="business-panel career-categories"><div class="business-panel-head"><div><h2>也可以从职业分类开始探索</h2><p class="business-muted recommendation-hint">本次选择一个目标方向，后续可以返回调整。</p></div><span class="business-tag">单选</span></div><div class="career-category-grid"><section v-for="category in careerRoleGroups" :key="category.name" class="career-category"><h3>{{ category.name }}</h3><div class="career-role-options"><button v-for="role in category.roles" :key="role" type="button" class="role-item" :class="{ selected: selectedCareers.includes(role) }" :aria-pressed="selectedCareers.includes(role)" @click="toggleSelection($event)"><span>{{ role }}</span></button></div></section></div></section>
-        <div class="career-selection-bar"><div><span>本次目标方向</span><strong>{{ selectedCareers[0] || '还没有选择' }}</strong><button v-if="selectedCareers.length" type="button" class="career-link" @click="removeSelection(selectedCareers[0])">清除</button></div><button type="button" class="career-button career-button-primary" :disabled="!selectedCareers.length" @click="goToCareerPlan">生成职业规划 →</button></div>
+  <div class="bg-gradient-to-r from-white to-purple-100 font-body text-on-surface min-h-screen">
+    <main class="pt-24 pb-64">
+      <!--Category Navigation -->
+      <section class="max-w-7xl mx-auto px-8 mb-10">
+        <div class="flex flex-col items-center justify-center gap-6">
+          <div class="text-center">
+            <h2 class="font-headline text-6xl font-extrabold text-on-background">全职业图谱</h2> 
+            <p class="text-on-primary-container mt-2">深度解析核心领域，           选择您的目标岗位</p>
+          </div>
+        </div>
+      </section>
+      <!-- AI Recommendation Section -->
+      <section class="max-w-7xl mx-auto px-8 mb-16">
+        <div class="recommendation-gradient rounded-[2.5rem] p-10 editorial-shadow overflow-hidden relative">
+          <div class="absolute top-0 right-0 w-1/3 h-full opacity-10 pointer-events-none">
+            <svg class="w-full h-full fill-current text-secondary" viewbox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="200" cy="200" fill="none" r="150" stroke="currentColor" stroke-width="2"></circle>
+              <circle cx="200" cy="200" fill="none" r="100" stroke="currentColor" stroke-width="1"></circle>
+            </svg>
+          </div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-3 mb-6">
+              <span class="bg-secondary text-on-secondary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">AI 定制推荐</span>
+              <h2 class="text-white text-2xl font-bold font-headline">根据您的个人画像，以下方向最适合您</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- Dynamic Recommendations -->
+              <div v-for="(rec, index) in recommendations" :key="index" class="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-3xl group hover:bg-white/15 transition-all">
+                <div class="flex justify-between items-start mb-4">
+                  <div class="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center text-white overflow-hidden">
+                    <img src="../../assets/images/推荐1.png" alt="推荐1" class="w-full h-full object-cover"/>
+                  </div>
+                  <span class="text-secondary font-bold text-xl">{{ rec.matchScore }}% 匹配</span>
+                </div>
+                <h3 class="text-white text-xl font-bold mb-2">{{ rec.career }}</h3>
+                <p class="text-slate-300 text-sm leading-relaxed mb-4">{{ rec.reason || '基于您的背景和技能推荐' }}</p>
+              </div>
+            </div>
+            <!-- 大模型分析结果手风琴组件 -->
+            <div class="mt-8">
+              <div class="accordion">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-white text-lg font-bold flex items-center gap-2">
+                    大模型职业分析
+                  </h3>
+                  <span class="material-symbols-outlined text-white transition-transform cursor-pointer" :class="{ 'rotate-180': isAccordionOpen }" @click="toggleAccordion">
+                    更多
+                  </span>
+                </div>
+                <div v-if="isAccordionOpen" class="mt-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-white">
+                  <div v-if="careerAnalysis" class="space-y-4 markdown-content" v-html="renderedCareerAnalysis"></div>
+                  <div v-else class="text-slate-400">
+                    暂无分析结果，请先完成自我介绍。
+                  </div>
+                  <div></div>
+                  
+                  <div class="text-white text-xl text-left pt-4 mt-4">下一步：查看职业生涯规划报告</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Major Categories Grid -->
+      <section class="max-w-7xl mx-auto px-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- 1. Backend -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">后端开发</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Java</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">C++</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">PHP</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Golang</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Python</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Node.js</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Rust</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">C#工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">全栈开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">安全工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">游戏后端</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">游戏前端</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon"> ✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">区块链</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">信息技术岗</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">.NET</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Delphi</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">GIS工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">VB</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Perl</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Ruby</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Erlang</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">后端工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">语音视频图形开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 2. AI -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">人工智能</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">算法工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">深度学习</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">自然语言处理</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">机器学习</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">计算机视觉</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">语音识别</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">推荐算法</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">数据挖掘</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 3. Frontend -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">前端开发</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Web前端</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">前端工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">游戏前端</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">游戏前端</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">H5开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">React/Vue</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">小程序开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 4. Client -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">客户端开发</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">安卓 (Android)</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">iOS开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Flutter开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">Unity3D</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">游戏客户端</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 5. Data -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">数据</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">数据分析师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">大数据开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">数据仓库 (ETL)</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">数据架构师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 6. DevOps -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">运维</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">运维工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">网络工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">安全运维</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">SRE 工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">DBA (数据库管理)</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 7. Testing -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">测试</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">测试工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">自动化测试</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">性能测试</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">测试开发 (TestDev)</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 8. R&D -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">研发工程师</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">嵌入式软件开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">嵌入式硬件开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">固件开发</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">FPGA/芯片设计</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+          <!-- 9. Tech Support -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-lg flex flex-col h-[400px]">
+            <div class="flex items-center gap-3 mb-5 flex-shrink-0">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+                <img src="../../assets/images/职业大类.png" alt="职业大类" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="font-headline text-xl font-bold">销售技术支持</h3>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto role-scroll pr-2 flex-grow">
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">售前技术工程师</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">客户成功</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">售后技术支持</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+              <button class="role-item w-full p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-transparent transition-all hover:bg-indigo-50 group" @click="toggleSelection($event)">
+                <span class="font-medium text-sm">技术支持经理</span>
+                <span class="material-symbols-outlined text-indigo-600 text-sm hidden check-icon">✓</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- Selection Summary Bar -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-8rem)] max-w-4xl z-50 bg-indigo-600/95 dark:bg-indigo-900/95 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl p-5 editorial-shadow">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-5">
+        <div class="flex items-center gap-5 w-full md:w-auto min-w-0">
+          <div class="flex items-center gap-3 whitespace-nowrap text-white">
+            <span class="font-bold text-lg tracking-tight">选择目标岗位，查看职业生涯规划报告</span>
+          </div>
+          <div class="flex-grow flex gap-3 overflow-x-auto py-1 no-scrollbar items-center">
+            <!-- Dynamic Selection Labels -->
+            <div class="flex gap-2" v-if="selectedCareers.length > 0">
+              <span v-for="career in selectedCareers" :key="career" class="bg-white/20 text-white backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 border border-white/30 shadow-sm whitespace-nowrap">
+                {{ career }} <span class="material-symbols-outlined text-sm cursor-pointer hover:bg-white/20 rounded-full" @click="removeSelection(career)">✓</span>
+              </span>
+            </div>
+            <span v-else class="text-indigo-100/60 text-sm italic ml-2 shrink-0">点击卡片选择职业...</span>
+          </div>
+        </div>
+        <button @click="goToCareerPlan" class="w-full md:w-auto px-10 py-4 bg-white text-indigo-600 rounded-2xl font-black text-base hover:bg-indigo-50 transition-all flex items-center justify-center gap-1 shadow-xl transform active:scale-95 whitespace-nowrap">
+          生成职业规划报告
+          <span class="material-symbols-outlined text-sm">launch</span>
+        </button>
       </div>
     </div>
-  </main></div>
+  </div>
 </template>
 
 <script setup>
-import BusinessPageHeader from '@/components/BusinessPageHeader.vue'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { marked } from 'marked'
@@ -26,30 +459,30 @@ const router = useRouter()
 const recommendations = ref([])
 const isAccordionOpen = ref(false)
 const careerAnalysis = ref(null)
-const selectedCareers = ref([])
+const selectedCareers = ref([]) 
 // 将职业分析数据转换为Markdown格式
 const careerAnalysisMarkdown = computed(() => {
   if (!careerAnalysis.value) return ''
-
+  
   let markdown = ''
-
+  
   // 总体职业分析
   markdown += `# 总体职业分析
 
 ${careerAnalysis.value.overall}
 
 `
-
+  
   // 三个职业分析
   markdown += `# 职业推荐分析
 
 `
-
+  
   careerAnalysis.value.careers.forEach((career, index) => {
     markdown += `## ${index + 1}. ${career.title}
 
 `
-
+    
     // 匹配度（支持数字和字符串格式）
     if (career.matchScore) {
       const matchScoreStr = typeof career.matchScore === 'number' ? `${career.matchScore}%` : career.matchScore
@@ -57,7 +490,7 @@ ${careerAnalysis.value.overall}
 
 `
     }
-
+    
     // 推荐理由
     markdown += `### 推荐理由
 `
@@ -75,7 +508,7 @@ ${careerAnalysis.value.overall}
     }
     markdown += `
 `
-
+    
     // 技能匹配
     markdown += `### 技能匹配
 `
@@ -95,7 +528,7 @@ ${careerAnalysis.value.overall}
     }
     markdown += `
 `
-
+    
     // 当前最大短板（新字段）
     if (career.weakestPoint) {
       markdown += `### 当前最大短板
@@ -104,7 +537,7 @@ ${career.weakestPoint}
 
 `
     }
-
+    
     // 市场热度（新字段）
     if (career.marketDemand) {
       markdown += `### 市场热度
@@ -113,7 +546,7 @@ ${career.marketDemand}
 
 `
     }
-
+    
     // 起薪范围（新字段）
     if (career.salaryRange) {
       markdown += `### 起薪范围
@@ -122,7 +555,7 @@ ${career.salaryRange}
 
 `
     }
-
+    
     // 下一步建议（新字段，支持数组和字符串格式）
     if (career.nextStep) {
       markdown += `### 下一步建议
@@ -155,7 +588,7 @@ ${career.improvement}
 `
     }
   })
-
+  
   return markdown
 })
 
@@ -182,17 +615,35 @@ function loadRecommendations() {
         return
       }
     }
-
+    
     // 如果没有cards数据，尝试从careerAnalysis中获取（用于手风琴展示的详细数据）
     if (careerAnalysis.value && careerAnalysis.value.careers) {
       recommendations.value = careerAnalysis.value.careers.map(career => ({
         career: career.title,
-        matchScore: career.matchScore ?? null,
+        matchScore: career.matchScore || (career.marketDemand === '高' ? 85 : career.marketDemand === '中高' ? 75 : 65),
         reason: career.reasons[0] || '基于您的背景和技能推荐'
       }))
       console.log('Loaded recommendations from career analysis:', recommendations.value)
     } else {
-      recommendations.value = []
+      // 使用默认推荐数据
+      recommendations.value = [
+        {
+          career: "Python",
+          matchScore: 92,
+          reason: "用户熟练掌握Python开发，并具备Git、计算机网络、数据结构等后端核心基础，且已完成两个大模型应用项目，高度契合Python后端岗位需求。"
+        },
+        {
+          career: "自然语言处理",
+          matchScore: 88,
+          reason: "用户具备大模型应用项目实战经验，叠加Python、线性代数、离散数学和英文阅读能力，构成NLP工程师的核心能力三角。"
+        },
+        {
+          career: "大数据开发工程师",
+          matchScore: 85,
+          reason: "用户Python与数据结构基础扎实，大模型项目隐含ETL与批处理经验，线性代数支撑特征工程，符合大数据开发岗位技术画像。"
+        }
+      ]
+      console.log('Using default recommendations:', recommendations.value)
     }
   } catch (error) {
     console.error('Failed to load recommendations:', error)
@@ -216,7 +667,7 @@ function loadCareerAnalysis() {
         // 解析职业推荐数据，提取职业分析数据
         if (Array.isArray(careerRecommendations)) {
           careerAnalysis.value = {
-            overall: '以下方向来自已保存的职业推荐，可以结合你的背景逐项查看。',
+            overall: '基于您的技能和背景，我们为您推荐以下职业方向。您具备扎实的计算机基础素养和良好的工程实践潜力，在Python后端开发、人工智能（特别是自然语言处理方向）、数据相关开发（如大数据开发/数据工程师）三大路径上具有高度适配性和快速成长潜力。',
             careers: careerRecommendations.map((rec, index) => ({
               title: rec.career || rec.职业,
               matchScore: `${rec.matchScore || rec.匹配度}%`,
@@ -281,18 +732,82 @@ function getIconForCareer(career) {
 
 // 切换选择状态（单选模式）
 function toggleSelection(event) {
-  const careerName = event.currentTarget.querySelector('span:first-child').textContent.trim()
-  selectedCareers.value = selectedCareers.value.includes(careerName) ? [] : [careerName]
+  const button = event.currentTarget
+  const careerName = button.querySelector('span:first-child').textContent.trim()
+  
+  if (button.classList.contains('selected')) {
+    // 取消选择
+    button.classList.remove('selected')
+    const checkIcon = button.querySelector('.check-icon')
+    if (checkIcon) {
+      checkIcon.classList.add('hidden')
+    }
+    // 从数组中移除
+    const index = selectedCareers.value.indexOf(careerName)
+    if (index > -1) {
+      selectedCareers.value.splice(index, 1)
+    }
+  } else {
+    // 单选模式：先取消所有已选中的职业
+    if (selectedCareers.value.length > 0) {
+      const buttons = document.querySelectorAll('.role-item')
+      buttons.forEach(btn => {
+        const btnCareerName = btn.querySelector('span:first-child').textContent.trim()
+        if (btn.classList.contains('selected') && btnCareerName !== careerName) {
+          btn.classList.remove('selected')
+          const checkIcon = btn.querySelector('.check-icon')
+          if (checkIcon) {
+            checkIcon.classList.add('hidden')
+          }
+        }
+      })
+      // 清空数组
+      selectedCareers.value = []
+    }
+    
+    // 选择新职业
+    button.classList.add('selected')
+    const checkIcon = button.querySelector('.check-icon')
+    if (checkIcon) {
+      checkIcon.classList.remove('hidden')
+    }
+    // 添加到数组
+    selectedCareers.value.push(careerName)
+  }
+  
+  console.log('Selected careers:', selectedCareers.value)
 }
+
+// 移除选择
 function removeSelection(itemName) {
-  selectedCareers.value = selectedCareers.value.filter(name => name !== itemName)
+  // 从数组中移除
+  const index = selectedCareers.value.indexOf(itemName)
+  if (index > -1) {
+    selectedCareers.value.splice(index, 1)
+  }
+  
+  // 更新按钮状态
+  const buttons = document.querySelectorAll('.role-item')
+  buttons.forEach(button => {
+    const careerName = button.querySelector('span:first-child').textContent.trim()
+    if (careerName === itemName) {
+      button.classList.remove('selected')
+      const checkIcon = button.querySelector('.check-icon')
+      if (checkIcon) {
+        checkIcon.classList.add('hidden')
+      }
+    }
+  })
+  
+  console.log('Removed selection:', itemName)
+  console.log('Selected careers:', selectedCareers.value)
 }
 
 // 跳转到职业规划页面
 function goToCareerPlan() {
   // 保存选择的职业到 localStorage 缓存中
   localStorage.setItem('selectedCareers', JSON.stringify(selectedCareers.value))
-
+  
   // 跳转到职业规划页面
   router.push('/career-plan')
 }
@@ -306,350 +821,150 @@ onMounted(() => {
 onUnmounted(() => {
   // 页面卸载时的清理逻辑
 })
-const careerRoleGroups = [
-  {
-    "name": "后端开发",
-    "roles": [
-      "Java",
-      "C++",
-      "PHP",
-      "Golang",
-      "Python",
-      "Node.js",
-      "Rust",
-      "C#工程师",
-      "全栈开发",
-      "安全工程师",
-      "游戏后端",
-      "游戏前端",
-      "区块链",
-      "信息技术岗",
-      ".NET",
-      "Delphi",
-      "GIS工程师",
-      "VB",
-      "Perl",
-      "Ruby",
-      "Erlang",
-      "后端工程师",
-      "语音视频图形开发"
-    ]
-  },
-  {
-    "name": "人工智能",
-    "roles": [
-      "算法工程师",
-      "深度学习",
-      "自然语言处理",
-      "机器学习",
-      "计算机视觉",
-      "语音识别",
-      "推荐算法",
-      "数据挖掘"
-    ]
-  },
-  {
-    "name": "前端开发",
-    "roles": [
-      "Web前端",
-      "前端工程师",
-      "游戏前端",
-      "H5开发",
-      "React/Vue",
-      "小程序开发"
-    ]
-  },
-  {
-    "name": "客户端开发",
-    "roles": [
-      "安卓 (Android)",
-      "iOS开发",
-      "Flutter开发",
-      "Unity3D",
-      "游戏客户端"
-    ]
-  },
-  {
-    "name": "数据",
-    "roles": [
-      "数据分析师",
-      "大数据开发",
-      "数据仓库 (ETL)",
-      "数据架构师"
-    ]
-  },
-  {
-    "name": "运维",
-    "roles": [
-      "运维工程师",
-      "网络工程师",
-      "安全运维",
-      "SRE 工程师",
-      "DBA (数据库管理)"
-    ]
-  },
-  {
-    "name": "测试",
-    "roles": [
-      "测试工程师",
-      "自动化测试",
-      "性能测试",
-      "测试开发 (TestDev)"
-    ]
-  },
-  {
-    "name": "研发工程师",
-    "roles": [
-      "嵌入式软件开发",
-      "嵌入式硬件开发",
-      "固件开发",
-      "FPGA/芯片设计"
-    ]
-  },
-  {
-    "name": "销售技术支持",
-    "roles": [
-      "售前技术工程师",
-      "客户成功",
-      "售后技术支持",
-      "技术支持经理"
-    ]
-  }
-]
 </script>
 
 <style scoped>
-.evaluation-layout {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 28px;
-  align-items: start;
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
-.evaluation-nav {
-  display: grid;
-  gap: 9px;
-  position: sticky;
-  top: 88px;
+
+.glass-effect {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
-.evaluation-nav > a {
-  display: flex;
-  align-items: start;
-  gap: 11px;
-  padding: 13px 10px;
-  border-radius: 5px;
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.5;
+
+.editorial-shadow {
+  box-shadow: 0 20px 40px rgba(25, 28, 30, 0.06);
 }
-.evaluation-nav > a > span {
-  width: 23px;
-  height: 23px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  border: 1px solid #ccd7e5;
-  border-radius: 50%;
-  font-size: 10px;
-  color: #8a97a8;
+
+.strong-shadow {
+  box-shadow: 0 10px 30px -5px rgba(70, 72, 212, 0.2), 0 8px 10px -6px rgba(70, 72, 212, 0.1);
 }
-.evaluation-nav small {
+
+.recommendation-gradient {
+  background: linear-gradient(135deg, #111c2d 0%, #2d3133 100%);
+}
+
+.role-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.role-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.role-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.role-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.role-item.selected {
+  background-color: rgba(70, 72, 212, 0.1);
+  border-color: #4648d4;
+  color: #4648d4;
+}
+
+.role-item.selected .check-icon {
   display: block;
-  color: #8a97a8;
-  font-size: 11px;
-  margin-top: 7px;
 }
-.evaluation-nav > a.is-current {
-  color: #1d5da6;
-  background: #edf4ff;
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-.evaluation-nav > a.is-current > span {
-  border-color: #8aafe0;
-  background: #fff;
-  color: #1768c4;
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-.evaluation-nav-note {
-  padding: 18px 10px;
-  margin-top: 12px;
-  border-top: 1px solid var(--career-border);
-  color: #8a97a8;
-  font-size: 12px;
-  line-height: 1.9;
+
+.rotate-180 {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
 }
-.recommendation-hint {
-  margin-top: 7px;
-  font-size: 13px !important;
+
+.accordion {
+  transition: all 0.3s ease;
 }
-.analysis-toggle {
-  flex: none;
-  font-size: 13px;
-}
-.recommendation-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 12px;
-  margin-top: 22px;
-}
-.recommendation-option {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  padding: 18px;
-  border: 1px solid #dfe5ec;
-  border-radius: 6px;
-  background: #fff;
-}
-.recommendation-option.selected {
-  background: #f5f9ff;
-  border-color: #84abe0;
-}
-.recommendation-career {
-  color: #344054;
-  font-size: 15px;
-  font-weight: 600;
-}
-.recommendation-score {
-  font-size: 11px;
-  color: #7a8799;
-  margin-top: 8px;
-}
-.recommendation-option > p {
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.85;
-  margin: 12px 0 18px;
-}
-.recommendation-select {
-  display: block;
-  margin-top: auto;
-  color: #4277b4;
-  font-size: 12px;
-}
-.career-analysis {
-  padding-top: 22px;
-  margin-top: 22px;
-  border-top: 1px solid var(--career-border);
-}
-.career-categories > .business-panel-head {
-  margin-bottom: 24px;
-}
-.career-category-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 0;
-  border: 1px solid var(--career-border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.career-category {
-  padding: 19px;
-  border-right: 1px solid #e5eaf1;
-  border-bottom: 1px solid #e5eaf1;
-  min-width: 0;
-}
-.career-category:nth-child(3n) {
-  border-right: 0;
-}
-.career-category:nth-last-child(-n+3) {
-  border-bottom: 0;
-}
-.career-category h3 {
-  margin-bottom: 14px;
-  font-size: 14px;
-  font-weight: 600;
-}
-.career-role-options {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-.career-role-options button {
-  padding: 5px 9px;
-  border: 1px solid #e0e6ef;
-  border-radius: 4px;
-  color: #667085;
-  background: #f9fbfd;
-  font-size: 12px;
+
+/* Markdown内容样式 */
+.markdown-content {
   line-height: 1.6;
+  color: #93c5fd;
 }
-.career-role-options button:hover {
-  border-color: #b0c6e1;
-  background: #f1f6fc;
+
+/* 使用深度选择器确保样式应用到v-html渲染的内容 */
+.markdown-content ::v-deep h1 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #38bdf8 !important;
 }
-.career-role-options button.selected {
-  border-color: #86ace0;
-  background: #edf4ff;
-  color: #1768c4;
+
+.markdown-content ::v-deep h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #38bdf8 !important;
 }
-.career-selection-bar {
-  position: static;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  padding: 16px 20px;
-  border: 1px solid #ccd9e8;
-  border-radius: 7px;
-  background: #fff;
-  box-shadow: 0 4px 18px #1d29390a;
-  z-index: 5;
+
+.markdown-content ::v-deep h3 {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #38bdf8 !important;
 }
-.career-selection-bar > div {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+
+.markdown-content ::v-deep p {
+  margin-bottom: 1rem;
+  color: #93c5fd !important;
 }
-.career-selection-bar span {
-  color: #8a97a8;
-  font-size: 12px;
+
+.markdown-content ::v-deep ul {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
 }
-.career-selection-bar strong {
-  color: #344054;
-  font-size: 14px;
-  font-weight: 500;
+
+.markdown-content ::v-deep li {
+  margin-bottom: 0.5rem;
+  color: #93c5fd !important;
 }
-.career-selection-bar .career-link {
-  font-size: 12px;
+
+.markdown-content ::v-deep strong {
+  color: #38bdf8 !important;
+  font-weight: bold;
 }
-@media (max-width: 1100px) {
-  .evaluation-layout {
-    grid-template-columns: 155px minmax(0,1fr);
-    gap: 20px;
-  }
-  .career-category-grid {
-    grid-template-columns: repeat(2,minmax(0,1fr));
-  }
-  .career-category:nth-child(3n) {
-    border-right: 1px solid #e5eaf1;
-  }
-  .career-category:nth-child(2n) {
-    border-right: 0;
-  }
-  .career-category:nth-last-child(-n+3) {
-    border-bottom: 1px solid #e5eaf1;
-  }
-  .career-category:last-child {
-    border-bottom: 0;
-  }
+
+.markdown-content ::v-deep a {
+  color: #60a5fa !important;
+  text-decoration: underline;
 }
-@media (max-width: 760px) {
-  .evaluation-layout {
-    grid-template-columns: 1fr;
-  }
-  .evaluation-nav {
-    display: none;
-  }
-  .recommendation-list,.career-category-grid {
-    grid-template-columns: 1fr;
-  }
-  .career-category {
-    border-right: 0 !important;
-  }
-  .career-selection-bar {
-    flex-wrap: wrap;
-  }
-  .career-selection-bar > div {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
+
+.markdown-content ::v-deep a:hover {
+  color: #3b82f6 !important;
+}
+
+/* 确保所有Markdown内容都使用浅色 */
+.markdown-content ::v-deep * {
+  color: #93c5fd !important;
+}
+
+.markdown-content ::v-deep h1,
+.markdown-content ::v-deep h2,
+.markdown-content ::v-deep h3,
+.markdown-content ::v-deep h4,
+.markdown-content ::v-deep h5,
+.markdown-content ::v-deep h6 {
+  color: #38bdf8 !important;
+}
+
+.markdown-content ::v-deep strong {
+  color: #38bdf8 !important;
 }
 </style>

@@ -1,9 +1,9 @@
 <template>
-  <div class="app-shell min-h-screen bg-base-200">
+  <div class="min-h-screen bg-base-200">
     <Navbar />
-    <div class="app-content w-full">
+    <main class="w-full py-6">
       <router-view />
-    </div>
+    </main>
     <Footer />
   </div>
 </template>

@@ -1,21 +1,117 @@
 <template>
-  <div class="business-page advice-form-page"><main class="career-container">
-    <BusinessPageHeader eyebrow="企业与职位 / 经验分享" title="写一条对后来的人有用的建议" description="从自己经历过的面试、实习或工作出发，尽量写清具体情境与适用范围。"><router-link to="/company-reviews" class="career-button">返回企业与职位</router-link></BusinessPageHeader>
-    <div class="advice-form-layout"><form class="business-stack" @submit.prevent="handleSubmit">
-      <section class="business-panel"><div class="business-panel-head"><h2>这条建议与什么经历有关</h2><span class="business-tag">基本信息</span></div><div class="business-form-grid">
-        <div class="business-field"><label for="advice-company">企业名称 *</label><input id="advice-company" v-model="formData.company" type="text" required /></div><div class="business-field"><label for="advice-position">岗位名称 *</label><input id="advice-position" v-model="formData.position" type="text" required /></div>
-        <div class="business-field"><label for="advice-name">分享者姓名 *</label><input id="advice-name" v-model="formData.senior_name" type="text" required /></div><div class="business-field"><label for="advice-year">毕业年份 *</label><input id="advice-year" v-model="formData.graduation_year" type="text" placeholder="例如：2023" required /></div>
-        <div class="business-field full-width"><label for="advice-current">目前就职企业 <span>选填</span></label><input id="advice-current" v-model="formData.current_company" type="text" /></div>
-      </div></section>
-      <section class="business-panel"><div class="business-panel-head"><h2>具体经历与建议</h2></div><div class="business-field"><label for="advice-content">详细建议 *</label><textarea id="advice-content" v-model="formData.advice" rows="6" required placeholder="可以写准备过程、实际遇到的问题、企业或岗位的特点，以及你建议后来者如何准备。" /><small>避免泄露他人隐私或企业机密，把事实与个人感受分开说明。</small></div><div class="business-form-grid advice-additions"><div class="business-field"><label for="advice-salary">薪资信息 <span>选填</span></label><input id="advice-salary" v-model="formData.salary_info" type="text" placeholder="写明时间与薪资结构，或留空" /></div><div class="business-field advice-rating"><label for="advice-rating">个人评分 *</label><div><input id="advice-rating" v-model="formData.rating" type="number" min="1" max="5" step="0.5" required /><span>/ 5</span></div></div><div class="business-field full-width"><label for="advice-pros">认可的方面</label><input id="advice-pros" v-model="prosInput" type="text" placeholder="用逗号分隔，例如：导师反馈及时,项目实践充分" /></div><div class="business-field full-width"><label for="advice-cons">需要提前了解的方面</label><input id="advice-cons" v-model="consInput" type="text" placeholder="用逗号分隔，说明具体情况" /></div></div></section>
-      <div v-if="success" class="business-notice" role="status"><strong>{{ successMessage }}</strong><p>审核通过后会显示在经验分享中。</p></div><div v-if="error" class="business-notice is-error" role="alert">{{ errorMessage }}</div>
-      <div class="advice-submit"><p>请确认内容真实、具体，提交后需等待审核。</p><button type="submit" class="career-button career-button-primary" :disabled="isSubmitting">{{ isSubmitting ? '提交中…' : '提交建议 →' }}</button></div>
-    </form><aside class="business-panel advice-writing-guide"><h2>什么样的建议更有帮助</h2><ol><li><strong>说明经历的时间与范围</strong><p>实习、校招与正式工作可能有不同体验。</p></li><li><strong>写具体发生过的事情</strong><p>准备了什么，遇到哪些问题，怎样解决。</p></li><li><strong>给出能执行的下一步</strong><p>让读者知道可以从哪里开始准备。</p></li></ol></aside></div>
-  </main></div>
+  <div class="min-h-screen bg-gradient-to-r from-white to-purple-100">
+    <main class="pt-24 pb-24 max-w-4xl mx-auto px-4">
+      <!-- Page Header -->
+      <header class="mb-12 text-center">
+        <h1 class="text-4xl font-bold text-primary mb-4">提交学长学姐建议</h1>
+        <p class="text-lg text-on-primary-container max-w-2xl mx-auto">
+          分享你的职场经验，帮助学弟学妹们做出更明智的职业选择
+        </p>
+      </header>
+      
+      <!-- Form Container -->
+      <div class="bg-white rounded-2xl shadow-lg p-8">
+        <form @submit.prevent="handleSubmit" class="space-y-6">
+          <!-- 基本信息 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">公司名称 *</label>
+              <input v-model="formData.company" type="text" required 
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">职位名称 *</label>
+              <input v-model="formData.position" type="text" required
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">您的姓名 *</label>
+              <input v-model="formData.senior_name" type="text" required
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">毕业年份 *</label>
+              <input v-model="formData.graduation_year" type="text" required
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                     placeholder="例如：2023">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">当前公司</label>
+              <input v-model="formData.current_company" type="text"
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+          </div>
+          
+          <!-- 建议内容 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">详细建议 *</label>
+            <textarea v-model="formData.advice" required rows="5"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">薪资信息</label>
+              <input v-model="formData.salary_info" type="text"
+                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                     placeholder="例如：1.5-3万·14薪">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">评分 *</label>
+              <div class="flex items-center space-x-4">
+                <input v-model="formData.rating" type="number" min="1" max="5" step="0.5" required
+                       class="w-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                <span class="text-gray-500">（1-5分）</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 优缺点 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">优点（用逗号分隔）</label>
+            <input v-model="prosInput" type="text"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                   placeholder="例如：薪资高,福利好,技术氛围好">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">缺点（用逗号分隔）</label>
+            <input v-model="consInput" type="text"
+                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                   placeholder="例如：工作压力较大,加班较多">
+          </div>
+          
+          <!-- 提交按钮 -->
+          <div class="flex justify-center">
+            <button type="submit" :disabled="isSubmitting"
+                    class="px-12 py-4 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ isSubmitting ? '提交中...' : '提交建议' }}
+            </button>
+          </div>
+        </form>
+        
+        <!-- 成功提示 -->
+        <div v-if="success" class="mt-8 p-6 bg-green-100 text-green-700 rounded-lg">
+          <h3 class="font-bold text-lg mb-2">{{ successMessage }}</h3>
+          <p>感谢您的分享！您的建议将在审核通过后显示在企业榜单页面。</p>
+          <router-link to="/company-reviews" class="inline-block mt-4 px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
+            返回企业榜单
+          </router-link>
+        </div>
+        
+        <!-- 错误提示 -->
+        <div v-if="error" class="mt-8 p-6 bg-red-100 text-red-700 rounded-lg">
+          <h3 class="font-bold text-lg mb-2">提交失败</h3>
+          <p>{{ errorMessage }}</p>
+          <button @click="error = false" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors">
+            重试
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
 </template>
 
 <script setup>
-import BusinessPageHeader from '@/components/BusinessPageHeader.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
@@ -47,17 +143,16 @@ const handleSubmit = async () => {
   // 处理优缺点输入
   formData.value.pros = prosInput.value.split(',').map(item => item.trim()).filter(Boolean)
   formData.value.cons = consInput.value.split(',').map(item => item.trim()).filter(Boolean)
-
+  
   isSubmitting.value = true
   success.value = false
   error.value = false
-
+  
   try {
     const response = await api.post('/ai/senior-advice/', formData.value)
-    if (!response.success) throw new Error(response.message || response.error || '提交失败，请重试')
-    successMessage.value = response.message || '建议已提交，等待审核'
     success.value = true
-
+    successMessage.value = response.data.message
+    
     // 重置表单
     formData.value = {
       company: '',
@@ -74,9 +169,8 @@ const handleSubmit = async () => {
     prosInput.value = ''
     consInput.value = ''
   } catch (err) {
-    success.value = false
     error.value = true
-    errorMessage.value = err.response?.data?.error || err.response?.data?.message || err.message || '提交失败，请重试'
+    errorMessage.value = err.response?.data?.error || err.response?.data?.message || '提交失败，请重试'
   } finally {
     isSubmitting.value = false
   }
@@ -84,75 +178,19 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.advice-form-layout {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 280px;
-  gap: 28px;
-  max-width: 1100px;
+/* 自定义样式 */
+input:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
-.advice-form-layout form .business-panel {
-  padding: 25px;
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
-.advice-additions {
-  margin-top: 24px;
-}
-.advice-rating > div {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.advice-rating input {
-  width: 95px;
-}
-.advice-rating span {
-  color: #8a97a8;
-  font-size: 13px;
-}
-.advice-submit {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  padding: 3px 0;
-}
-.advice-submit p {
-  color: #8a97a8;
-  font-size: 12px;
-  line-height: 1.8;
-}
-.advice-submit button {
-  flex: none;
-}
-.advice-writing-guide {
-  position: sticky;
-  top: 88px;
-  padding: 22px;
-}
-.advice-writing-guide h2 {
-  font-size: 14px;
-}
-.advice-writing-guide ol {
-  display: grid;
-  gap: 23px;
-  margin-top: 24px;
-}
-.advice-writing-guide strong {
-  color: #586577;
-  font-size: 13px;
-  font-weight: 500;
-}
-.advice-writing-guide p {
-  color: #8a97a8;
-  font-size: 12px;
-  margin-top: 7px;
-  line-height: 1.9;
-}
-@media (max-width: 900px) {
-  .advice-form-layout {
-    grid-template-columns: 1fr;
-  }
-  .advice-writing-guide {
-    position: static;
-  }
+
+button:active {
+  transform: translateY(0);
 }
 </style>

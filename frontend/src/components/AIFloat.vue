@@ -1,10 +1,25 @@
 <template>
   <div class="fixed bottom-6 right-6 z-50" ref="container">
     <!-- 折叠状态 -->
-    <button v-if="!isOpen" type="button" class="career-button assistant-launcher" aria-label="打开 AI 助手" @click="isOpen = true">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M16 12.5a2 2 0 0 1-2 2H7l-3 2v-4a5.5 5.5 0 1 1 12 0Z"/><path d="M7 8h6M7 11h4"/></svg>
-      AI 助手
-    </button>
+    <div v-if="!isOpen" class="flex flex-col items-end">
+      <div class="relative mb-2 animate-bounce">
+        <div class="bg-base-100 text-base-content text-xs px-4 py-2 rounded-2xl shadow-lg border border-base-200 max-w-[120px] text-center">
+          有问题戳我
+        </div>
+        <div class="absolute -bottom-1 right-8 w-3 h-3 bg-base-100 transform rotate-45 border-r border-b border-base-200"></div>
+      </div>
+      <div 
+        ref="modelContainer" 
+        class="w-32 h-48 cursor-move relative transition-transform hover:scale-105" 
+        @dblclick="isOpen = true"
+        @mousedown="startDrag"
+        @mousemove="onDrag"
+        @mouseup="endDrag"
+        @mouseleave="endDrag"
+      >
+        <!-- 数字人将在这里渲染 -->
+      </div>
+    </div>
     
     <!-- 展开状态 -->
     <div 
@@ -651,7 +666,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.assistant-launcher { min-height: 38px; padding: 9px 13px; font-size: 13px; color: var(--career-blue); border-color: #c5d6ec; box-shadow: 0 3px 12px #1d293912; }
 /* 可添加自定义样式 */
 .whitespace-pre-wrap {
   white-space: pre-wrap;
