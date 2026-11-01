@@ -1,0 +1,108 @@
+{
+  "fixture_version": "java-contract-v1",
+  "test_only": true,
+  "questions": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "解释 equals 与 hashCode 的约定",
+      "key_points": [
+        "相等对象需要相同哈希值"
+      ],
+      "reference_answer": "相等对象需要相同哈希值",
+      "source": "synthetic_fixture",
+      "source_url": "",
+      "permission_status": "allowed",
+      "is_demo": true,
+      "dedupe_key": "java-contract-1"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "easy",
+      "question": "ArrayList 与 LinkedList 的区别",
+      "key_points": [
+        "存储结构与访问模式"
+      ],
+      "reference_answer": "存储结构与访问模式",
+      "source": "synthetic_fixture",
+      "source_url": "",
+      "permission_status": "allowed",
+      "is_demo": true,
+      "dedupe_key": "java-contract-2"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "JVM",
+      "difficulty": "easy",
+      "question": "说明垃圾回收的可达性分析",
+      "key_points": [
+        "从 GC Roots 判断对象可达性"
+      ],
+      "reference_answer": "从 GC Roots 判断对象可达性",
+      "source": "synthetic_fixture",
+      "source_url": "",
+      "permission_status": "allowed",
+      "is_demo": true,
+      "dedupe_key": "java-contract-3"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Spring",
+      "difficulty": "easy",
+      "question": "解释依赖注入",
+      "key_points": [
+        "容器管理依赖关系"
+      ],
+      "reference_answer": "容器管理依赖关系",
+      "source": "synthetic_fixture",
+      "source_url": "",
+      "permission_status": "allowed",
+      "is_demo": true,
+      "dedupe_key": "java-contract-4"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "数据库",
+      "difficulty": "easy",
+      "question": "解释索引的作用与代价",
+      "key_points": [
+        "读写成本和查询选择性"
+      ],
+      "reference_answer": "读写成本和查询选择性",
+      "source": "synthetic_fixture",
+      "source_url": "",
+      "permission_status": "allowed",
+      "is_demo": true,
+      "dedupe_key": "java-contract-5"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "并发",
+      "difficulty": "easy",
+      "question": "说明 synchronized 的互斥与可见性",
+      "key_points": [
+        "锁释放获取的可见性关系"
+      ],
+      "reference_answer": "锁释放获取的可见性关系",
+      "source": "synthetic_fixture",
+      "source_url": "",
+      "permission_status": "allowed",
+      "is_demo": true,
+      "dedupe_key": "java-contract-6"
+    }
+  ]
+}

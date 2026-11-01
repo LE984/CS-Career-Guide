@@ -6,6 +6,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from .models import Company, CompanyInfo, JobFair
+from career_platform.permissions import StaffWritePermission
 from .serializers import CompanySerializer, CompanyInfoSerializer, JobFairSerializer
 
 
@@ -20,7 +21,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
     pagination_class = StandardPagination
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffWritePermission]
     
     def get_queryset(self):
         queryset = super().get_queryset()

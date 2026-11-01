@@ -2,6 +2,12 @@
 
 计算机学院本科生就业指南是一个专为计算机专业学生打造的**全栈职业指导平台**，通过数据驱动和AI技术，为学生提供从职业规划到求职面试的全方位支持。
 
+## 开发与文档入口
+
+先读 [agent.md 文档索引](agent.md)，日常开发参考 [开发指南](docs/development.md) 和 [Git/PR/commit 规范](docs/git-workflow.md)。自动化协作入口为 [AGENTS.md](AGENTS.md)。主分支统一使用 `master`，个人长期开发使用 `codex/personal`，通过 PR 合入本 fork 的 master；误建的 main 不再用于日常开发。功能、接口、配置或部署行为改变时，在同一 PR 补最少必要文档。
+
+当前需求与五人分工统一以 [career_platform_plan.md](docs/career_platform_plan.md) 为准。该文件是待开发目标；当前代码与线上能力、SQLite 演示环境、数据缺口和验收边界见 [部署状态](docs/deployment-status.md)，不要仅凭下方技术栈或功能介绍判断已实现范围。
+
 ## 🎯 项目目标
 
 - 为计算机学院本科生提供全方位的职业指导
@@ -113,13 +119,20 @@ npm run dev
 
 ## 🚀 部署与运维
 
-演示部署仍在实施中。基线提交 `3480b91` 已通过 [GitHub Actions 构建与容器冒烟](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/39540701547)；ACR 镜像发布、服务器部署和 Watchtower 自动更新尚未验证。请先阅读：
+2026-11-01 已完成单仓库独立交付拆分和服务器首次网关切换：`frontend/`、`backend/` 使用各自构建上下文、CI、镜像 publisher 和 digest 激活入口。单端发布或回滚不拉取、不重建另一端；共享配置仍要求双端和完整网关联调。服务器 80/48080 由独立 gateway 承接，新前端已部署，原后端容器、数据库卷及 `.env` 保留；发布与分端部署开关已开启，Watchtower 保持停止。
 
+运行状态是带日期的快照，完整 digest、Actions、单端重建和未验收范围见[部署状态](docs/deployment-status.md)。五个课程模块的 `501 / FEATURE_NOT_IMPLEMENTED` 属于尚未完成的业务，SQLite/MySQL 业务验收失败及其发布影响见[业务门禁](docs/ci-cd.md#业务门禁)，不能据此判断服务器数据库损坏。App 客户端由其他成员实现，本仓库保留独立后端 API/Token 接口边界；独立域名浏览器配置见[环境变量](docs/environment.md)。请先阅读：
+
+- [单仓库独立交付与单服务 digest 回滚](docs/split-delivery.md)
 - [部署与运维总览](docs/deployment.md)
+- [宿主机保护边界](docs/host-protection.md)
+- [验收状态与接手记录](docs/deployment-status.md)
 - [CI/CD 流水线](docs/ci-cd.md)
+- [AI 配置同步与自动重建](docs/ai-env-sync.md)
 - [Docker 镜像](docs/docker-images.md)
 - [服务器拉取部署](docs/server-pull.md)
 - [Watchtower 与回滚](docs/watchtower-rollback.md)
+- [模拟面试重构与替换边界](docs/interview-refactor.md)
 
 真实密钥、ACR 密码、数据库密码和服务器 `.env` 不得提交到仓库。
 
@@ -135,18 +148,26 @@ npm run dev
 ```
 cs-career-guide/
 ├── backend/                    # 后端Django项目
+│   ├── Dockerfile              # 后端独立构建，context=backend/
+│   ├── requirements.txt        # 完整开发/测试依赖；根入口转发至此
+│   ├── requirements-runtime.txt # 镜像运行依赖
 │   ├── ai_integration/         # AI集成模块
 │   ├── career_evaluation/      # 职业测评模块
 │   ├── career_paths/           # 职业路径模块
 │   ├── company_reviews/        # 企业评价模块
 │   └── cs_career_guide/        # Django配置
 ├── frontend/                   # 前端Vue项目
+│   ├── Dockerfile              # 前端独立构建，context=frontend/
+│   ├── nginx.conf              # 只提供前端静态资源与 history fallback
 │   ├── src/
 │   │   ├── components/         # 组件
 │   │   ├── views/              # 页面视图
 │   │   ├── api/                # API接口
 │   │   └── stores/             # 状态管理
 │   └── public/                 # 静态资源
+├── deploy/                     # Compose、独立网关 nginx.conf、配置样例
+├── ci/                         # 组件选择、镜像验证、部署与回滚工具
+├── .github/workflows/          # 按组件交付与手动服务器维护
 └── README.md                   # 项目文档
 ```
 

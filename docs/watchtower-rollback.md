@@ -1,124 +1,33 @@
-# Watchtower 与回滚
+# Watchtower 与单服务回滚
 
-> 状态：演示配置与操作说明。尚未在服务器启动或验证 Watchtower，也没有执行真实镜像回滚。
+旧成对回滚说明自 2026-11-01 由[独立交付](split-delivery.md)替代。2026-10-26 的 Actions/Watchtower 状态为历史；2026-11-01 的独立安装、审计和开关见[部署状态](deployment-status.md)。
 
-## 适用范围
+## 更新入口协调
 
-Watchtower 只用于演示环境，每 30 秒轮询一次，只更新带以下标签的容器：
+Watchtower仍默认置于updates profile，只有backend/frontend带enable标签，gateway/mysql不自动更新。两个独立镜像仓库可分别更新latest；发布一端不触碰另一仓库。Watchtower使用Docker socket，拥有宿主机管理能力，必须单独接受并协调，不能同时与Actions管理同一组件。
 
-```yaml
-com.centurylinklabs.watchtower.enable: "true"
-```
+回滚前关闭目标DEPLOY_FRONTEND_ENABLED或DEPLOY_BACKEND_ENABLED，确认已启动的Job退出，再协调停止Watchtower。若有旧式成对同步则同时关闭DEPLOY_ENV_SYNC_ENABLED。变量变更不取消已运行Job，远端锁不替代更新入口协调。
 
-本次只有 `backend` 和 `frontend` 带这个标签。MySQL、本 Compose 之外的 Nginx，以及宿主机上无关服务都不能自动升级。
-
-## 为什么使用两个仓库
-
-后端和前端是两个镜像、两个 ACR 仓库，因此可以各自跟踪 `latest`。这样可以避免单仓库 tag 方案里，前端推送覆盖后端所用镜像的问题。
-
-## 预期更新流程
-
-```text
-master push
-  -> CI 通过
-  -> 推送 backend/frontend 的 latest 和 sha-<短SHA>
-  -> Watchtower 检测到新 digest
-  -> 拉取镜像
-  -> 重建带标签容器
-  -> 容器重启期间短暂中断
-```
-
-演示环境接受短暂中断，不采用蓝绿部署或零停机方案。
-
-## Watchtower 前置条件
-
-- 挂载 Docker socket：`/var/run/docker.sock`。
-- 服务器本地保存 Docker 登录凭据，目录只读挂载到容器 `/config`，通过 `DOCKER_CONFIG=/config` 读取其中的 `config.json`。
-- 启动前已对实际使用的 ACR 地址执行过 `docker login`。
-- 与业务容器处于同一 Compose 项目，并尽量避免不必要的网络暴露。
-
-Compose 给 Watchtower 使用 `network_mode: bridge`，允许它访问 ACR Registry API 检查镜像。`network_mode: none` 会阻断这类出站请求。Watchtower 不映射宿主机端口，通过 Docker socket 管理带标签的容器，通过只读凭据目录完成仓库鉴权。
-
-## 按 digest 精确回滚
-
-从一次成功发布的 `published-images.json` 获取两个 `images.<组件>.reference`，确认 `complete` 为 `true`，并核对完整源码提交。将这两个 `repository@sha256:<64位digest>` 引用分别填入服务器部署 `.env` 的 `BACKEND_IMAGE`、`FRONTEND_IMAGE`。
-
-使用同一份发布记录中的一对镜像，不自行拼接不同版本。先暂停 Watchtower，确认数据库备份与目标代码的 schema 兼容后再操作：
+只有经授权才在管理机修改对应开关，例如：
 
 ```bash
-cd deploy
-docker compose stop watchtower
-docker compose -f docker-compose.yml -f docker-compose.digest.yml pull backend frontend
-docker compose -f docker-compose.yml -f docker-compose.digest.yml up -d --no-build backend frontend
-docker compose -f docker-compose.yml -f docker-compose.digest.yml ps
+gh variable set DEPLOY_FRONTEND_ENABLED --body false --repo vacontinuejatotired/CS-Career-Guide
 ```
 
-保持 Watchtower 停止，验证登录、受保护 API、静态/媒体资源和已有数据。该流程不包含数据卷删除或数据库降级；本项目尚未在真实服务器演练。
+普通发布/回滚不会启动、停止或重建Watchtower。其凭据目录只保存本项目ACR登录，默认/etc/cs-career-guide/acr，以只读/config和DOCKER_CONFIG=/config挂载。network_mode=bridge允许出站检查，不映射宿主端口；只读socket也不限制Docker API管理能力。
 
-## 按源码标签选择版本
+## 单端digest回滚
 
-1. 从成功发布记录或 ACR 找到已验证的 `sha-<7位SHA>`；这种 tag 可以被重新推送，不能代替 digest 固定。
-2. 在服务器 `.env` 设置 `BACKEND_TAG` 和/或 `FRONTEND_TAG`。
-3. 重建前先停止 Watchtower，否则它可能再把容器切回 `latest`。
+从对应组件完整发布记录获取images.<组件>.reference，确认complete=true。无需同一次成对发布，但必须核对目标版本的API/schema兼容。SHA tag、latest均可覆盖，不能代替digest。
 
-```bash
-cd deploy
-docker compose stop watchtower
-docker compose pull backend frontend
-docker compose up -d --no-build backend frontend
-docker compose ps
-```
+在已安装新拓扑的服务器，用deploy_component.py --component frontend或backend --image完整digest；具体可复制命令和文件前提见[独立交付](split-delivery.md#单服务部署与-digest-回滚)。脚本只pull/recreate目标服务，使用--no-deps --no-build --pull never，保留另一组件pin、容器、网关和数据卷，手动回滚也不更新AI/.env。
 
-## 恢复 latest 自动更新
+精确版本持久化到docker-compose.<组件>-image.json。后续手工Compose必须显式加载已存在的pin文件；只编辑BACKEND_TAG/FRONTEND_TAG不会覆盖pin。旧docker-compose.digest.yml仍提供同时维护两端的入口，但不作为日常单服务回滚流程；不能用它的双端必填误导为单端必须成对回滚。
 
-在服务器部署 `.env` 中把 `BACKEND_TAG`、`FRONTEND_TAG` 都恢复为 `latest`。使用基础 Compose 文件，停止加载 digest override；先拉取并重建应用容器、检查运行状态，再启动 Watchtower：
+config/pull失败保留原文件；健康失败保留新pin并报错，需私下诊断。后端入口的迁移、静态文件和数据兼容需提前核对；不会降级数据库或删除卷。旧监听80或内置网关的前端镜像，需评估其与新部署配置的兼容，不能直接跨拓扑回滚。
 
-```bash
-cd deploy
-docker compose stop watchtower
-docker compose -f docker-compose.yml pull backend frontend
-docker compose -f docker-compose.yml up -d --no-build backend frontend
-docker compose -f docker-compose.yml ps
-# 完成业务验证后，再执行：
-docker compose -f docker-compose.yml start watchtower
-```
+## 恢复更新
 
-只编辑 `.env` 或启动 Watchtower 不会改变现有应用容器的镜像引用，必须重建。不要只通过改镜像 tag/digest 回滚数据库 schema；SQLite/MySQL schema 变更需要单独制定恢复方案。
+完成目标digest和业务验证后再恢复对应分端开关。若改用Watchtower跟踪latest，应先确定管理入口，明确将该端pin切回所需引用并重建该端；仅启动Watchtower或编辑tag不会改变现存容器。不要恢复另一组件的更新来完成单端操作。
 
-## 查看状态与日志
-
-```bash
-cd deploy
-docker compose ps
-docker compose logs --tail=200 watchtower
-docker compose logs --tail=200 backend
-docker compose logs --tail=200 frontend
-```
-
-确认运行容器的镜像引用和本地镜像 ID（镜像 ID 不是 Registry manifest digest）：
-
-```bash
-docker inspect cs-career-guide-backend --format '{{.Config.Image}} {{.Image}}'
-docker inspect cs-career-guide-frontend --format '{{.Config.Image}} {{.Image}}'
-```
-
-Registry manifest digest 以成功发布记录中的 `digest`/`reference` 为准；也可检查对应镜像的 RepoDigests。不要把容器 `.Image` 字段当作发布 digest。
-
-## 停止自动更新
-
-```bash
-cd deploy
-docker compose stop watchtower
-```
-
-停止 Watchtower 不会停止应用，也不会删除数据卷。恢复时执行 `docker compose start watchtower`。
-
-## 常见故障
-
-| 现象 | 处理 |
-| --- | --- |
-| Watchtower 报未授权 | 在服务器重新执行 `docker login`，并检查 `DOCKER_CONFIG_DIR` 指向正确的凭据目录 |
-| 更新后容器反复重启 | 查看后端日志；迁移、collectstatic 或 Gunicorn 失败会让容器退出 |
-| 新前端看起来没更新 | 强制刷新；确认 `index.html` 未缓存且 `latest` digest 已变化 |
-| 回滚后仍是错误镜像 | 先停止 Watchtower，再核对 tag 和 digest，最后重新启动 |
-| MySQL 被意外升级 | 基础设施服务不要加 Watchtower 标签，数据库始终手动升级 |
+可在服务器私下查看选定服务的日志、docker compose ps和容器.Config.Image/.Image；本地镜像ID不是Registry manifest digest。发布记录digest与容器健康、真实模型/浏览器验收分别核验。生产回滚演练尚未执行。

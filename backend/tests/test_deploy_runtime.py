@@ -84,7 +84,7 @@ class DeployFileTests(unittest.TestCase):
         self.assertNotIn('ports:', watchtower)
 
     def test_image_excludes_large_optional_dependencies(self):
-        runtime = (BACKEND_DIR.parent / 'requirements-runtime.txt').read_text(encoding='utf-8')
+        runtime = (BACKEND_DIR / 'requirements-runtime.txt').read_text(encoding='utf-8')
         for name in ('torch', 'sentence-transformers', 'transformers'):
             self.assertNotIn(name, runtime.lower())
 

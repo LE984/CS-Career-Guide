@@ -352,7 +352,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import api, { userAPI } from '@/api'
+import { userAPI, resumeAPI, interviewAPI } from '@/api'
 
 const router = useRouter()
 
@@ -416,7 +416,7 @@ onMounted(async () => {
 // 加载简历数据
 const loadResume = async () => {
   try {
-    const data = await api.get('/resumes/my/')
+    const data = await resumeAPI.get()
     resume.value = data
     console.log('Loaded resume:', resume.value)
   } catch (error) {
@@ -467,7 +467,7 @@ const loadSelfIntroduction = () => {
 const loadInterviewReviews = async () => {
   loadingReviews.value = true
   try {
-    const response = await api.get('/ai/records/interview-reviews/')
+    const response = await interviewAPI.listReviews()
     if (response.success) {
       interviewReviews.value = response.data
       console.log('Loaded interview reviews:', interviewReviews.value)
@@ -565,7 +565,7 @@ const viewReviewDetail = async (sessionId) => {
   console.log('View review detail:', sessionId)
   loadingReviewDetail.value = true
   try {
-    const response = await api.get(`/ai/records/interview-reviews/${sessionId}/`)
+    const response = await interviewAPI.getReview(sessionId)
     if (response.success) {
       currentReview.value = response.data
       showReviewModal.value = true

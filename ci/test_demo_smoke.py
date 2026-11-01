@@ -1,6 +1,7 @@
 """Test the smoke harness failure paths without starting Docker or services."""
 
 import io
+import json
 import subprocess
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 from demo_smoke import DemoClient, run_demo, verify_profile
+from test_host_protection import sandbox_state
 
 
 class DemoClientTests(unittest.TestCase):
@@ -45,14 +47,23 @@ class StackLifecycleTests(unittest.TestCase):
         client.request.side_effect = [
             b'<div id="app"></div>', b'<div id="app"></div>', b'<div id="app"></div>',
             b'body { color: black; }', {'detail': 'Invalid token.'},
-            authenticated, authenticated, profile, profile, profile, authenticated, profile,
+            authenticated, authenticated, profile, profile, profile, authenticated, profile, b'<div id="app"></div>',
         ]
         calls = []
-        container_ids = iter(['container-before', 'container-before' if same_container else 'container-after'])
+        ids = {'backend': 'container-before', 'frontend': 'frontend-before', 'gateway': 'gateway-container'}
 
         def fake_run(command, **kwargs):
             calls.append(command)
-            output = next(container_ids) if command[-3:] == ['ps', '-q', 'backend'] else ''
+            if command[:2] == ['docker', 'inspect']:
+                service = next(c for c, value in ids.items() if value == command[-1])
+                return subprocess.CompletedProcess(command, 0, stdout=json.dumps(sandbox_state(service)), stderr='')
+            output = ''
+            if command[-3:-1] == ['ps', '-q']:
+                output = ids[command[-1]]
+            if command[-3:] == ['rm', '--force', 'backend'] and not same_container:
+                ids['backend'] = 'container-after'
+            if '--force-recreate' in command and command[-1] == 'frontend':
+                ids['frontend'] = 'frontend-after'
             return subprocess.CompletedProcess(command, 0, stdout=output, stderr='')
 
         with tempfile.TemporaryDirectory() as directory:
@@ -69,7 +80,11 @@ class StackLifecycleTests(unittest.TestCase):
             self.assertTrue((Path(directory) / 'containers.log').is_file())
         self.assertTrue(any(command[-3:] == ['rm', '--force', 'backend'] for command in calls))
         self.assertEqual(calls[-1][-3:], ['down', '--volumes', '--remove-orphans'])
-        self.assertTrue(all('--env-file' in command and '/dev/null' in command for command in calls))
+        compose_calls = [command for command in calls if command[:2] == ['docker', 'compose']]
+        self.assertTrue(all('--env-file' in command and '/dev/null' in command for command in compose_calls))
+        inspections = [command for command in calls if command[:2] == ['docker', 'inspect']]
+        self.assertEqual(len(inspections), 3)
+        self.assertTrue(all('.Config.Env' not in command[3] for command in inspections))
         self.assertFalse(any('watchtower' in command or 'mysql' in command for command in calls))
 
     def test_recreation_preserves_data_and_cleans_disposable_resources(self):

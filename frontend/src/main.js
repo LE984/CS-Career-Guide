@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import './style.css'
 import './assets/css/morph-btn.css'
+import './assets/css/career-theme.css'
 
 const app = createApp(App)
 

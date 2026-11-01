@@ -11,6 +11,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
+from host_protection import verify_sandbox
+
 
 class DemoClient:
     def __init__(self, base_url):
@@ -51,6 +53,17 @@ class DemoClient:
             time.sleep(2)
         raise RuntimeError('Nginx did not proxy the real Django authentication response within the timeout.')
 
+    def wait_for_spa(self, timeout=40):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                if b'<div id="app"></div>' in self.request('/login', as_json=False):
+                    return
+            except (OSError, URLError, RuntimeError):
+                pass
+            time.sleep(1)
+        raise RuntimeError('Gateway did not resolve the recreated frontend')
+
 
 def verify_profile(profile, user_id, username, marker):
     if (profile.get('id'), profile.get('username'), profile.get('profile')) != (user_id, username, marker):
@@ -76,7 +89,23 @@ def run_demo(project, base_url, logs_dir):
 
     logs_dir.mkdir(parents=True, exist_ok=True)
     try:
-        compose('up', '--detach', '--no-build', '--pull', 'never', 'backend', 'frontend')
+        compose('up', '--detach', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '180',
+                'backend', 'frontend', 'gateway')
+        before = None
+        for service in ('backend', 'frontend', 'gateway'):
+            container = compose('ps', '-q', service).stdout.strip()
+            if not container:
+                raise RuntimeError(f'{service} container ID is missing for sandbox verification.')
+            # Deliberately exclude Config.Env and all application credentials.
+            template = '{"user":{{json .Config.User}},"host":{{json .HostConfig}},"mounts":{{json .Mounts}}}'
+            inspected = subprocess.run(['docker', 'inspect', '--format', template, container],
+                                       text=True, capture_output=True, check=False)
+            if inspected.returncode:
+                raise RuntimeError(f'{service} sandbox inspection failed.')
+            verify_sandbox(service, json.loads(inspected.stdout))
+            if service == 'backend':
+                before = container
+        print('Running sandbox verified: non-root users, read-only roots, dropped capabilities, bounded CPU/memory/PIDs/logs and only the reviewed read-only gateway config bind.', flush=True)
         client.wait_until_ready()
         for path in ('/', '/login', '/register'):
             if b'<div id="app"></div>' not in client.request(path, as_json=False):
@@ -103,25 +132,37 @@ def run_demo(project, base_url, logs_dir):
         verify_profile(client.request('/api/users/profile/', token=token), user_id, username, marker)
         print('Real Nginx/Django integration passed: SPA routes, shared static files, auth rejection, registration, login and profile update.', flush=True)
 
-        before = compose('ps', '-q', 'backend').stdout.strip()
-        if not before:
-            raise RuntimeError('Backend container ID was missing before recreation.')
+        frontend_before = compose('ps', '-q', 'frontend').stdout.strip()
+        gateway_before = compose('ps', '-q', 'gateway').stdout.strip()
         compose('stop', 'backend')
         compose('rm', '--force', 'backend')
-        compose('up', '--detach', '--no-build', '--pull', 'never', 'backend')
+        compose('up', '--detach', '--no-deps', '--no-build', '--pull', 'never', 'backend')
         after = compose('ps', '-q', 'backend').stdout.strip()
         if not after or after == before:
             raise RuntimeError('Persistence verification requires a newly created backend container.')
+        if (compose('ps', '-q', 'frontend').stdout.strip() != frontend_before
+                or compose('ps', '-q', 'gateway').stdout.strip() != gateway_before):
+            raise RuntimeError('Backend recreation changed the frontend or gateway container')
         client.wait_until_ready()
         verify_profile(client.request('/api/users/profile/', token=token), user_id, username, marker)
         logged_in = client.request('/api/users/auth/login/', method='POST', data=credentials)
         if logged_in['user']['id'] != user_id or logged_in['token'] != token:
             raise RuntimeError('The saved account, password or token did not survive backend recreation.')
         verify_profile(client.request('/api/users/profile/', token=logged_in['token']), user_id, username, marker)
+        compose('up', '--detach', '--no-deps', '--no-build', '--pull', 'never',
+                '--force-recreate', '--wait', 'frontend')
+        frontend_after = compose('ps', '-q', 'frontend').stdout.strip()
+        if not frontend_after or frontend_after == frontend_before:
+            raise RuntimeError('Frontend independence check requires a newly created frontend')
+        if (compose('ps', '-q', 'backend').stdout.strip() != after
+                or compose('ps', '-q', 'gateway').stdout.strip() != gateway_before):
+            raise RuntimeError('Frontend recreation changed the backend or gateway container')
+        client.wait_until_ready()
+        client.wait_for_spa()
         print('SQLite volume persistence passed: new backend container retained the user, password, original token and profile marker.', flush=True)
     finally:
         for arguments, filename in [
-            (('logs', '--no-color', 'backend', 'frontend'), 'containers.log'),
+            (('logs', '--no-color', 'backend', 'frontend', 'gateway'), 'containers.log'),
             (('ps', '--all'), 'compose-status.log'),
         ]:
             result = compose(*arguments, check=False)

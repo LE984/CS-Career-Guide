@@ -39,15 +39,35 @@ export const userAPI = {
   })
 }
 
+// Shared by the editing workspace and personal center; paths match Django's routers.
+export const resumeAPI = {
+  get: (config) => api.get('/resumes/my/', config),
+  save: (data) => api.post('/resumes/my/', data),
+  uploadAvatar: (formData) => api.post('/resumes/upload_avatar/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteAvatar: () => api.delete('/resumes/delete_avatar/')
+}
+
+export const interviewAPI = {
+  listReviews: () => api.get('/ai/records/interview-reviews/'),
+  getReview: (sessionId) => api.get(`/ai/records/interview-reviews/${encodeURIComponent(sessionId)}/`),
+  saveReview: (data) => api.post('/ai/interview/save_review/', data),
+  transcribe: (formData) => api.post('/asr/speech-to-text/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 export const aiAPI = {
   chat: (message, mode, interview_style, session_id) => api.post('/ai/llm/chat/', { message, mode, interview_style, session_id }),
-  chatStream: (message, mode, interview_style, session_id) => {
+  chatStream: (message, mode, interview_style, session_id, options = {}) => {
     return apiFetch('/ai/llm/chat/', {
       method: 'POST',
+      signal: options.signal,
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ message, mode, interview_style, session_id })
+      body: JSON.stringify({ message, mode, interview_style, session_id, enable_tts: options.enableTts === true })
     })
   },
   getHistory: (sessionId) => api.get(`/ai/llm/chat/history/?session_id=${sessionId}`),
@@ -78,7 +98,7 @@ export const jobFairAPI = {
 }
 
 export const companyInfoAPI = {
-  getCompanyInfos: (page = 1, pageSize = 10) => api.get('/company-reviews/company-infos/', {
+  getCompanyInfos: (page = 1, pageSize = 10) => api.get('/company-reviews/company-info/', {
     params: { page, page_size: pageSize }
   })
 }

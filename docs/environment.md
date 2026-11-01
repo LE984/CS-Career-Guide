@@ -1,8 +1,25 @@
 # 环境变量配置
 
+> 2026-11-01 交付拆分：以[单仓库独立交付](split-delivery.md)为当前操作入口；实际发布、服务器安装与自动部署开关见[带日期的状态记录](deployment-status.md)。历史证据不能代替当前运行状态。
+
 ## 配置文件与优先级
 
 后端复制 `backend/.env.example` 为 `backend/.env`，前端复制 `frontend/.env.example` 为 `frontend/.env`。也可以在服务器或容器中直接注入环境变量。后端的系统环境变量优先于 `.env`；前端沿用 Vite 的环境变量规则。
+
+[Actions AI 配置同步](ai-env-sync.md) 现为后端分端部署的一部分；前端部署不接收模型字段、不替换真实 `.env`。2026-11-01 独立安装完成后已开启发布和分端部署开关，详见[部署状态](deployment-status.md)。仅保存 Secret/Variable 不会触发发布或改变运行中容器；需要对应组件通过验证、发布并激活。
+
+配置归属按以下规则管理：
+
+| 来源 | 配置 | 更新方式 |
+| --- | --- | --- |
+| Actions 交付开关 | `SPLIT_DELIVERY_RELEASE_ENABLED`、`DEPLOY_ENV_SYNC_ENABLED`、`DEPLOY_FRONTEND_ENABLED`、`DEPLOY_BACKEND_ENABLED` | 均缺省关闭；发布需第一项，部署还需总同步及对应分端开关；按当前部署状态确认实际值 |
+| Actions 激活输入 | `DEPLOY_COMPONENT`、`DEPLOY_IMAGE` | workflow 从对应 publisher 传入组件和完整 digest，不从 latest 猜测版本 |
+| Actions Secrets | 三个模型 API Key、六个 SSH 连接字段 | 只在启用后的同步 Job 使用；SSH 字段不写应用 `.env` |
+| Actions Variables | 模型名、LLM/ASR/TTS URL、音色、`ENABLE_TTS` | AI 白名单合并到服务器 `.env`；非空值更新，空可选值保留旧值 |
+| 前端构建 Variable | `VITE_API_BASE_URL`、`VITE_COMPANY_API_BASE_URL`、`VITE_ENABLE_TTS` | Docker build-arg 写入静态资源，需重建前端；不能存密钥 |
+| 服务器 `.env` | `SECRET_KEY`、数据库、`COMPOSE_PROJECT_NAME`、域名、端口、路径、资源、镜像选择等 | 本地维护，自动同步不得覆盖 |
+
+白名单内的 AI 字段由 Actions 负责，不能同时期待保留服务器同名覆盖值。`ASR_API_KEY`/`TTS_API_KEY` 的留空复用规则属于 Django 设置；同步空值跳过时可能保留服务器旧 Key，如需清除必须另行处理。Compose 环境映射补齐后，候选配置校验才会通过；具体名单与启用顺序见同步文档。
 
 示例不包含真实密码或 API key。生产环境必须生成独立 `SECRET_KEY`，填写数据库账号、密码和服务凭据。后端关键配置缺失时会报错，而不是使用源码中的密码。
 
@@ -51,7 +68,11 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 兼容旧变量 `api_key`、`base_url`、`career_report_model`、`WSS_URL`。优先使用新的规范变量名；`WSS_URL` 可兼容旧的共享语音地址，新的 ASR_WSS_URL/TTS_WSS_URL 支持分开设置。
 
-模型权重仍需实际下载。仓库中 133 字节的 LFS 指针不能作为模型权重使用；配置路径不会自动修复缺失的权重。关闭自动下载且无可用模型时，原有代码的检索降级行为仍会生效。
+模型权重仍需另行准备。历史提交把 `~/.cache/huggingface/hub/models--BAAI--bge-small-zh-v1.5` 作为仓库内的字面路径纳入 Git；其中两个 133 字节的 LFS 指针不能作为完整权重使用。现已取消该缓存目录的版本跟踪，并从 Docker 构建上下文排除，本地已有文件保留。旧 Git 历史未改写，新克隆不再从当前源码树获得这些缓存文件。
+
+`BAAI/bge-small-zh-v1.5` 用于把文本转换成 512 维向量供语义检索使用，不是聊天/模拟面试的远程 LLM，也不需要模型 API Key。需要启用时，把完整权重放到仓库外的本地目录并配置 `EMBEDDING_MODEL_PATH`，或使用实际用户目录中的 Hugging Face Hub 缓存；正常的 `~` 表示用户目录，与仓库内名为 `~` 的遗留文件夹不同。代码仍兼容查找本地遗留目录，此次没有更改模型选择、开关或检索逻辑。
+
+开发示例默认 `EMBEDDING_ENABLED=False`、`EMBEDDING_ALLOW_DOWNLOAD=False`，不会因这次清理自动下载模型。配置路径不会修复缺失的权重；关闭自动下载且无可用模型时，原有关键词检索降级行为仍会生效。注意 settings.py 在未显式设置开关时的默认值与开发样例不同，实际运行应使用明确配置。
 
 ## 旧向量库的显式迁移
 
@@ -122,3 +143,13 @@ npm run build
 ```
 
 配置测试无需真实数据库或 AI key；完整启动、迁移和业务验证还需要实际数据库、业务数据、模型和对应 API 凭据。
+
+## 独立交付配置
+
+- Actions `workflow_dispatch.component` 为 frontend/backend/all，默认 all；手动指定只影响当前构建/发布选择，不改变服务器开关。
+- `DEPLOY_ENV_SYNC_ENABLED` 是自动激活总开关；新 `DEPLOY_FRONTEND_ENABLED` / `DEPLOY_BACKEND_ENABLED` 默认关闭，必须精确为 `true` 才激活相应组件。回滚期间可独立关闭目标组件。
+- `DEPLOY_COMPONENT` 与 `DEPLOY_IMAGE` 由 workflow 写入同步进程环境；后者来自该组件完成发布的完整 digest，不是用户密钥，也不进入应用容器。
+- `BACKEND_IMAGE` / `FRONTEND_IMAGE` 是基础 Compose 的可选完整引用；空值回退到各自 `*_TAG`。自动激活生成的 `docker-compose.<组件>-image.json` 优先于基础配置；手工维护需明确加载 pin 文件。
+- Compose 已接入 `CORS_ALLOW_ALL_ORIGINS`、`CORS_ALLOWED_ORIGINS`、`CSRF_TRUSTED_ORIGINS`；跨域时仅允许所需的完整 origin，同源默认不变。前端构建 URL 必须包含 API 前缀；构建参数不能传密钥。
+
+操作、文件权限和失败保留见[独立交付](split-delivery.md)。

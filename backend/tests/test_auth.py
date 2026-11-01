@@ -19,6 +19,47 @@ from tests.auth_urls import DefaultPermissionProbe, stream_events
 from cs_career_guide.middleware import ApiTokenRequiredMiddleware
 
 
+class ExistingFrontendContractTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_user(username='api-contract', password='test-password')
+        cls.token = Token.objects.create(user=cls.user)
+
+    def test_frontend_paths_resolve_to_existing_business_actions(self):
+        from django.urls import resolve
+        for path, view_class, action in [
+            ('/api/resumes/my/', 'ResumeViewSet', 'my'),
+            ('/api/resumes/upload_avatar/', 'ResumeViewSet', 'upload_avatar'),
+            ('/api/resumes/delete_avatar/', 'ResumeViewSet', 'delete_avatar'),
+            ('/api/company-reviews/company-info/', 'CompanyInfoViewSet', 'list'),
+        ]:
+            with self.subTest(path=path):
+                callback = resolve(path).func
+                self.assertEqual(callback.cls.__name__, view_class)
+                self.assertIn(action, callback.actions.values())
+
+    def test_resume_save_reload_and_clear_round_trip(self):
+        headers = {'HTTP_AUTHORIZATION': f'Token {self.token.key}'}
+        payload = {
+            'name': 'API contract', 'skills': 'Java',
+            'education': [{'school': 'Test university', 'major': 'Computer science', 'period': '2023-2027'}],
+            'projects': [{'name': 'Test project', 'role': 'Developer', 'period': '2026', 'description': 'Real API test'}],
+        }
+        saved = self.client.post('/api/resumes/my/', json.dumps(payload), content_type='application/json', **headers)
+        self.assertEqual(saved.status_code, 200, saved.content)
+        loaded = self.client.get('/api/resumes/my/', **headers).json()
+        self.assertEqual(loaded['name'], payload['name'])
+        self.assertEqual(loaded['projects'][0]['name'], 'Test project')
+        # A second save includes IDs returned by the real nested serializers.
+        loaded.update(skills='', education=[], projects=[])
+        updated = self.client.post('/api/resumes/my/', json.dumps(loaded), content_type='application/json', **headers)
+        self.assertEqual(updated.status_code, 200, updated.content)
+        reloaded = self.client.get('/api/resumes/my/', **headers).json()
+        self.assertEqual(reloaded['education'], [])
+        self.assertEqual(reloaded['projects'], [])
+        self.assertEqual(reloaded['skills'], '')
+
+
 class ApiAuthenticationTests(TestCase):
     @classmethod
     def setUpTestData(cls):

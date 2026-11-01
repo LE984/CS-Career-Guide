@@ -1,21 +1,36 @@
 # 服务器拉取部署
 
-> 状态：草案。尚未连接服务器、启动容器，也未迁移任何数据。
+> 2026-11-01 交付拆分：以[单仓库独立交付](split-delivery.md)为当前操作入口；实际发布、服务器安装与自动部署开关见[带日期的状态记录](deployment-status.md)。历史证据不能代替当前运行状态。
+
+> 2026-10-26 的账号、ACR 与 AI 映射记录是历史背景。2026-11-01 已完成新 gateway 首次切换：真实服务器的 80 和 48080 仍由 gateway 承接，原 backend、数据卷和 `.env` 保留，Watchtower 已停止；安装与 audit 证据见[当前状态](deployment-status.md)。下文的默认 Compose 命令只适用于全新环境，现存环境应优先使用单组件 digest 工具。
+
+当前仓库以保护宿主机优先：示例默认仅绑定回环地址、限制资源与日志、启动前后端与独立 gateway，Watchtower 需要单独启用。真实服务器另有已核对的 80/48080 入口；新前端监听 `8080`，不能把新 Compose 与旧 `c1d7b6a` 前端镜像混用。执行部署前确认镜像与配置兼容，见[宿主机保护边界](host-protection.md)。
+
+## 专用部署账号与配置归属
+
+本会话已创建 `csdeploy`：独立 Ed25519 密钥登录、密码锁定、没有 sudo、加入 Docker 组。部署目录由 `csdeploy:ubuntu` 拥有且权限为 750，`.env` 为 `csdeploy:csdeploy`、600；只更改了所有权和权限，没有改环境文件内容。账号的 `authorized_keys` 使用 `restrict`，不提供 PTY、端口/agent/X11 转发；管理隧道继续使用管理员自己的连接。
+
+实际服务器主机、端口、账号、环境文件路径和专用凭据保存在六个 `DEPLOY_*` Secrets 中，见[配置归属](ai-env-sync.md#凭据与配置归属)。不要将私钥、服务器真实 `.env` 或未经脱敏的 `docker inspect`/`docker compose config` 输出放进文档。
+
+部署账号已验证目录读写、Docker 调用和 Python 3，2026-10-26 已以该账号成功拉取前后端私有镜像。现有管理员或 Watchtower 的登录不能替代部署账号登录。自动同步脚本使用部署账号默认 Docker CLI 凭据，须以该账号配置本项目 ACR 登录；`DOCKER_CONFIG_DIR` 只决定 Watchtower 挂载目录，不会自动影响 CLI。
+
+启用前逐项合并服务器 Compose 中的 AI environment 映射，保留服务器定制配置；不要用仓库样例覆盖现有 `.env`。`SECRET_KEY`、数据库、`COMPOSE_PROJECT_NAME`、域名、端口、路径、资源限制和镜像选择留在服务器。AI 白名单由 Actions 管理，空的可选值不会删除已有值。
 
 ## 部署拓扑
 
 ```text
-浏览器 -> 宿主机 :48080 -> frontend（Nginx）
+反向代理 / SSH 隧道 -> 宿主机 127.0.0.1:48080 -> gateway（Nginx :8080）
                               |-- /api/ -> backend :8000
-                              `-- /static、/media -> 共享卷
+                              |-- /static、/media -> 共享卷
+                              `-- / -> frontend :8080
 
 backend -> sqlite-data:/data
 backend -> backend-static:/data/staticfiles
 backend -> media:/data/media
-watchtower -> Docker socket + 服务器本地 Docker 凭据
+watchtower（仅显式启用 updates profile） -> Docker socket + 独立 ACR 凭据目录
 ```
 
-宿主机只开放前端端口；后端、SQLite 和 Watchtower 不直接暴露业务端口。
+默认端口不对公网绑定；后端、SQLite 和 Watchtower 不发布业务端口。如确需直接公网演示，需显式修改 `WEB_PORT` 的绑定地址，并单独评估宿主机网络规则，不能把 Docker 端口发布当作已经受 UFW 完整限制。
 
 ## 低资源演示默认值
 
@@ -44,13 +59,15 @@ crpi-gbihc3e57h3o3f2l-vpc.cn-hangzhou.personal.cr.aliyuncs.com
 
 公网和 VPC 地址指向同一组仓库，按服务器实际网络选择；不要假设 GitHub Actions 能访问 VPC 地址。
 
-首次启动 Watchtower 前先手动登录：
+默认手动拉取前先登录：
 
 ```bash
-docker login --username=<ACR_USERNAME> crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
+docker --config /etc/cs-career-guide/acr login --username=<ACR_USERNAME> crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
 ```
 
 不要把 Registry 密码写入 Compose 或 `.env`。
+
+后续手动拉取使用同一 `docker --config /etc/cs-career-guide/acr compose ...` 配置。目录只保存本项目 ACR 登录；只有选择启用 Watchtower 时，才通过 `DOCKER_CONFIG_DIR` 把这个目录只读挂载给它。
 
 ## 准备服务器
 
@@ -67,17 +84,19 @@ docker login --username=<ACR_USERNAME> crpi-gbihc3e57h3o3f2l.cn-hangzhou.persona
 cd deploy
 cp .env.example .env
 # 在服务器本地编辑 .env，不能提交。
-docker compose config
+docker compose config --quiet
 ```
 
 如果服务器使用 VPC 地址，请只修改 `.env` 中的 Registry 主机名。设置 `SECRET_KEY`，并让 `ALLOWED_HOSTS` 与演示地址一致；IP 访问只适合临时演示，不能宣称已具备公网生产条件。
 
 ## 启动与验证
 
+下面的整套命令只用于**全新服务器首次安装**。现存服务器不要用它覆盖真实 `.env`、项目名、卷或已固定的镜像版本；日常更新/回滚先读取对应发布记录，再按[独立交付](split-delivery.md#单服务部署与-digest-回滚)只激活目标组件。手工 Compose 必须显式加载已经存在的 `docker-compose.backend-image.json`、`docker-compose.frontend-image.json` pin override；没有 pin 时先停止并核对，不要退回 tag。
+
 ```bash
 cd deploy
-docker compose pull
-docker compose up -d --no-build
+docker --config /etc/cs-career-guide/acr compose pull backend frontend gateway
+docker --config /etc/cs-career-guide/acr compose up -d --no-build backend frontend gateway
 docker compose ps
 docker compose logs --tail=100 backend
 docker compose logs --tail=100 frontend
@@ -85,7 +104,7 @@ docker compose logs --tail=100 frontend
 
 检查项：
 
-1. `http://<服务器IP>:48080/` 能显示 Vue 页面。
+1. 通过 SSH 隧道或已有反向代理访问默认绑定的 `127.0.0.1:48080`，确认 Vue 页面可显示。
 2. `/login` 和 `/register` 可以打开。
 3. 没有 Token 访问业务页面会跳转登录。
 4. 注册、登录后能拿到 Token 并返回原业务路径。
@@ -144,20 +163,14 @@ Compose 会把 `DATABASE_NAME`、`DATABASE_USER`、`DATABASE_PASSWORD`、`DATABA
 
 ## 更新与回滚
 
-Watchtower 负责演示环境更新，详见 [Watchtower 与回滚](watchtower-rollback.md)。手动拉取：
+日常只更新或回滚目标组件，使用[独立交付](split-delivery.md#单服务部署与-digest-回滚)中的 `deploy_component.py`，固定完整 digest，pull 单服务并以 `--no-deps --pull never` 重建。脚本生成单端 pin 文件；今后手工 Compose 必须加载已存在的对应 pin override，不能用不带 override 的基础命令覆盖版本。
 
-```bash
-cd deploy
-docker compose pull
-docker compose up -d --no-build
-```
-
-精确回滚使用一次完整发布记录中的两份 digest，并加载 `docker-compose.digest.yml`；SHA tag 仅用于源码追踪，不保证不可变。恢复 latest 时必须先拉取并重建应用容器，再恢复 Watchtower，详见 [Watchtower 与回滚](watchtower-rollback.md)。
+首次安装新网关属于拓扑维护，不能与日常单端更新混为一谈。现有端口、项目名、命名卷和数据必须保留；仅有旧总同步开关不会启用新分端自动部署。Watchtower 与 Actions 不应并行管理同一组件。
 
 ## 当前限制
 
 - 没有 HTTPS 和域名证书。
 - 没有自动迁移已有媒体或 SQLite 数据。
-- 没有真实 MySQL 迁移验证。
-- 没有真实 AI 费用验证。
+- 没有把线上 SQLite 切换到 MySQL，也没有执行真实数据迁移；Actions runner 的隔离 MySQL 配置/验收不能替代线上迁移验收。
+- 少量真实文本和面试音频调用已授权并验证，不代表完整费用、配额或负载验收。
 - 不能宣称已完成公网上线。

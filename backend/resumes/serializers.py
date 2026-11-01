@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import transaction
 from .models import Resume, Education, Experience, Project, Certificate, Award
 
 
@@ -83,7 +84,7 @@ class ResumeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resume
         fields = [
-            'id', 'avatar', 'avatar_url', 'name', 'target_position', 'phone', 'email', 'address',
+            'id', 'edit_revision', 'avatar', 'avatar_url', 'name', 'target_position', 'phone', 'email', 'address',
             'self_evaluation', 'skills', 'education', 'experience', 'projects', 'certificates', 'awards',
             'created_at', 'updated_at'
         ]
@@ -126,7 +127,9 @@ class ResumeSerializer(serializers.ModelSerializer):
         
         return resume
     
+    @transaction.atomic
     def update(self, instance, validated_data):
+        instance = Resume.objects.select_for_update().get(pk=instance.pk)
         # 移除前端发送的avatar_url字段，因为它是由后端生成的
         validated_data.pop('avatar_url', None)
         

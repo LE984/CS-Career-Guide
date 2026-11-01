@@ -1,37 +1,45 @@
 name: CI/CD
-
-on:
+'on':
   push:
-    branches: ['**']
+    branches:
+      - '**'
   pull_request:
-    branches: [master]
+    branches:
+      - master
   workflow_dispatch:
     inputs:
       extra_tag:
         description: Optional additional image tag (letters, digits, dot, dash, underscore)
         required: false
         type: string
-
+      component:
+        description: Build/release component (all also runs full integration)
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - frontend
+          - backend
 permissions:
   contents: read
   packages: write
-
 concurrency:
   group: ci-cd-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '24'
-
 jobs:
   changes:
-    name: Detect code changes
+    name: Detect component changes
     runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.detect.outputs.code }}
       publish: ${{ steps.detect.outputs.publish }}
       extra_tag: ${{ steps.detect.outputs.extra_tag }}
+      frontend: ${{ steps.detect.outputs.frontend }}
+      backend: ${{ steps.detect.outputs.backend }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,34 +48,120 @@ jobs:
         shell: bash
         env:
           EXTRA_TAG: ${{ inputs.extra_tag }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          COMPONENT: ${{ inputs.component }}
+          RELEASE_ENABLED: ${{ vars.SPLIT_DELIVERY_RELEASE_ENABLED }}
         run: |
           set -euo pipefail
-          code=true
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/changed.txt
-            if ! grep -Ev '^(README\.md|docs/)' /tmp/changed.txt | grep -q .; then code=false; fi
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            before='${{ github.event.before }}'
-            if [ "$before" = "0000000000000000000000000000000000000000" ]; then
-              git show --pretty='' --name-only HEAD > /tmp/changed.txt
+          if [ "$EVENT" = pull_request ]; then
+            git diff --name-only --no-renames "$PR_BASE...HEAD" > /tmp/changed.txt
+          elif [ "$EVENT" = push ]; then
+            if [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
+              # Initial master validates everything; new topic branches compare to master.
+              if [ "$GITHUB_REF" = refs/heads/master ]; then
+                git ls-tree -r --name-only HEAD > /tmp/changed.txt
+              else
+                git diff --name-only --no-renames "$(git merge-base HEAD origin/master)" HEAD > /tmp/changed.txt
+              fi
             else
-              git diff --name-only "$before" '${{ github.sha }}' > /tmp/changed.txt
+              git diff --name-only --no-renames "$BEFORE" "$GITHUB_SHA" > /tmp/changed.txt
             fi
-            if ! grep -Ev '^(README\.md|docs/)' /tmp/changed.txt | grep -q .; then code=false; fi
+          else
+            : > /tmp/changed.txt
           fi
-          publish=false
-          # Manual runs are build-only unless explicitly run from master.
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.ref }}" = "refs/heads/master" ]; then publish=true; fi
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/master" ] && [ "$code" = "true" ]; then publish=true; fi
-          tag="${EXTRA_TAG:-}"
-          if [ -n "$tag" ] && ! printf '%s' "$tag" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
-            echo 'extra_tag contains invalid characters' >&2
-            exit 1
-          fi
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "extra_tag=$tag" >> "$GITHUB_OUTPUT"
+          args=()
+          if [ "$EVENT" = workflow_dispatch ]; then args+=(--component "${COMPONENT:-all}"); fi
+          python3 ci/component_changes.py --paths /tmp/changed.txt --output "$GITHUB_OUTPUT" "${args[@]}"
+          python3 ci/release_policy.py --output "$GITHUB_OUTPUT"
+  platform-gates:
+    name: Platform gates
+    uses: ./.github/workflows/career-platform.yml
+    needs:
+      - changes
+  delivery-checks:
+    name: Delivery configuration and offline harness
+    needs:
+      - changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Test delivery isolation and failure paths
+        run: |
+          python -m pip install PyYAML
+          python -m unittest discover -s ci -p 'test_*.py' -v
+      - name: Validate demo Compose configuration
+        working-directory: deploy
+        env:
+          ACR_REGISTRY: crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
+          ACR_NAMESPACE: tencent-ubutun22
+          SECRET_KEY: ci-compose-only-key
+          DOCKER_CONFIG_DIR: /tmp/ci-docker-config
+        run: |
+          set -euo pipefail
+          docker compose --env-file /dev/null config --format json > /tmp/demo-compose.json
+          docker compose --env-file /dev/null --profile updates config --format json > /tmp/demo-compose-updates.json
+          docker compose --env-file /dev/null --profile mysql config --format json > /tmp/demo-compose-mysql.json
+          DATABASE_PASSWORD=ci-mysql-test-only MYSQL_ROOT_PASSWORD=ci-root-test-only \
+            DJANGO_SETTINGS_MODULE=cs_career_guide.settings \
+            docker compose --env-file /dev/null --profile mysql config --format json > /tmp/demo-compose-mysql-wired.json
+          BACKEND_IMAGE="example.invalid/demo/backend@sha256:$(printf 'a%.0s' {1..64})" \
+            FRONTEND_IMAGE="example.invalid/demo/frontend@sha256:$(printf 'b%.0s' {1..64})" \
+            docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.digest.yml config --format json > /tmp/demo-compose-digest.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
 
+          services = json.loads(Path('/tmp/demo-compose.json').read_text())['services']
+          assert services['backend']['environment']['DJANGO_SETTINGS_MODULE'] == 'cs_career_guide.settings_sqlite'
+          assert 'mysql' not in services
+          assert 'watchtower' not in services
+          for name in ('backend', 'frontend', 'gateway'):
+              service = services[name]
+              assert service['user'] == '10001:10001'
+              assert service['read_only'] is True
+              assert service['cap_drop'] == ['ALL']
+              assert 'no-new-privileges:true' in service['security_opt']
+              assert float(service['cpus']) > 0
+              assert int(service['mem_limit']) > 0
+              assert int(service['memswap_limit']) == int(service['mem_limit'])
+              assert int(service['pids_limit']) > 0
+              assert service['logging']['driver'] == 'local'
+              assert service['logging']['options'] == {'max-size': '5m', 'max-file': '3'}
+          assert services['backend']['environment']['GUNICORN_WORKERS'] == '1'
+          assert not services['frontend'].get('ports')
+          assert not services['frontend'].get('volumes')
+          assert not services['frontend'].get('depends_on')
+          assert services['gateway']['ports'][0]['host_ip'] == '127.0.0.1'
+          assert services['gateway']['ports'][0]['target'] == 8080
+          updates = json.loads(Path('/tmp/demo-compose-updates.json').read_text())['services']
+          watchtower = updates['watchtower']
+          assert watchtower['network_mode'] == 'bridge'
+          assert watchtower['environment']['DOCKER_CONFIG'] == '/config'
+          assert not watchtower.get('ports')
+          assert any(mount['target'] == '/config' and mount.get('read_only') for mount in watchtower['volumes'])
+          mysql_services = json.loads(Path('/tmp/demo-compose-mysql.json').read_text())['services']
+          assert not mysql_services['mysql']['environment']['MYSQL_PASSWORD']
+          assert not mysql_services['mysql']['environment']['MYSQL_ROOT_PASSWORD']
+          assert not services['backend']['environment']['DATABASE_PASSWORD']
+          wired = json.loads(Path('/tmp/demo-compose-mysql-wired.json').read_text())['services']
+          assert wired['backend']['environment']['DJANGO_SETTINGS_MODULE'] == 'cs_career_guide.settings'
+          assert wired['backend']['environment']['DATABASE_PASSWORD'] == wired['mysql']['environment']['MYSQL_PASSWORD'] == 'ci-mysql-test-only'
+          assert wired['backend']['environment']['DATABASE_NAME'] == wired['mysql']['environment']['MYSQL_DATABASE']
+          assert wired['backend']['environment']['DATABASE_USER'] == wired['mysql']['environment']['MYSQL_USER']
+          assert wired['backend']['environment']['DATABASE_HOST'] == 'mysql'
+          assert str(wired['backend']['environment']['DATABASE_PORT']) == '3306'
+          pinned = json.loads(Path('/tmp/demo-compose-digest.json').read_text())['services']
+          assert pinned['backend']['image'] == 'example.invalid/demo/backend@sha256:' + 'a' * 64
+          assert pinned['frontend']['image'] == 'example.invalid/demo/frontend@sha256:' + 'b' * 64
+          print('Demo Compose validated: non-root read-only apps, resource/log limits, loopback binding, opt-in Watchtower, MySQL wiring and digest overrides.')
+          PY
+          python3 ../ci/release_images.py check-config --commit "$GITHUB_SHA"
   backend-test:
     name: Backend checks
     runs-on: ubuntu-24.04
@@ -77,7 +171,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: backend/requirements.txt
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y default-libmysqlclient-dev pkg-config
       - name: Install full test dependencies
@@ -86,7 +180,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           Path('requirements-ci.txt').write_text(
-              Path('requirements.txt').read_text(encoding='utf-16'), encoding='utf-8'
+              Path('backend/requirements.txt').read_text(encoding='utf-16'), encoding='utf-8'
           )
           PY
           python -m pip install --upgrade pip
@@ -104,7 +198,9 @@ jobs:
           set -o pipefail
           python -m unittest discover -s backend/tests -p 'test_env_config.py' -v 2>&1 | tee backend-config.log
           python -m unittest discover -s backend/tests -p 'test_deploy_runtime.py' -v 2>&1 | tee backend-deploy.log
-          python -m unittest discover -s ci -p 'test_*.py' -v 2>&1 | tee backend-smoke-harness.log
+          python -m unittest discover -s backend/tests -p 'test_interview.py' -v 2>&1 | tee backend-interview.log
+          python -m unittest discover -s backend/tests -p 'test_asr.py' -v 2>&1 | tee backend-asr.log
+          python -m unittest discover -s backend/tests -p 'test_career_path_migrations.py' -v 2>&1 | tee backend-career-path-migrations.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -112,7 +208,9 @@ jobs:
           path: backend-*.log
           if-no-files-found: warn
           retention-days: 7
-
+    needs:
+      - changes
+    if: needs.changes.outputs.backend == 'true'
   frontend-test:
     name: Frontend checks
     runs-on: ubuntu-24.04
@@ -129,7 +227,7 @@ jobs:
         run: |
           set -o pipefail
           npm ci 2>&1 | tee ../frontend-install.log
-          node --test tests/auth.test.mjs tests/config.test.mjs 2>&1 | tee ../frontend-test.log
+          node --test tests/*.test.mjs 2>&1 | tee ../frontend-test.log
       - name: Build frontend
         shell: bash
         working-directory: frontend
@@ -151,61 +249,21 @@ jobs:
           path: frontend-*.log
           if-no-files-found: warn
           retention-days: 7
-
+    needs:
+      - changes
+    if: needs.changes.outputs.frontend == 'true'
   backend-image:
     name: Backend image
-    needs: [changes, backend-test, frontend-image]
-    if: needs.changes.outputs.code == 'true'
+    needs:
+      - changes
+      - backend-test
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Validate demo Compose configuration
-        working-directory: deploy
-        env:
-          ACR_REGISTRY: crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
-          ACR_NAMESPACE: tencent-ubutun22
-          SECRET_KEY: ci-compose-only-key
-          DOCKER_CONFIG_DIR: /tmp/ci-docker-config
-        run: |
-          set -euo pipefail
-          docker compose --env-file /dev/null config --format json > /tmp/demo-compose.json
-          docker compose --env-file /dev/null --profile mysql config --format json > /tmp/demo-compose-mysql.json
-          DATABASE_PASSWORD=ci-mysql-test-only MYSQL_ROOT_PASSWORD=ci-root-test-only \
-            DJANGO_SETTINGS_MODULE=cs_career_guide.settings \
-            docker compose --env-file /dev/null --profile mysql config --format json > /tmp/demo-compose-mysql-wired.json
-          BACKEND_IMAGE="example.invalid/demo/backend@sha256:$(printf 'a%.0s' {1..64})" \
-            FRONTEND_IMAGE="example.invalid/demo/frontend@sha256:$(printf 'b%.0s' {1..64})" \
-            docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.digest.yml config --format json > /tmp/demo-compose-digest.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          services = json.loads(Path('/tmp/demo-compose.json').read_text())['services']
-          assert services['backend']['environment']['DJANGO_SETTINGS_MODULE'] == 'cs_career_guide.settings_sqlite'
-          assert 'mysql' not in services
-          watchtower = services['watchtower']
-          assert watchtower['network_mode'] == 'bridge'
-          assert watchtower['environment']['DOCKER_CONFIG'] == '/config'
-          assert not watchtower.get('ports')
-          assert any(mount['target'] == '/config' and mount.get('read_only') for mount in watchtower['volumes'])
-          mysql_services = json.loads(Path('/tmp/demo-compose-mysql.json').read_text())['services']
-          assert not mysql_services['mysql']['environment']['MYSQL_PASSWORD']
-          assert not mysql_services['mysql']['environment']['MYSQL_ROOT_PASSWORD']
-          assert not services['backend']['environment']['DATABASE_PASSWORD']
-          wired = json.loads(Path('/tmp/demo-compose-mysql-wired.json').read_text())['services']
-          assert wired['backend']['environment']['DJANGO_SETTINGS_MODULE'] == 'cs_career_guide.settings'
-          assert wired['backend']['environment']['DATABASE_PASSWORD'] == wired['mysql']['environment']['MYSQL_PASSWORD'] == 'ci-mysql-test-only'
-          assert wired['backend']['environment']['DATABASE_NAME'] == wired['mysql']['environment']['MYSQL_DATABASE']
-          assert wired['backend']['environment']['DATABASE_USER'] == wired['mysql']['environment']['MYSQL_USER']
-          assert wired['backend']['environment']['DATABASE_HOST'] == 'mysql'
-          assert str(wired['backend']['environment']['DATABASE_PORT']) == '3306'
-          pinned = json.loads(Path('/tmp/demo-compose-digest.json').read_text())['services']
-          assert pinned['backend']['image'] == 'example.invalid/demo/backend@sha256:' + 'a' * 64
-          assert pinned['frontend']['image'] == 'example.invalid/demo/frontend@sha256:' + 'b' * 64
-          print('Demo Compose validated: SQLite defaults, MySQL wiring, paired digest override and Watchtower configuration.')
-          PY
-          python3 ../ci/release_images.py check-config --commit "$GITHUB_SHA"
       - uses: docker/setup-buildx-action@v3
+      - name: Verify isolated Docker build context
+        run: python3 ci/check_build_context.py --component backend
       - name: Resolve local image coordinates
         shell: bash
         run: |
@@ -213,8 +271,8 @@ jobs:
           echo "BACKEND_TAGS=cs-career-guide-backend:sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile.backend
+          context: ./backend
+          file: ./backend/Dockerfile
           platforms: linux/amd64
           push: false
           load: true
@@ -254,51 +312,11 @@ jobs:
           docker logs "$container"
           echo 'Backend container did not become healthy within 180 seconds' >&2
           exit 1
-      - name: Download tested frontend image
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-smoke-image-${{ github.run_id }}
-          path: ${{ runner.temp }}/demo-images
-      - name: Test real demo integration and SQLite persistence
-        timeout-minutes: 10
-        shell: bash
-        env:
-          ACR_REGISTRY: crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
-          ACR_NAMESPACE: tencent-ubutun22
-          SECRET_KEY: ci-demo-only-key
-          ALLOWED_HOSTS: localhost,127.0.0.1
-          WEB_PORT: 127.0.0.1:18080
-          SMOKE_PROJECT: ci-demo-${{ github.run_id }}-${{ github.run_attempt }}
-          GUNICORN_WORKERS: '1'
-          EMBEDDING_ENABLED: 'False'
-          EMBEDDING_ALLOW_DOWNLOAD: 'False'
-          ENABLE_TTS: 'False'
-          LLM_API_KEY: ''
-          LLM_BASE_URL: ''
-          LLM_MODEL: ''
-        run: |
-          set -euo pipefail
-          docker load --input "$RUNNER_TEMP/demo-images/frontend-image.tar"
-          export SMOKE_BACKEND_IMAGE="$IMAGE:sha-${GITHUB_SHA::7}"
-          export SMOKE_FRONTEND_IMAGE="cs-career-guide-frontend:sha-${GITHUB_SHA::7}"
-          python3 ci/demo_smoke.py --project "$SMOKE_PROJECT" --logs-dir "$RUNNER_TEMP/demo-smoke-logs"
-      - name: Upload demo integration logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: demo-smoke-logs-${{ github.run_id }}
-          path: ${{ runner.temp }}/demo-smoke-logs
-          if-no-files-found: warn
-          retention-days: 7
       - name: Export verified backend image
         shell: bash
         run: python3 ci/release_images.py export --component backend --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/backend-export"
-      - name: Verify publish archives without pushing
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp "$RUNNER_TEMP/backend-export/"* "$RUNNER_TEMP/demo-images/"
-          python3 ci/release_images.py verify --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/demo-images"
+      - name: Verify backend archive without publishing
+        run: python3 ci/release_images.py verify --component backend --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/backend-export"
       - name: Share verified backend image with publisher
         uses: actions/upload-artifact@v4
         with:
@@ -307,15 +325,18 @@ jobs:
           compression-level: 1
           retention-days: 1
           overwrite: true
-
   frontend-image:
     name: Frontend image
-    needs: [changes, frontend-test]
-    if: needs.changes.outputs.code == 'true'
+    needs:
+      - changes
+      - frontend-test
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Verify isolated Docker build context
+        run: python3 ci/check_build_context.py --component frontend
       - name: Resolve local image coordinates
         shell: bash
         run: |
@@ -323,8 +344,12 @@ jobs:
           echo "FRONTEND_TAGS=cs-career-guide-frontend:sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile.frontend
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || '/api' }}
+            VITE_COMPANY_API_BASE_URL=${{ vars.VITE_COMPANY_API_BASE_URL || '/company-api' }}
+            VITE_ENABLE_TTS=${{ vars.VITE_ENABLE_TTS || 'False' }}
           platforms: linux/amd64
           push: false
           load: true
@@ -337,36 +362,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          network="frontend-smoke-network-${GITHUB_RUN_ID}"
-          backend="frontend-smoke-backend-${GITHUB_RUN_ID}"
           container="frontend-smoke-${GITHUB_RUN_ID}"
-          docker network create "$network" >/dev/null
-          cleanup() {
-            result=$?
-            if [ "$result" -ne 0 ]; then
-              docker logs "$backend" 2>&1 || true
-              docker logs "$container" 2>&1 || true
-            fi
-            docker rm -f "$container" "$backend" >/dev/null 2>&1 || true
-            docker network rm "$network" >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-          docker run -d --name "$backend" --network "$network" --network-alias backend \
-            python:3.11-alpine python -m http.server 8000 >/dev/null
-          # Nginx can serve the SPA before its placeholder upstream is ready.
-          backend_ready=false
-          for i in $(seq 1 30); do
-            if docker exec "$backend" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=2).close()" >/dev/null 2>&1; then
-              backend_ready=true
-              break
-            fi
-            sleep 1
-          done
-          if [ "$backend_ready" != true ]; then
-            echo 'Frontend smoke placeholder backend did not become ready' >&2
-            exit 1
-          fi
-          docker run -d --name "$container" --network "$network" -p 18080:80 \
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          # No backend container or backend DNS entry exists during this check.
+          docker run -d --name "$container" -p 127.0.0.1:18080:8080 \
             "$IMAGE:sha-${GITHUB_SHA::7}" >/dev/null
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:18080/ >/dev/null 2>&1; then break; fi
@@ -402,6 +401,8 @@ jobs:
       - name: Export tested frontend image
         shell: bash
         run: python3 ci/release_images.py export --component frontend --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/frontend-export"
+      - name: Verify frontend archive without publishing
+        run: python3 ci/release_images.py verify --component frontend --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/frontend-export"
       - name: Share tested frontend image with integration smoke
         uses: actions/upload-artifact@v4
         with:
@@ -410,26 +411,85 @@ jobs:
           compression-level: 1
           retention-days: 1
           overwrite: true
-
-  publish:
-    name: Publish verified images
-    needs: [changes, backend-test, frontend-test, backend-image, frontend-image]
-    if: needs.changes.outputs.publish == 'true' && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.event_name != 'pull_request'
+  integration:
+    name: Shared gateway integration and persistence
+    needs:
+      - changes
+      - delivery-checks
+      - backend-image
+      - frontend-image
+    if: needs.changes.outputs.backend == 'true' && needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-smoke-image-${{ github.run_id }}
+          path: ${{ runner.temp }}/demo-images
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-smoke-image-${{ github.run_id }}
+          path: ${{ runner.temp }}/demo-images
+      - name: Test real demo integration and SQLite persistence
+        timeout-minutes: 10
+        shell: bash
+        env:
+          ACR_REGISTRY: crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
+          ACR_NAMESPACE: tencent-ubutun22
+          SECRET_KEY: ci-demo-only-key
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          WEB_PORT: 127.0.0.1:18080
+          SMOKE_PROJECT: ci-demo-${{ github.run_id }}-${{ github.run_attempt }}
+          GUNICORN_WORKERS: '1'
+          EMBEDDING_ENABLED: 'False'
+          EMBEDDING_ALLOW_DOWNLOAD: 'False'
+          ENABLE_TTS: 'False'
+          LLM_API_KEY: ''
+          LLM_BASE_URL: ''
+          LLM_MODEL: ''
+        run: |
+          set -euo pipefail
+          python3 ci/release_images.py verify --commit "$GITHUB_SHA" --directory "$RUNNER_TEMP/demo-images"
+          # Gateway is infrastructure, not a frontend artifact; it is never released by the publisher.
+          docker pull nginx:1.27-alpine
+          export SMOKE_BACKEND_IMAGE="cs-career-guide-backend:sha-${GITHUB_SHA::7}"
+          export SMOKE_FRONTEND_IMAGE="cs-career-guide-frontend:sha-${GITHUB_SHA::7}"
+          python3 ci/demo_smoke.py --project "$SMOKE_PROJECT" --logs-dir "$RUNNER_TEMP/demo-smoke-logs"
+          python3 ci/gateway_smoke.py --project "ci-gateway-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --backend-image "$SMOKE_BACKEND_IMAGE"
+          python3 -m pip install PyYAML
+          python3 ci/cutover_smoke.py
+      - name: Upload demo integration logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-smoke-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/demo-smoke-logs
+          if-no-files-found: warn
+          retention-days: 7
+  publish-backend:
+    name: Publish verified backend image
+    needs:
+      - changes
+      - delivery-checks
+      - backend-test
+      - backend-image
+      - integration
+      - platform-gates
+    if: always() && !cancelled() && needs.changes.outputs.backend == 'true' && needs.changes.outputs.publish == 'true' && needs.delivery-checks.result == 'success' && needs.backend-test.result
+      == 'success' && needs.backend-image.result == 'success' && needs.platform-gates.result == 'success' && (needs.integration.result == 'success' || ((needs.changes.outputs.backend
+      != 'true' || needs.changes.outputs.frontend != 'true') && needs.integration.result == 'skipped')) && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide'
+      && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     env:
       ACR_REGISTRY: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}
       ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE }}
       EXTRA_TAG: ${{ needs.changes.outputs.extra_tag }}
+      COMPATIBILITY: ${{ needs.integration.result == 'success' && 'candidate-integration' || 'component-contracts' }}
     steps:
       - uses: actions/checkout@v4
       - name: Validate release configuration
         shell: bash
         run: python3 ci/release_images.py check-config --commit "$GITHUB_SHA" --extra-tag "$EXTRA_TAG"
-      - name: Download verified frontend image
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-smoke-image-${{ github.run_id }}
-          path: ${{ runner.temp }}/release-images
       - name: Download verified backend image
         uses: actions/download-artifact@v4
         with:
@@ -444,44 +504,197 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 ci/release_images.py publish --commit "$GITHUB_SHA" --extra-tag "$EXTRA_TAG" \
+          python3 ci/release_images.py publish --component backend --compatibility "$COMPATIBILITY" --commit "$GITHUB_SHA" --extra-tag "$EXTRA_TAG" \
             --directory "$RUNNER_TEMP/release-images" \
             --output "$RUNNER_TEMP/published-images.json" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Expose completed component digest
+        id: record
+        env:
+          COMPONENT: backend
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          record = json.loads((Path(os.environ['RUNNER_TEMP']) / 'published-images.json').read_text())
+          component = os.environ['COMPONENT']
+          assert record['complete'] is True and record['components'] == [component]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('image=' + record['images'][component]['reference'] + '\n')
+          PY
       - name: Upload publication record
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: published-images-${{ github.run_id }}
+          name: published-backend-${{ github.run_id }}
           path: ${{ runner.temp }}/published-images.json
           if-no-files-found: warn
           retention-days: 30
           overwrite: true
-
+    outputs:
+      image: ${{ steps.record.outputs.image }}
+  publish-frontend:
+    name: Publish verified frontend image
+    needs:
+      - changes
+      - delivery-checks
+      - frontend-test
+      - frontend-image
+      - integration
+      - platform-gates
+    if: always() && !cancelled() && needs.changes.outputs.frontend == 'true' && needs.changes.outputs.publish == 'true' && needs.delivery-checks.result == 'success' && needs.frontend-test.result
+      == 'success' && needs.frontend-image.result == 'success' && needs.platform-gates.result == 'success' && (needs.integration.result == 'success' || ((needs.changes.outputs.backend
+      != 'true' || needs.changes.outputs.frontend != 'true') && needs.integration.result == 'skipped')) && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide'
+      && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    env:
+      ACR_REGISTRY: ${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}
+      ACR_NAMESPACE: ${{ vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE }}
+      EXTRA_TAG: ${{ needs.changes.outputs.extra_tag }}
+      COMPATIBILITY: ${{ needs.integration.result == 'success' && 'candidate-integration' || 'component-contracts' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release configuration
+        shell: bash
+        run: python3 ci/release_images.py check-config --commit "$GITHUB_SHA" --extra-tag "$EXTRA_TAG"
+      - name: Download verified frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-smoke-image-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-images
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ALIYUN_ACR_USERNAME }}
+          password: ${{ secrets.ALIYUN_ACR_PASSWORD }}
+      - name: Publish exact verified images and record digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/release_images.py publish --component frontend --compatibility "$COMPATIBILITY" --commit "$GITHUB_SHA" --extra-tag "$EXTRA_TAG" \
+            --directory "$RUNNER_TEMP/release-images" \
+            --output "$RUNNER_TEMP/published-images.json" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Expose completed component digest
+        id: record
+        env:
+          COMPONENT: frontend
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          record = json.loads((Path(os.environ['RUNNER_TEMP']) / 'published-images.json').read_text())
+          component = os.environ['COMPONENT']
+          assert record['complete'] is True and record['components'] == [component]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('image=' + record['images'][component]['reference'] + '\n')
+          PY
+      - name: Upload publication record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-frontend-${{ github.run_id }}
+          path: ${{ runner.temp }}/published-images.json
+          if-no-files-found: warn
+          retention-days: 30
+          overwrite: true
+    outputs:
+      image: ${{ steps.record.outputs.image }}
+  deploy-backend:
+    name: Deploy published backend digest
+    needs:
+      - publish-backend
+    if: needs.publish-backend.result == 'success' && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.event_name != 'pull_request'
+      && vars.DEPLOY_ENV_SYNC_ENABLED == 'true' && vars.DEPLOY_BACKEND_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    concurrency:
+      group: cs-career-guide-server-env
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Activate only the selected component over verified SSH
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_ENV_PATH: ${{ secrets.DEPLOY_ENV_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          ASR_API_KEY: ${{ secrets.ASR_API_KEY }}
+          TTS_API_KEY: ${{ secrets.TTS_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          CAREER_REPORT_MODEL: ${{ vars.CAREER_REPORT_MODEL }}
+          ASR_WSS_URL: ${{ vars.ASR_WSS_URL }}
+          ASR_MODEL: ${{ vars.ASR_MODEL }}
+          ENABLE_TTS: ${{ vars.ENABLE_TTS }}
+          TTS_WSS_URL: ${{ vars.TTS_WSS_URL }}
+          TTS_MODEL: ${{ vars.TTS_MODEL }}
+          TTS_VOICE: ${{ vars.TTS_VOICE }}
+          DEPLOY_COMPONENT: backend
+          DEPLOY_IMAGE: ${{ needs.publish-backend.outputs.image }}
+        run: python3 ci/sync_runtime_env.py
+  deploy-frontend:
+    name: Deploy published frontend digest
+    needs:
+      - publish-frontend
+    if: needs.publish-frontend.result == 'success' && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.event_name != 'pull_request'
+      && vars.DEPLOY_ENV_SYNC_ENABLED == 'true' && vars.DEPLOY_FRONTEND_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    concurrency:
+      group: cs-career-guide-server-env
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Activate only the selected component over verified SSH
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_ENV_PATH: ${{ secrets.DEPLOY_ENV_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          DEPLOY_COMPONENT: frontend
+          DEPLOY_IMAGE: ${{ needs.publish-frontend.outputs.image }}
+        run: python3 ci/sync_runtime_env.py
   release-summary:
     name: Release summary
-    needs: [changes, backend-image, frontend-image, publish]
-    if: always() && needs.changes.outputs.code == 'true'
+    needs:
+      - changes
+      - delivery-checks
+      - backend-test
+      - frontend-test
+      - backend-image
+      - frontend-image
+      - platform-gates
+      - integration
+      - publish-backend
+      - publish-frontend
+      - deploy-backend
+      - deploy-frontend
+    if: always()
     runs-on: ubuntu-24.04
     steps:
-      - name: Write summary
-        shell: bash
+      - uses: actions/checkout@v4
+      - name: Report selected checks, publication and deployment separately
         env:
-          BACKEND_RESULT: ${{ needs.backend-image.result }}
-          FRONTEND_RESULT: ${{ needs.frontend-image.result }}
-          PUBLISH_EXPECTED: ${{ needs.changes.outputs.publish }}
-          PUBLISH_RESULT: ${{ needs.publish.result }}
-        run: |
-          if [ "$BACKEND_RESULT" != 'success' ] || [ "$FRONTEND_RESULT" != 'success' ]; then
-            echo 'Image validation did not both succeed; publication is blocked.' >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          if [ "$PUBLISH_EXPECTED" != 'true' ]; then
-            if [ "$PUBLISH_RESULT" != 'skipped' ]; then exit 1; fi
-            echo 'Build-only validation and archive verification passed; publisher skipped and no registry push was performed.' >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          if [ "$PUBLISH_RESULT" != 'success' ]; then
-            echo 'Publication did not complete. Check the publisher job and any partial publication record.' >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          echo 'Verified images published. Use the paired digest references in the publisher summary and publication record.' >> "$GITHUB_STEP_SUMMARY"
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          SYNC_ENABLED: ${{ vars.DEPLOY_ENV_SYNC_ENABLED }}
+          DEPLOY_BACKEND_ENABLED: ${{ vars.DEPLOY_BACKEND_ENABLED }}
+          DEPLOY_FRONTEND_ENABLED: ${{ vars.DEPLOY_FRONTEND_ENABLED }}
+        run: python3 ci/delivery_summary.py --needs "$NEEDS_JSON" --summary "$GITHUB_STEP_SUMMARY"

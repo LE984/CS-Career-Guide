@@ -6,6 +6,8 @@ docs
 .venv
 venv
 .runtime
+/~/.cache/huggingface/
+/.cache/huggingface/
 .acl-recovery
 **/__pycache__
 **/*.pyc
