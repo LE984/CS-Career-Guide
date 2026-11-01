@@ -28,7 +28,7 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 业务门禁独立于交付门禁：`ci/check_project_changes.py` 仅在基线与当前前后端测试 Job 保持一致时，将 `.github/workflows/ci-cd.yml` 视作交付编排例外；测试命令、跳过条件、continue-on-error、删除测试等变化仍触发原完整业务门禁。业务路径/公共契约/未知业务文件仍按基线归属表要求实施文档和原 complete 用例。`career-platform.yml`、`ci/project_*`、检查器、固定测试等验收规则改动仍要求全部业务验收；交付文件与业务文件混改不能逃逸。普通前端静态变更不启动数据库 runner，前端业务模块变更仍执行其原业务验收。
 
-**本轮限制：本分支修改了门禁检查器与 career-platform.yml，因此自身仍选择原完整业务验收。五个模块当前是 501 骨架，2026-11-01 的本地 17 项 complete 用例为 14 failures、3 errors，均为 501/FeatureNotImplemented；没有降低该门禁或实现这五项业务来制造绿色。交付构建/网关联调与此业务阻塞分别记录。**
+**业务限制：最初拆分 PR 修改了门禁检查器与 career-platform.yml，因此该批改动选择原完整业务验收。五个模块当前是 501 骨架，2026-11-01 的本地 17 项 complete 用例为 14 failures、3 errors，均为 501/FeatureNotImplemented；没有降低该门禁或实现这五项业务来制造绿色。交付构建/网关联调与此业务阻塞分别记录。**
 
 ## 稳定网关
 
@@ -45,7 +45,7 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 ## 首次安装新拓扑
 
-此步骤会改变流量入口，需要服务器操作授权。2026-11-01 用户已授权首次切换；执行结果单独记录于部署状态，不据操作说明推断成功。
+此步骤会改变流量入口，需要服务器操作授权。2026-11-01 已获授权并完成首次切换和独立审计，见[部署状态](deployment-status.md)；以下保留为首次安装流程，已安装服务器用单组件激活。
 
 1. 首次合并时保持 `SPLIT_DELIVERY_RELEASE_ENABLED` 缺省关闭，确保 master 也只 build-only。暂停现有 Actions 自动激活并确认无运行中任务；协调/停止旧 Watchtower。通过手动 `Split delivery maintenance` 的只读 audit 核对容器、镜像、端口和卷，保留现有 Compose、环境、容器身份及数据备份。
 2. 核对已通过 runner 验证的前后端 digest。新纯静态前端必须与独立网关同时启用；旧内置代理前端的直接端口部署不能只替换为新静态镜像。
@@ -109,3 +109,17 @@ config/pull 失败保留原 `.env` 和 pin，删除候选文件；激活/健康�
 首次维护任务使用 30 分钟预算，SSH 子进程最多 20 分钟；runner 仅输出不含连接信息的阶段码。2026-11-01 未压缩传输曾达到旧的 12 分钟上限而取消；独立 audit 确认原应用容器和旧入口未变，不能将该次任务记为安装成功。
 
 网关跨 Docker 引擎校验使用不可变 RepoDigest、RootFS 内容层和 Entrypoint/Cmd/User/平台指纹。classic 与 containerd 引擎的本地 `.Id` 表示可能不同，不将本地 ID 相等作为跨引擎内容身份条件。runner 原镜像与镜像仓库取回镜像、服务器拉取镜像的指纹必须一致；缺少内容层或 digest 不匹配时拒绝安装。
+
+### 2026-11-01 最终交付证据
+
+最终交付修复 PR Actions 41312995286 整体成功；89 项离线工具测试、双端镜像、完整真实网关/持久化/合成 SSE/IP 和首次切换通过。服务器安装 41313632683 与独立 audit 41313707147 成功，单独重建 frontend 后 backend/gateway 和真实环境文件不变。开关已恢复 true，Watchtower 停止；本轮仅发布/部署新 frontend，保留原 backend，没有迁移或真实模型/浏览器验收。正式记录见[当前部署状态](deployment-status.md)和[脱敏证据](releases/2026-11-01-split-delivery.json)。
+
+本次安装的单组件回滚工具位于部署目录 `.split-backup-20261101T135651-j2dtgkzq/tools/ci/`。在实际部署目录执行下面的命令，镜像引用必须替换为已核验、兼容新拓扑的目标组件 digest；当前只形成一个新纯静态前端检查点，旧内置代理前端不能直接作为新拓扑下的回滚版本。
+
+```bash
+python3 .split-backup-20261101T135651-j2dtgkzq/tools/ci/deploy_component.py \
+  --env-path "$PWD/.env" --component frontend \
+  --image 'registry.example/demo/cs-career-guide-frontend@sha256:<64位digest>'
+```
+
+回滚前按前述流程关闭目标分端开关并等待已有任务退出；切勿为了前端回滚运行 backend 或 gateway 的 recreate。后端回滚另行核对 schema 兼容；本轮没有在真实服务器演练 backend 重建或 digest 回退。

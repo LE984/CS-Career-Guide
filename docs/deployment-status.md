@@ -1,18 +1,21 @@
 # 演示部署验收状态与接手记录
 
-## 2026-11-01 独立交付：已合并，首次服务器切换待完成
+## 2026-11-01 独立交付已合并并完成服务器切换
 
-此节为当日维护快照，不能用历史成对部署记录推断新网关已上线。PR #9 至 #12 已合入本 fork master；代码基线 `2d39c73b792821f082cdf82e31eb0396d8a3a2d3` 的 [Actions 41307802873](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307802873) 成功，覆盖双端检查、镜像及完整共享网关联调。原业务 17 项验收在 PR #9/#10 因五模块 501 骨架失败，用户明确接受保留该失败后合并；后续纯交付变更按路径跳过业务验收，不表示业务已经实现。
+这是当日验收快照，实时操作仍须重新核对 Git/Actions/服务器。[PR #9](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/9) 至 [PR #15](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/15) 已合入本 fork master，代码基线为 `d9395a319be3c99d67b3ff062266ee6d8edee5ce`。最终交付修复的 [PR Actions 41312995286](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41312995286) 整体成功：两端检查、各自镜像、完整网关/持久化/SSE/IP 联调和真实首次切换均通过；该次纯交付改动按既有路径规则跳过完整业务验收，不代表五模块业务完成。
 
-[首次前端独立发布 41304757512](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41304757512) 成功，只发布 frontend，记录 `complete=true`、`components=[frontend]`、兼容证据为 component-contracts；后端未发布，单端完整联调明确 skipped。前端 digest 为 `sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f`。
+- 本地：最终 89 项 CI 工具测试在 WSL 离线隔离环境通过。本机没有 Docker 构建或容器联调。
+- 镜像：[首次前端独立发布 41304757512](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41304757512) 成功，`complete=true`、只含 frontend、证据为 component-contracts；该次 backend 全链路与完整候选联调 skipped。前端 digest `sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f`，源码 `7909ecf`。本轮没有发布新 backend 镜像。
+- 服务器：[安装 41313632683](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41313632683) 成功，[随后独立审计 41313707147](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41313707147) 成功。frontend 运行上述新 digest，gateway 固定 ACR 镜像 digest `sha256:91fc9c3924b93f76adc9cd36a0bb93e53885ff8e97df10233caa45bb432789a5`，均 healthy。80/48080 原端口映射转给 gateway；frontend 无宿主端口、无后端共享卷。网关基础设施镜像使用现有 frontend 仓库的专用 `gateway-nginx-<imageID>` 标签，不覆盖应用 latest/SHA 标签。
+- 保留状态：backend 仍是原容器 `e547601b906ed8ed0be4d309734f7fbb999fd82f40e9d849a0491a933fe179e6`，healthy，运行 RepoDigest 为 `sha256:75110f2b4dff6b5488bab73ffd563cf7ed431979e0050d1bdd32bb5b48ea2cf9`。原 SQLite/static/media 命名卷、项目、真实 `.env` inode/mtime/size 均保持；没有启动后端入口或迁移。Watchtower 保持停止。
+- 单端实测：安装后调用正式单组件激活函数，再单独重建一次 frontend；确认 frontend ID 改变，backend/gateway ID 与 `.env` 不变。只读 HTTP `/`、`/login` 为 200 SPA，admin CSS 为 200，无 Token 的 profile 为 401，不存在 media 为 404。服务器没有新增账号、写入业务数据或调用真实模型。
+- 自动交付：安装与独立审计成功后，回读确认 `SPLIT_DELIVERY_RELEASE_ENABLED`、`DEPLOY_ENV_SYNC_ENABLED`、`DEPLOY_FRONTEND_ENABLED`、`DEPLOY_BACKEND_ENABLED` 均为 true。启用开关本身不触发发布或重启；未来 master 变更仍须通过对应门禁，按组件发布/激活完整 digest。网关不随单端应用更新重建。
 
-[安装 41307803698](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307803698) 达到旧 12 分钟上限而取消。[随后独立审计 41308721534](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41308721534) 成功：原 backend/frontend 仍 healthy、容器 ID 未变，gateway 未配置，80/48080 仍由旧前端承接，原命名卷保持，Watchtower 停止。四个发布/部署开关此时保持 false。不能报告新拓扑已部署；压缩归档与超时预算修复后的安装仍须单独核验。
+原完整业务验收在 [41309171882](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41309171882) 与 [41311945848](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41311945848) 的 SQLite/MySQL 都运行 17 项，14 failures、3 errors，原因是现有五模块返回 `501 / FEATURE_NOT_IMPLEMENTED`；没有指向数据库连接或迁移故障。用户已明确接受保留这一失败后合并交付修复；固定验收和业务接口未被降级或伪造实现。
 
-[压缩传输安装 41309978998](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41309978998) 的 runner 拉取/导出约 6 秒完成，随后 SSH 阶段达到 20 分钟超时；[审计 41311002510](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41311002510) 再次确认原前后端 ID 不变且 healthy、gateway 未配置。后续首次安装改为专用 ACR 基础设施标签和 digest 拉取，实际结果需单独核验。
+首次安装曾遇 Docker Hub 超时、SSH 大归档超时，以及跨引擎本地 image ID 核验拒绝；每次独立 audit 确认旧前后端健康、ID 未变。最终使用已授权 ACR 专用标签/digest 传送网关，通过 RepoDigest、内容层、启动配置和平台核验，绕过 SSH 大镜像传输。失败历史与最终成功分别保留，不能复用较早失败运行作为成功证据。
 
-[ACR 安装 41312620884](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41312620884) 已通过镜像发布/回读，SSH 约 7 秒内在 pull-images 后的身份核验拒绝，未切换；[审计 41312715459](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41312715459) 证明旧应用 ID 未变且 healthy。后续网关核验采用不可变 RepoDigest、内容层和启动配置指纹，兼容 Docker 引擎的本地 ID 表示差异；安装结果另行记录。
-
-本轮没有重启后端、数据库迁移、真实模型调用或浏览器验收。构建缓存命中及耗时证据见[CI/CD](ci-cd.md#缓存与耗时定位)。
+完整脱敏记录见 [2026-11-01-split-delivery.json](releases/2026-11-01-split-delivery.json)，单服务 digest 回滚见[独立交付](split-delivery.md#单服务部署与-digest-回滚)。服务器未做真实模型、SSE 业务调用、浏览器交互、语音、生产 digest 回滚演练或数据库迁移；SSE/鉴权/持久化的完整容器证据来自 runner。App 客户端不在本轮范围，后端 API/Token 边界继续保留。构建缓存命中与耗时见[CI/CD](ci-cd.md#缓存与耗时定位)。
 
 ## 2026-10-26 历史发布与业务基线：82f1293
 
