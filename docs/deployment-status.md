@@ -8,6 +8,8 @@
 
 [安装 41307803698](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307803698) 达到旧 12 分钟上限而取消。[随后独立审计 41308721534](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41308721534) 成功：原 backend/frontend 仍 healthy、容器 ID 未变，gateway 未配置，80/48080 仍由旧前端承接，原命名卷保持，Watchtower 停止。四个发布/部署开关此时保持 false。不能报告新拓扑已部署；压缩归档与超时预算修复后的安装仍须单独核验。
 
+[压缩传输安装 41309978998](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41309978998) 的 runner 拉取/导出约 6 秒完成，随后 SSH 阶段达到 20 分钟超时；[审计 41311002510](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41311002510) 再次确认原前后端 ID 不变且 healthy、gateway 未配置。后续首次安装改为专用 ACR 基础设施标签和 digest 拉取，实际结果需单独核验。
+
 本轮没有重启后端、数据库迁移、真实模型调用或浏览器验收。构建缓存命中及耗时证据见[CI/CD](ci-cd.md#缓存与耗时定位)。
 
 ## 2026-10-26 历史发布与业务基线：82f1293

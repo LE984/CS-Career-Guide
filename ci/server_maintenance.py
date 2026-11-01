@@ -29,6 +29,31 @@ def pack_gateway_archive(archive):
     return gzip.compress(archive, compresslevel=1, mtime=0)
 
 
+def publish_gateway(frontend_image):
+    """Mirror infrastructure under a unique tag, never changing application tags."""
+    if not re.fullmatch(r'[a-z0-9][a-z0-9.:/-]*/cs-career-guide-frontend@sha256:[0-9a-f]{64}', frontend_image):
+        raise ValueError('Expected a published frontend digest')
+    repository = frontend_image.split('@')[0]
+    gateway = run(['docker', 'image', 'inspect', 'nginx:1.27-alpine'], json_output=True)[0]
+    if gateway.get('Os') != 'linux' or gateway.get('Architecture') != 'amd64':
+        raise ValueError('Gateway must be linux/amd64')
+    image_id = gateway['Id']
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}', image_id):
+        raise ValueError('Invalid gateway image identity')
+    tag = repository + ':gateway-nginx-' + image_id.split(':')[1]
+    run(['docker', 'tag', image_id, tag])
+    output = run(['docker', 'push', tag])
+    digests = set(re.findall(r'\bdigest:\s*(sha256:[0-9a-f]{64})\b', output))
+    if len(digests) != 1:
+        raise ValueError('Gateway publication did not return one digest')
+    reference = repository + '@' + digests.pop()
+    run(['docker', 'pull', '--platform', 'linux/amd64', reference])
+    verified = run(['docker', 'image', 'inspect', reference], json_output=True)[0]
+    if verified['Id'] != image_id or verified.get('Os') != 'linux' or verified.get('Architecture') != 'amd64':
+        raise ValueError('Mirrored gateway identity changed')
+    return reference, image_id
+
+
 class MaintenanceFailure(RuntimeError):
     def __init__(self, code):
         self.code = code
@@ -194,6 +219,12 @@ def install(env_path, payload):
         scope = {'__name__': 'split_topology'}
         exec(compile(payload['topology_source'], 'split_topology', 'exec'), scope)
         topology = scope['prepare'](existing, payload['template'], frontend_digest, backend_digest, str(nginx_path))
+        gateway_reference = payload.get('gateway_image')
+        if gateway_reference:
+            if (not re.fullmatch(re.escape(expected_repo) + r'@sha256:[0-9a-f]{64}', gateway_reference)
+                    or not re.fullmatch(r'sha256:[0-9a-f]{64}', payload.get('gateway_image_id', ''))):
+                raise ValueError('Gateway mirror must use the existing reviewed registry repository')
+            topology['services']['gateway']['image'] = gateway_reference
 
         def write_private(target, content):
             descriptor, temporary = tempfile.mkstemp(prefix='.split-write-', dir=target.parent)
@@ -230,6 +261,11 @@ def install(env_path, payload):
             run([*candidate_base, 'pull', 'frontend'])
         else:
             run([*candidate_base, 'pull', 'frontend', 'gateway'])
+        if gateway_reference:
+            loaded = run(['docker', 'image', 'inspect', gateway_reference], json_output=True)[0]
+            if (loaded['Id'] != payload['gateway_image_id'] or loaded.get('Os') != 'linux'
+                    or loaded.get('Architecture') != 'amd64'):
+                raise ValueError('Server gateway image differs from verified runner mirror')
         stage('backup')
         if ((path.stat().st_ino, path.stat().st_mtime_ns, path.stat().st_size) != env_identity
                 or compose_path.read_bytes() != original_compose):
@@ -337,6 +373,7 @@ def install(env_path, payload):
         report = {'action': 'install', 'success': True, 'project': project,
                   'backend_container_unchanged': True, 'env_file_unchanged': True,
                   'frontend_image': frontend_digest, 'backend_image': backend_digest,
+                  'gateway_image': rendered['services']['gateway']['image'],
                   'gateway_container': gateway_before, 'http_checks': routes,
                   'single_frontend_activation_verified': True, 'database_migrations': False,
                   'real_model': False, 'backup_directory': backup.name,
@@ -367,17 +404,12 @@ def remote(action, frontend_image=''):
                           '--env-path', os.environ['DEPLOY_ENV_PATH']])
     payload = b''
     if action == 'install':
-        import hashlib
         import yaml
         root = Path(__file__).resolve().parents[1]
         stage('runner-gateway-image')
         run(['docker', 'pull', '--platform', 'linux/amd64', 'nginx:1.27-alpine'])
-        gateway = run(['docker', 'image', 'inspect', 'nginx:1.27-alpine'], json_output=True)[0]
-        stage('runner-gateway-export')
-        with tempfile.TemporaryDirectory(prefix='gateway-export-') as archive_dir:
-            archive_path = Path(archive_dir) / 'gateway.tar'
-            run(['docker', 'save', '--output', str(archive_path), 'nginx:1.27-alpine'])
-            archive = pack_gateway_archive(archive_path.read_bytes())
+        stage('runner-gateway-mirror')
+        gateway_reference, gateway_id = publish_gateway(frontend_image)
         payload = json.dumps({
             'frontend_image': frontend_image,
             'topology_source': (root / 'ci/split_topology.py').read_text(),
@@ -385,9 +417,8 @@ def remote(action, frontend_image=''):
             'nginx': (root / 'deploy/nginx.conf').read_text(),
             'helpers': {name: (root / 'ci' / name).read_text()
                         for name in ('sync_runtime_env.py', 'deploy_component.py')},
-            'gateway_archive_b64': base64.b64encode(archive).decode('ascii'),
-            'gateway_archive_sha256': hashlib.sha256(archive).hexdigest(),
-            'gateway_image_id': gateway['Id'],
+            'gateway_image': gateway_reference,
+            'gateway_image_id': gateway_id,
         }).encode()
     stage('verified-ssh')
     with tempfile.TemporaryDirectory(prefix='split-maintenance-') as directory:
