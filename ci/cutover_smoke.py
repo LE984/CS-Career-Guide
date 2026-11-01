@@ -1,8 +1,6 @@
 """Run the production cutover function on disposable runner containers and synthetic env."""
 
 import json
-import base64
-import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -62,18 +60,14 @@ def main():
             base = ['docker', 'compose', '--project-directory', directory, '--env-file', str(env),
                     '-p', project, '-f', str(compose)]
             run([*base, 'up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '180', 'backend', 'frontend'])
-            gateway = json.loads(run(['docker', 'image', 'inspect', 'nginx:1.27-alpine']))[0]
-            archive_path = parent / 'gateway.tar'
-            run(['docker', 'save', '--output', str(archive_path), 'nginx:1.27-alpine'])
-            archive = server_maintenance.pack_gateway_archive(archive_path.read_bytes())
+            gateway_reference, gateway_id = server_maintenance.publish_gateway(images['frontend'])
             server_maintenance.install(str(env), {
                 'template': template, 'frontend_image': images['frontend'],
                 'topology_source': (root / 'ci/split_topology.py').read_text(),
                 'nginx': (root / 'deploy/nginx.conf').read_text(),
                 'helpers': {name: (root / 'ci' / name).read_text() for name in ('sync_runtime_env.py', 'deploy_component.py')},
-                'gateway_archive_b64': base64.b64encode(archive).decode('ascii'),
-                'gateway_archive_sha256': hashlib.sha256(archive).hexdigest(),
-                'gateway_image_id': gateway['Id'],
+                'gateway_image': gateway_reference,
+                'gateway_image_id': gateway_id,
             })
             print('Disposable real cutover passed: backend/env retained, gateway routes and single frontend activation verified.')
         finally:

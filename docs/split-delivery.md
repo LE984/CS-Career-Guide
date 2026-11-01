@@ -63,7 +63,7 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 安装成功后使用同一单组件激活函数再重建一次 frontend，确认 backend/gateway ID 与 `.env` inode/大小/mtime 均不变，并验证 SPA、401、static 和不存在的 media 返回 404。不创建业务账号、不调用真实模型。失败时恢复原 Compose、前端 digest 与原端口；不删除数据库或用户卷，Watchtower 保持停止。单组件工具安装在本次 `.split-backup-<时间>/tools/ci/`，实际相对路径记录于 install Artifact；该目录是受保护的运维备份，不清理。
 
-服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，导出 gzip 压缩归档并经已核验 SSH stdin 传送；服务器校验压缩归档 SHA-256，限量解压后校验加载的 image ID 与 linux/amd64 平台，再只从 ACR pull frontend。网关随后 `--pull never` 启动，不要求服务器直连 Docker Hub。归档只含公开 Nginx，不上传服务器配置或凭据。
+服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，镜像到现有前端 ACR 仓库的专用 `gateway-nginx-<完整imageID>` 标签。该基础设施标签不覆盖 `latest` 或应用 SHA 标签；runner 按发布 digest 再拉取并核对 image ID 与 linux/amd64，SSH 只传小型配置载荷。服务器从已授权 ACR 拉取 frontend/gateway，核对网关 image ID 后 `--pull never` 启动；不要求直连 Docker Hub，也不通过 SSH 传镜像大归档。网关在实际基础 Compose 中固定完整 digest；仅首次明确维护会创建这个镜像标签，audit 不登录或发布 ACR。
 
 各组件 publisher 的 `published-<组件>-<run-id>` Artifact 内含 `published-images.json`：检查 `complete=true`、`components`、`compatibility` 证据范围、完整源码 commit 和 `images.<组件>.reference`。不同组件可来自不同已完成发布，不要求同一个源码提交；仍须核对目标 API/schema 兼容。
 

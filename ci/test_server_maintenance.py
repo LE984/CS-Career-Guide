@@ -13,6 +13,22 @@ import server_maintenance
 
 
 class ServerMaintenanceTests(unittest.TestCase):
+    def test_gateway_mirror_never_changes_application_tags_and_verifies_digest(self):
+        repository = 'registry.example/demo/cs-career-guide-frontend'
+        image = {'Id': 'sha256:' + 'a' * 64, 'Os': 'linux', 'Architecture': 'amd64'}
+        with patch('server_maintenance.run', side_effect=[
+                [image], '', 'digest: sha256:' + 'b' * 64, '', [image]]) as run:
+            reference, identity = server_maintenance.publish_gateway(repository + '@sha256:' + 'c' * 64)
+        self.assertEqual(reference, repository + '@sha256:' + 'b' * 64)
+        self.assertEqual(identity, image['Id'])
+        tag = run.call_args_list[1].args[0][-1]
+        self.assertEqual(tag, repository + ':gateway-nginx-' + 'a' * 64)
+        self.assertNotIn(':latest', str(run.call_args_list))
+        changed = dict(image, Id='sha256:' + 'd' * 64)
+        with patch('server_maintenance.run', side_effect=[
+                [image], '', 'digest: sha256:' + 'b' * 64, '', [changed]]), self.assertRaises(ValueError):
+            server_maintenance.publish_gateway(repository + '@sha256:' + 'c' * 64)
+
     def test_gateway_import_checks_archive_and_loaded_image_identity(self):
         archive = b'synthetic-unit-test-archive'
         payload = {'gateway_archive_b64': base64.b64encode(archive).decode(),

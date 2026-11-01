@@ -63,3 +63,5 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 2026-11-01 成功运行 [41307140743](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307140743) 的 backend pip 日志明确显示 Cache hit / Cache restored，后端 Docker 多个依赖与应用层为 CACHED。该运行前端/后端镜像构建步骤约 17/22 秒；后端完整测试依赖安装约 90 秒，共享联调步骤约 153 秒。整个运行约 7 分钟，主要受后端检查到镜像再到共享联调的依赖链影响；这些数据是单次运行快照，不是后续时延承诺。
 
 仅前端变更会跳过后端检查/镜像/发布/部署；仅后端变更同理。共享交付配置仍需要双端和完整网关联调，不能为加速删除必要验证。排查慢任务时先区分 cache restore、依赖安装、Docker build、镜像归档传输、联调和服务器拉取，不把总时长全部归因于缓存未命中。
+
+首次网关维护的镜像传输与日常构建缓存不同。SSH 大归档曾超时，维护任务改为 runner 用既有 ACR 凭据发布专用 `gateway-nginx-<imageID>` 基础设施标签，按 digest 校验后由服务器拉取；不改前后端 `latest`/SHA 标签，日常单端发布不执行该步骤。只读 audit 不传入 ACR 凭据。
