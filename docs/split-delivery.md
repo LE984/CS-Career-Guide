@@ -59,6 +59,10 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 ## 单服务部署与 digest 回滚
 
+首次安装工具为手动 `Split delivery maintenance` 的 `action=install`，输入当前已发布前端的完整 digest。工具通过已配置的严格 SSH 通道运行，先校验现有配置/权限/镜像仓库，在原部署目录保留私有配置备份；重建 frontend 与 gateway，保留原 backend 容器、环境文件、项目名、命名卷和端口。不会执行后端入口或迁移。候选环境值与现有值不一致、未知环境键或卷拓扑不符时拒绝安装。
+
+安装成功后使用同一单组件激活函数再重建一次 frontend，确认 backend/gateway ID 与 `.env` inode/大小/mtime 均不变，并验证 SPA、401、static 和不存在的 media 返回 404。不创建业务账号、不调用真实模型。失败时恢复原 Compose、前端 digest 与原端口；不删除数据库或用户卷，Watchtower 保持停止。单组件工具安装在本次 `.split-backup-<时间>/tools/ci/`，实际相对路径记录于 install Artifact；该目录是受保护的运维备份，不清理。
+
 各组件 publisher 的 `published-<组件>-<run-id>` Artifact 内含 `published-images.json`：检查 `complete=true`、`components`、`compatibility` 证据范围、完整源码 commit 和 `images.<组件>.reference`。不同组件可来自不同已完成发布，不要求同一个源码提交；仍须核对目标 API/schema 兼容。
 
 自动激活从对应 publisher output 读取完整 digest，`DEPLOY_IMAGE` 不追踪 latest。脚本在锁内校验候选 Compose，pull 单服务，再持久化 `docker-compose.<组件>-image.json`，最后执行：
