@@ -1,16 +1,24 @@
 <template>
-  <div class="resume-page text-gray-900">
-    <main class="career-container resume-workspace">
-      <div class="resume-heading">
-        <div class="resume-toolbar">
-          <div><p class="career-eyebrow">求职准备 / 我的简历</p><h1>简历工作台</h1><p class="resume-subtitle">左侧整理经历，右侧实时预览。保存后可以继续编辑，或带着这份简历练习面试。</p></div>
-          <div class="resume-actions">
-            <button type="button" @click="saveResume" class="career-button" :disabled="isSaving">{{ isSaving ? '同步中…' : '保存草稿' }}</button>
-            <button type="button" @click="exportPDF" class="career-button career-button-primary">导出简历 ↓</button>
-            <button type="button" @click="goToInterview" class="career-button">模拟面试 →</button>
+  <div class="bg-gradient-to-r from-white to-purple-100 text-gray-900 min-h-screen selection:bg-secondary selection:text-white">
+    <main class="pt-24 pb-16 px-4 md:px-8 max-w-7xl mx-auto">
+      <!-- 顶部操作栏 -->
+      <div class="flex flex-col gap-4 mb-8">
+        <div class="flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-gray-900">实习简历</h1>
+          <div class="flex gap-4">
+            
+            <button @click="saveResume" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-md font-medium hover:bg-gray-300 transition-colors">
+              保存草稿
+            </button>
+            <button @click="exportPDF" class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors">
+              导出简历
+            </button>
+            <button @click="goToInterview" class="px-6 py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 transition-colors">
+              模拟面试
+            </button>
           </div>
         </div>
-        <p v-if="saveNotice" role="status" class="resume-save-notice" :class="{ 'is-error': saveFailed }">{{ saveNotice }}</p>
+        
         <!-- 语音输入状态 -->
         <div v-if="voiceInputStatus" class="p-4 rounded-md bg-gray-100 border border-gray-200">
           <div class="flex items-center gap-2">
@@ -24,11 +32,11 @@
           </div>
         </div>
       </div>
-
+      
       <!-- 左右分栏布局 -->
-      <div class="resume-columns">
+      <div class="flex flex-col lg:flex-row gap-8">
         <!-- 左侧编辑区域 -->
-        <div class="resume-editor" aria-label="简历编辑区">
+        <div class="lg:w-1/2 bg-white rounded-lg shadow-md p-6">
           <!-- 基本信息 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -78,7 +86,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 个人自评 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -93,9 +101,9 @@
             <div v-if="showSelfEvaluation" class="space-y-4">
               <div class="border border-gray-200 rounded-md p-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">编辑内容（支持 Markdown 语法）</label>
-                <textarea
-                  v-model="resume.self_evaluation"
-                  rows="6"
+                <textarea 
+                  v-model="resume.self_evaluation" 
+                  rows="6" 
                   placeholder="例如：&#10;- 熟练掌握 Java/Python&#10;- 具备良好的团队协作能力&#10;- 热爱技术，持续学习"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 ></textarea>
@@ -103,7 +111,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 教育背景 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -153,7 +161,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 实习经历 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -205,7 +213,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 项目经验 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -265,7 +273,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 专业技能 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -280,9 +288,9 @@
             <div v-if="showSkills" class="space-y-4">
               <div class="border border-gray-200 rounded-md p-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">技能描述（支持 Markdown 语法）</label>
-                <textarea
-                  v-model="resume.skills"
-                  rows="4"
+                <textarea 
+                  v-model="resume.skills" 
+                  rows="4" 
                   placeholder="- 编程语言: Java, Python, Go&#10;- 框架: Spring Boot, Vue3, React&#10;- 工具: Git, Docker, Kubernetes&#10;- 数据库: MySQL, Redis, MongoDB"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                 ></textarea>
@@ -290,7 +298,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 证书认证 -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -347,12 +355,10 @@
             </div>
           </div>
         </div>
-
+        
         <!-- 右侧预览区域 -->
-        <div class="resume-preview" aria-label="简历预览">
-          <div class="resume-preview-heading"><strong>简历预览</strong><span>与左侧编辑内容同步</span></div>
-          <div class="resume-preview-scroll">
-          <div class="resume-paper">
+        <div class="lg:w-1/2">
+          <div class="bg-white rounded-lg shadow-md p-8 border border-gray-200">
             <!-- 预览头部 -->
             <div class="border-b border-gray-200 pb-4 mb-6 flex items-start">
               <div class="w-20 h-20 border border-gray-300 flex-shrink-0 overflow-hidden mr-4">
@@ -368,7 +374,7 @@
                 </div>
               </div>
             </div>
-
+            
             <!-- 个人自评预览 -->
             <div v-if="resume.self_evaluation" class="mb-6">
               <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -377,7 +383,7 @@
               </h3>
               <div class="prose prose-sm max-w-none text-gray-700" v-html="renderedSelfEvaluation"></div>
             </div>
-
+            
             <!-- 教育背景预览 -->
             <div v-if="resume.education.length > 0" class="mb-6">
               <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -392,7 +398,7 @@
                 <p class="text-gray-600 text-sm">{{ edu.major || '专业' }}{{ edu.degree ? ' | ' + edu.degree : '' }}</p>
               </div>
             </div>
-
+            
             <!-- 实习经历预览 -->
             <div v-if="resume.experience.length > 0" class="mb-6">
               <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -409,7 +415,7 @@
                 <div v-else class="text-gray-400 text-sm italic">工作描述</div>
               </div>
             </div>
-
+            
             <!-- 项目经验预览 -->
             <div v-if="resume.projects.length > 0" class="mb-6">
               <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -430,7 +436,7 @@
                 <div v-if="project.description" class="mt-2 prose prose-sm max-w-none text-gray-700" v-html="renderMarkdown(project.description)"></div>
               </div>
             </div>
-
+            
             <!-- 专业技能预览 -->
             <div v-if="resume.skills" class="mb-6">
               <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -439,7 +445,7 @@
               </h3>
               <div class="prose prose-sm max-w-none text-gray-700" v-html="renderMarkdown(resume.skills)"></div>
             </div>
-
+            
             <!-- 证书认证预览 -->
             <div v-if="resume.certificates && resume.certificates.length > 0" class="mb-6">
               <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
@@ -456,7 +462,6 @@
               </div>
             </div>
           </div>
-          </div>
         </div>
       </div>
     </main>
@@ -471,7 +476,7 @@ import { marked } from 'marked'
 // 设置为同步解析
 marked.setOptions({ async: false })
 
-import api, { resumeAPI } from '@/api'
+import api from '@/api'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
@@ -495,9 +500,6 @@ const voiceInputText = ref('')
 const voiceInputStatus = ref('')
 const recognition = ref(null)
 const isProcessing = ref(false)
-const isSaving = ref(false)
-const saveNotice = ref('')
-const saveFailed = ref(false)
 
 const resume = ref({
   avatar_url: null,
@@ -597,26 +599,26 @@ const loadResume = async () => {
         console.error('解析本地存储数据失败:', parseError)
       }
     }
-
+    
     // 然后尝试从API加载数据
     try {
-      const data = await resumeAPI.get()
+      const data = await api.get('/resumes/my/')
       console.log('API返回的数据:', data)
       if (data) {
         Object.assign(resume.value, {
-          avatar_url: data.avatar_url ?? null,
-          name: data.name ?? '',
-          target_position: data.target_position ?? '',
-          phone: data.phone ?? '',
-          email: data.email ?? '',
-          address: data.address ?? '',
-          self_evaluation: data.self_evaluation ?? '',
-          skills: data.skills ?? '',
-          education: data.education ?? [],
-          experience: data.experience ?? [],
-          projects: data.projects ?? [],
-          certificates: data.certificates ?? [],
-          awards: data.awards ?? []
+          avatar_url: data.avatar_url || resume.value.avatar_url,
+          name: data.name || resume.value.name,
+          target_position: data.target_position || resume.value.target_position,
+          phone: data.phone || resume.value.phone,
+          email: data.email || resume.value.email,
+          address: data.address || resume.value.address,
+          self_evaluation: data.self_evaluation || resume.value.self_evaluation,
+          skills: data.skills || resume.value.skills,
+          education: data.education && data.education.length > 0 ? data.education : resume.value.education,
+          experience: data.experience && data.experience.length > 0 ? data.experience : resume.value.experience,
+          projects: data.projects || resume.value.projects,
+          certificates: data.certificates || resume.value.certificates,
+          awards: data.awards || resume.value.awards
         })
         // 将API数据保存到本地存储
         localStorage.setItem('resume', JSON.stringify(resume.value))
@@ -637,7 +639,7 @@ const loadResume = async () => {
       }
     }
   }
-
+  
   // 初始化所有数组字段
   initializeResume()
 }
@@ -649,35 +651,39 @@ const triggerAvatarUpload = () => {
 const handleAvatarChange = async (event) => {
   const file = event.target.files[0]
   if (!file) return
-
+  
   // 验证文件类型
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     alert('只支持 JPEG, PNG, GIF, WEBP 格式的图片')
     return
   }
-
+  
   // 验证文件大小 (最大 5MB)
   if (file.size > 5 * 1024 * 1024) {
     alert('图片大小不能超过 5MB')
     return
   }
-
+  
   // 预览图片
   const reader = new FileReader()
   reader.onload = (e) => {
     avatarPreview.value = e.target.result
   }
   reader.readAsDataURL(file)
-
+  
   // 上传图片
   uploadingAvatar.value = true
   try {
     const formData = new FormData()
     formData.append('avatar', file)
-
-    const response = await resumeAPI.uploadAvatar(formData)
-
+    
+    const response = await api.post('/resumes/upload_avatar/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
     console.log('上传响应:', response)
     if (response && response.avatar_url) {
       resume.value.avatar_url = response.avatar_url
@@ -693,16 +699,16 @@ const handleAvatarChange = async (event) => {
   } finally {
     uploadingAvatar.value = false
   }
-
+  
   // 清空 input
   event.target.value = ''
 }
 
 const removeAvatar = async () => {
   if (!confirm('确定要删除头像吗？')) return
-
+  
   try {
-    await resumeAPI.deleteAvatar()
+    await api.delete('/resumes/delete_avatar/')
     resume.value.avatar_url = null
     avatarPreview.value = null
     alert('头像删除成功！')
@@ -774,10 +780,6 @@ const removeCertificate = (index) => {
 }
 
 const saveResume = async () => {
-  if (isSaving.value) return
-  isSaving.value = true
-  saveFailed.value = false
-  saveNotice.value = ''
   try {
     // 字段归一化处理
     const normalizeData = () => {
@@ -790,7 +792,7 @@ const saveResume = async () => {
         description: edu.description || '',
         sort: index
       }))
-
+      
       const experience = (resume.value.experience || []).filter(exp => exp.company && exp.position && exp.period).map((exp, index) => ({
         ...exp,
         company: exp.company || '',
@@ -799,7 +801,7 @@ const saveResume = async () => {
         description: exp.description || '',
         sort: index
       }))
-
+      
       const projects = (resume.value.projects || []).filter(project => project.name && project.role && project.period).map((project, index) => ({
         ...project,
         name: project.name || '',
@@ -809,7 +811,7 @@ const saveResume = async () => {
         description: project.description || '',
         sort: index
       }))
-
+      
       const certificates = (resume.value.certificates || []).filter(cert => cert.name && cert.issuer && cert.period).map((cert, index) => ({
         ...cert,
         name: cert.name || '',
@@ -818,7 +820,7 @@ const saveResume = async () => {
         description: cert.description || '',
         sort: index
       }))
-
+      
       const awards = (resume.value.awards || []).filter(award => award.name && award.issuer && award.period).map((award, index) => ({
         ...award,
         name: award.name || '',
@@ -827,7 +829,7 @@ const saveResume = async () => {
         description: award.description || '',
         sort: index
       }))
-
+      
       return {
         avatar_url: resume.value.avatar_url || null,
         name: resume.value.name || '',
@@ -844,29 +846,21 @@ const saveResume = async () => {
         awards
       }
     }
-
+    
     const data = normalizeData()
     console.log('保存的数据:', data)
-
-    const response = await resumeAPI.save(data)
+    
+    const response = await api.post('/resumes/my/', data)
     console.log('保存响应:', response)
-
+    
     // 保存成功后，重新加载数据验证
     await loadResume()
-    saveNotice.value = '简历已同步到账号，可在个人中心继续查看。'
+    alert('简历保存成功！')
   } catch (error) {
     console.error('保存简历失败:', error)
-    saveFailed.value = true
-    if (error.response?.status === 401) {
-      saveNotice.value = '登录已失效，请重新登录后保存。'
-      return
-    }
     // 如果API失败，保存到本地存储
     localStorage.setItem('resume', JSON.stringify(resume.value))
-    const reason = error.response?.data?.detail || error.response?.data?.error
-    saveNotice.value = reason ? `未同步到服务器：${reason}。当前内容仅保存在本机。` : '未同步到服务器，当前内容仅保存在本机。请检查网络或登录状态后重试。'
-  } finally {
-    isSaving.value = false
+    alert('简历已保存到本地！')
   }
 }
 
@@ -886,19 +880,19 @@ const imageToBase64 = async (url) => {
     const response = await fetch(absoluteUrl)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const blob = await response.blob()
-
+    
     // 如果是 WebP 格式，转换为 PNG 以确保兼容性
     if (url.endsWith('.webp') || blob.type === 'image/webp') {
       return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
         const img = new Image()
-
+        
         img.onload = () => {
           canvas.width = img.width
           canvas.height = img.height
           ctx.drawImage(img, 0, 0)
-
+          
           try {
             const pngDataUrl = canvas.toDataURL('image/png')
             resolve(pngDataUrl)
@@ -906,12 +900,12 @@ const imageToBase64 = async (url) => {
             reject(error)
           }
         }
-
+        
         img.onerror = reject
         img.src = URL.createObjectURL(blob)
       })
     }
-
+    
     // 其他格式直接转换为 base64
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -969,9 +963,9 @@ const exportPDF = async () => {
         <meta charset="UTF-8">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: Arial, sans-serif;
-            background-color: #ffffff;
+          body { 
+            font-family: Arial, sans-serif; 
+            background-color: #ffffff; 
             padding: 32px;
             width: 210mm;
           }
@@ -1117,7 +1111,7 @@ const exportPDF = async () => {
       height: iframe.contentDocument.body.scrollHeight,
       imageTimeout: 5000
     })
-
+    
     // 调试：保存 canvas 为图片，查看是否包含头像
     const canvasUrl = canvas.toDataURL('image/png')
     console.log('Canvas 生成成功，包含头像:', canvasUrl.substring(0, 100) + '...')
@@ -1190,12 +1184,12 @@ const initializeRecognition = () => {
     recognition.value.continuous = false
     recognition.value.interimResults = true
     recognition.value.lang = 'zh-CN'
-
+    
     recognition.value.onstart = () => {
       isListening.value = true
       voiceInputStatus.value = '正在聆听...'
     }
-
+    
     recognition.value.onresult = (event) => {
       let transcript = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -1203,13 +1197,13 @@ const initializeRecognition = () => {
       }
       voiceInputText.value = transcript
     }
-
+    
     recognition.value.onend = () => {
       isListening.value = false
       voiceInputStatus.value = '语音输入已结束'
       processVoiceInput()
     }
-
+    
     recognition.value.onerror = (event) => {
       isListening.value = false
       voiceInputStatus.value = `错误: ${event.error}`
@@ -1225,7 +1219,7 @@ const startVoiceInput = () => {
   if (!recognition.value) {
     initializeRecognition()
   }
-
+  
   if (recognition.value) {
     voiceInputText.value = ''
     voiceInputStatus.value = '准备开始聆听...'
@@ -1244,16 +1238,16 @@ const processVoiceInput = async () => {
     voiceInputStatus.value = '没有检测到语音输入'
     return
   }
-
+  
   isProcessing.value = true
   voiceInputStatus.value = '正在分析语音内容...'
-
+  
   try {
     // 调用后端API处理语音输入
     const response = await api.post('/ai/voice-to-resume/', {
       voice_text: voiceInputText.value
     })
-
+    
     if (response.success) {
       // 更新简历数据
       const generatedResume = response.data
@@ -1261,7 +1255,7 @@ const processVoiceInput = async () => {
         // 合并生成的简历数据到当前简历
         Object.assign(resume.value, generatedResume)
         voiceInputStatus.value = '简历生成成功！'
-
+        
         // 显示成功提示
         setTimeout(() => {
           voiceInputStatus.value = ''
@@ -1288,7 +1282,7 @@ watch(
       console.error('保存到本地存储失败:', error)
     }
   },
-  { deep: true }
+  { deep: true, immediate: true }
 )
 
 onMounted(async () => {
@@ -1297,206 +1291,5 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.resume-save-notice { padding: 12px 14px; border: 1px solid #b8dbd4; border-radius: 6px; background: #f0faf7; color: #247360; font-size: 13px; line-height: 1.8; }
-.resume-save-notice.is-error { border-color: #edc7c1; background: #fff4f2; color: #b42318; }
-.resume-page {
-  background: var(--career-bg);
-  padding: 28px 0 36px;
-}
-.resume-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 24px;
-}
-.resume-toolbar h1 {
-  color: var(--career-text);
-  font-size: 27px;
-  font-weight: 600;
-  margin: 12px 0 9px;
-  letter-spacing: -.025em;
-}
-.resume-subtitle {
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--career-muted);
-  max-width: 580px;
-}
-.resume-actions {
-  display: flex;
-  flex: none;
-  gap: 8px;
-  padding-bottom: 3px;
-}
-.resume-actions .career-button {
-  font-size: 13px;
-  padding: 9px 13px;
-}
-.resume-heading {
-  margin-bottom: 24px;
-}
-.resume-heading > div + div {
-  margin-top: 16px;
-}
-.resume-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
-.resume-editor {
-  min-width: 0;
-  max-height: calc(100vh - 260px);
-  min-height: 480px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 24px;
-  background: #fff;
-  border: 1px solid var(--career-border);
-  border-radius: 8px;
-  scrollbar-gutter: stable;
-}
-.resume-editor > div {
-  margin-bottom: 28px;
-  padding-bottom: 26px;
-  border-bottom: 1px solid #edf0f4;
-}
-.resume-editor > div:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-.resume-editor h2 {
-  color: #344054;
-  font-size: 16px;
-  font-weight: 600;
-}
-.resume-editor h2 > span {
-  display: none;
-}
-.resume-editor label {
-  color: #586577;
-  font-size: 13px;
-  font-weight: 400;
-}
-.resume-editor input, .resume-editor textarea {
-  border-color: #d0d9e5;
-  border-radius: 5px;
-  font-size: 13px;
-  background: #fff;
-  color: #27374d;
-}
-.resume-editor input {
-  min-height: 36px;
-  padding: 8px 10px;
-}
-.resume-editor textarea {
-  line-height: 1.75;
-}
-.resume-editor .text-xs {
-  font-size: 12px;
-  line-height: 1.7;
-}
-.resume-preview {
-  min-width: 0;
-  border: 1px solid var(--career-border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #edf1f6;
-}
-.resume-preview-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  padding: 14px 18px;
-  background: #fff;
-  border-bottom: 1px solid var(--career-border);
-  font-size: 13px;
-  color: #475467;
-}
-.resume-preview-heading strong {
-  font-weight: 500;
-}
-.resume-preview-heading span {
-  font-size: 12px;
-  color: var(--career-muted);
-}
-.resume-preview-scroll {
-  max-height: calc(100vh - 309px);
-  min-height: 431px;
-  padding: 20px;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-.resume-paper {
-  min-height: 680px;
-  padding: 30px 26px;
-  background: #fff;
-  box-shadow: 0 3px 12px #1d29390d;
-  font-size: 13px;
-  line-height: 1.7;
-  overflow-wrap: anywhere;
-}
-.resume-paper h2 {
-  font-size: 23px;
-  color: #1d2939;
-}
-.resume-paper h3 {
-  font-size: 14px;
-  border-bottom: 1px solid #d6dee9;
-  padding-bottom: 7px;
-  font-weight: 600;
-}
-.resume-paper h3 > span {
-  display: none;
-}
-.resume-paper .text-sm {
-  font-size: 12px;
-}
-.resume-paper :deep(ul), .resume-paper :deep(ol) {
-  padding-left: 18px;
-}
-.resume-paper :deep(ul) {
-  list-style: disc;
-}
-.resume-paper :deep(ol) {
-  list-style: decimal;
-}
-.resume-paper :deep(p) {
-  margin-block: 5px;
-}
-.resume-paper :deep(li) {
-  margin-block: 3px;
-}
-@media (max-width: 1100px) {
-  .resume-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .resume-editor {
-    max-height: calc(100vh - 310px);
-  }
-  .resume-preview-scroll {
-    max-height: calc(100vh - 359px);
-  }
-}
-@media (max-width: 760px) {
-  .resume-columns {
-    grid-template-columns: 1fr;
-  }
-  .resume-editor, .resume-preview-scroll {
-    max-height: none;
-  }
-  .resume-editor {
-    padding: 18px;
-  }
-  .resume-actions {
-    flex-wrap: wrap;
-  }
-  .resume-paper {
-    padding: 24px 20px;
-  }
-}
+/* 可添加自定义样式 */
 </style>
