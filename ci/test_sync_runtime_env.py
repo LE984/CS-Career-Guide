@@ -130,9 +130,20 @@ class RemoteTests(unittest.TestCase):
 
     def config(self, values=None, component='backend', topology=True):
         return {'services': {'backend': {'environment': VALUES if values is None else values,
-                                        'image': IMAGES['backend']},
-                             'frontend': {'image': IMAGES['frontend'], **({} if topology else {'ports': ['80:8080']})},
-                             'gateway': {}}}
+                                        'image': IMAGES['backend'], 'networks': {'app-net': {}},
+                                        **({} if topology else {'ports': [{'target': 8000}]})},
+                             'frontend': {'image': IMAGES['frontend'], 'networks': {'app-net': {}},
+                                          **({} if topology else {'ports': ['80:8080']})},
+                             'gateway': {'networks': {'app-net': {}},
+                                         'ports': [{'target': 8080}],
+                                         'volumes': [{'type': 'bind',
+                                             'source': str(Path('/tmp') / 'nginx.conf'),
+                                             'target': '/etc/nginx/nginx.conf', 'read_only': True}]}}}
+
+    def real_topology(self, path, values=None):
+        config = self.config(values)
+        config['services']['gateway']['volumes'][0]['source'] = str(path.parent / 'nginx.conf')
+        return config
 
     def test_validate_pull_replace_recreate_and_preserve_other_component(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -143,7 +154,7 @@ class RemoteTests(unittest.TestCase):
             def compose(command, **kwargs):
                 calls.append(command)
                 if 'config' in command:
-                    return self.config()
+                    return self.real_topology(path)
                 if 'pull' in command:
                     self.assertNotIn(b'LLM_MODEL', path.read_bytes())
                 if 'up' in command:
@@ -171,7 +182,7 @@ class RemoteTests(unittest.TestCase):
             calls = []
             def compose(command, **kwargs):
                 calls.append(command)
-                return self.config() if 'config' in command else None
+                return self.real_topology(path) if 'config' in command else None
             with patch('sync_runtime_env.compose_run', side_effect=compose), patch('builtins.print'):
                 apply_remote(str(path), {}, 'frontend', IMAGES['frontend'])
             self.assertEqual(path.read_bytes(), original)
@@ -190,8 +201,8 @@ class RemoteTests(unittest.TestCase):
                 original = path.read_bytes()
                 def compose(command, **kwargs):
                     if 'config' in command:
-                        return self.config(values={} if failure == 'mapping' else VALUES,
-                                           topology=failure != 'topology')
+                        return (self.real_topology(path, values={} if failure == 'mapping' else VALUES)
+                                if failure != 'topology' else self.config(VALUES, topology=False))
                     raise RuntimeError('fake pull failure')
                 with patch('sync_runtime_env.compose_run', side_effect=compose), self.assertRaises((ValueError, RuntimeError)):
                     apply_remote(str(path), VALUES, 'backend', IMAGES['backend'])
@@ -205,7 +216,7 @@ class RemoteTests(unittest.TestCase):
             path = self.prepare(directory)
             def compose(command, **kwargs):
                 if 'config' in command:
-                    return self.config()
+                    return self.real_topology(path)
                 if 'up' in command:
                     raise RuntimeError('fake unhealthy service')
             with patch('sync_runtime_env.compose_run', side_effect=compose), self.assertRaises(RuntimeError):
@@ -230,7 +241,7 @@ class RemoteTests(unittest.TestCase):
                 def compose(command, **kwargs):
                     calls.append(command)
                     if 'config' in command:
-                        return self.config()
+                        return self.real_topology(path)
                     if 'pull' in command:
                         path.write_bytes(b'concurrent=keep\n')
                 with patch('sync_runtime_env.compose_run', side_effect=compose), self.assertRaises(ValueError):
@@ -245,7 +256,7 @@ class RemoteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self.prepare(directory)
             original, inode = path.read_bytes(), path.stat().st_ino
-            with patch('sync_runtime_env.compose_run', side_effect=lambda cmd, **kw: self.config() if 'config' in cmd else None), patch('builtins.print'):
+            with patch('sync_runtime_env.compose_run', side_effect=lambda cmd, **kw: self.real_topology(path) if 'config' in cmd else None), patch('builtins.print'):
                 apply_remote(str(path), {}, 'backend', IMAGES['backend'])
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(path.stat().st_ino, inode)
@@ -258,6 +269,20 @@ class RemoteTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         apply_remote(str(path), values, 'backend', IMAGES['backend'])
                     compose.assert_not_called()
+
+    def test_gateway_ports_mount_and_network_must_match_split_topology(self):
+        for failure in ('mount', 'network', 'port', 'backend-port'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                path = self.prepare(directory)
+                config = self.real_topology(path)
+                if failure == 'mount': config['services']['gateway']['volumes'] = []
+                elif failure == 'network': config['services']['gateway']['networks'] = {'other': {}}
+                elif failure == 'port': config['services']['gateway']['ports'] = [{'target': 80}]
+                else: config['services']['backend']['ports'] = [{'target': 8000}]
+                with patch('sync_runtime_env.compose_run', return_value=config) as compose:
+                    with self.assertRaises(ValueError):
+                        apply_remote(str(path), {}, 'frontend', IMAGES['frontend'])
+                self.assertEqual(compose.call_count, 1)
 
 
 

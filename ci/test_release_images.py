@@ -228,6 +228,9 @@ class WorkflowGateTests(unittest.TestCase):
         self.assertIn("outputs.backend == 'true'", integration['if'])
         self.assertIn("outputs.frontend == 'true'", integration['if'])
         self.assertIn('ci/gateway_smoke.py', str(integration['steps']))
+        build_args = next(s['with']['build-args'] for s in self.workflow['jobs']['frontend-image']['steps']
+                          if s.get('uses', '').startswith('docker/build-push-action@'))
+        self.assertIn("VITE_COMPANY_API_BASE_URL=${{ vars.VITE_COMPANY_API_BASE_URL || '/company-api' }}", build_args)
 
     def test_registry_secrets_and_rebuilds_are_confined(self):
         for component in ('backend', 'frontend'):

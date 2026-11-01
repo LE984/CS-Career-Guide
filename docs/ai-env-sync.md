@@ -20,7 +20,7 @@ frontend Job 只接收 SSH 字段、组件名与公开 digest，不注入任何�
 
 Linux Python 3、Docker、支持 JSON config / --wait / --pull never 的 Compose v2。部署账号能访问私有 ACR；脚本使用其默认 Docker CLI 凭据，DOCKER_CONFIG_DIR 只负责 Watchtower 挂载，不自动影响 CLI。
 
-现存 .env 须为绝对路径、600、部署账号拥有、普通文件、无软/硬链接；父目录由该账号拥有，不可组/其他人写入。基础 docker-compose.yml 不可为软链接，必须已安装新 gateway、去掉 frontend 的 ports/volumes/depends_on。脚本不上传、不覆盖服务器 Compose 或 nginx.conf，不迁移卷。
+现存 .env 须为绝对路径、600、部署账号拥有、普通文件、无软/硬链接；父目录由该账号拥有，不可组/其他人写入。基础 docker-compose.yml 不可为软链接，必须已安装新 gateway、去掉 frontend 的 ports/volumes/depends_on。校验还要求 gateway 发布8080、只读绑定同目录nginx.conf、三端共享网络且backend不发布端口；不满足时在pull前拒绝。脚本不上传、不覆盖服务器 Compose 或 nginx.conf，不迁移卷。
 
 后端合并不接受多行/重复受管键/模糊 dotenv 或含控制字符、单引号、反斜杠的值。SSH stdin 传密钥，绝不进入 argv、Artifact、镜像或日志。Compose/SSH 原始诊断隐藏；请在服务器私下排查。
 

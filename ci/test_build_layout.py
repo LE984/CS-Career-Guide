@@ -53,6 +53,10 @@ class BuildLayoutTests(unittest.TestCase):
             self.assertIn(name + '_temp_path /tmp/', gateway)
         self.assertNotIn('/var/log/nginx/', gateway)
 
+    def test_company_api_default_keeps_the_legacy_path(self):
+        dockerfile = (ROOT / 'frontend/Dockerfile').read_text()
+        self.assertIn('ARG VITE_COMPANY_API_BASE_URL=/company-api', dockerfile)
+
 
 if __name__ == '__main__':
     unittest.main()

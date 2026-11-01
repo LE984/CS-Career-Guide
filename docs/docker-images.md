@@ -19,7 +19,7 @@ docker build -f backend/Dockerfile -t cs-career-guide-backend:local backend
 
 ## 公开构建参数
 
-VITE_API_BASE_URL 默认 /api；VITE_COMPANY_API_BASE_URL 留空沿用应用原有回退；VITE_ENABLE_TTS 默认 False。工作流从同名 Variables 显式传入，完整 API URL 需含 /api。VITE_* 会写入浏览器，不得传 Key/Token/密码；运行时改服务器 .env 不能改变已编译静态包。
+VITE_API_BASE_URL 默认 /api；VITE_COMPANY_API_BASE_URL 默认 /company-api，保持原 Docker 构建路径；VITE_ENABLE_TTS 默认 False。工作流从同名 Variables 显式传入，完整 API URL 需含 /api。VITE_* 会写入浏览器，不得传 Key/Token/密码；运行时改服务器 .env 不能改变已编译静态包。
 
 GLB 与 VAD ONNX/WASM/worklet 为公开运行资源，必须保留。根 `.dockerignore` 不再控制这两个上下文；各组件的 `.dockerignore` 排除 .env 及嵌套环境文件、私钥、依赖缓存、产物和本地运行数据。仅 .env.example 可保留；backend 的 SQLite、LanceDB、media/staticfiles 等不进入镜像。源码静态目录与迁移仍保留。
 

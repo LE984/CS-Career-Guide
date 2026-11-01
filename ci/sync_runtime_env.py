@@ -165,8 +165,20 @@ def apply_remote(env_path, values, component='backend', image=None):
             raise ValueError('Server Compose must pass managed AI settings without shell overrides')
         if image is not None:
             frontend = services.get('frontend', {})
+            gateway = services.get('gateway', {})
+            gateway_mounts = gateway.get('volumes', [])
+            expected_config = (str(path.parent / 'nginx.conf'), '/etc/nginx/nginx.conf')
+            config_mounts = [mount for mount in gateway_mounts
+                             if (mount.get('source'), mount.get('target')) == expected_config
+                             and mount.get('type') == 'bind' and mount.get('read_only') is True]
+            shared_networks = set(services.get('backend', {}).get('networks', {})) & \
+                set(frontend.get('networks', {})) & set(gateway.get('networks', {}))
+            gateway_ports = gateway.get('ports', [])
             if ('gateway' not in services or frontend.get('depends_on') or frontend.get('volumes')
-                    or frontend.get('ports') or services.get(component, {}).get('image') != image):
+                    or frontend.get('ports') or services.get(component, {}).get('image') != image
+                    or not config_mounts or not shared_networks or not gateway_ports
+                    or not any(str(port.get('target')) == '8080' for port in gateway_ports)
+                    or services.get('backend', {}).get('ports')):
                 raise ValueError('Install and review split gateway topology before enabling component deployment')
         # Pull only the selected image. Failures preserve both the env and pin.
         compose_run([*base, '--env-file', str(env_candidate), 'pull', component])

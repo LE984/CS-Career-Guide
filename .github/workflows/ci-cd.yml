@@ -355,7 +355,7 @@ jobs:
           file: ./frontend/Dockerfile
           build-args: |
             VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || '/api' }}
-            VITE_COMPANY_API_BASE_URL=${{ vars.VITE_COMPANY_API_BASE_URL || '' }}
+            VITE_COMPANY_API_BASE_URL=${{ vars.VITE_COMPANY_API_BASE_URL || '/company-api' }}
             VITE_ENABLE_TTS=${{ vars.VITE_ENABLE_TTS || 'False' }}
           platforms: linux/amd64
           push: false
