@@ -1,18 +1,77 @@
 <template>
-  <div class="career-auth-page">
-    <div class="career-auth-layout">
-      <aside class="career-auth-intro"><p class="career-eyebrow">CS CAREER GUIDE</p><h1>把走过的路，<br /><span>变成下一次的起点</span></h1><p>整理自己的背景与经历，找到适合的方向。每一次准备，都从一件具体的小事开始。</p><div class="career-auth-roadmap"><p>你的职业准备路径</p><div><i></i><span>了解方向<small>比较就业、深造与其他选择</small></span></div><div><i></i><span>整理经历<small>把课程、项目与实践写进简历</small></span></div><div><i></i><span>练习表达<small>通过模拟面试，讲清自己的思路</small></span></div></div><p class="career-auth-note">从自己的真实经历开始，一步步把准备做扎实。</p></aside>
-      <section class="career-auth-card" aria-labelledby="auth-title">
-        <p class="career-eyebrow">开启你的准备</p><h2 id="auth-title">创建你的账号</h2><p class="career-auth-description">填写账号信息，开始整理你的职业计划。</p>
-        <form @submit.prevent="register">
-          <div class="career-auth-field"><label for="auth-username">用户名</label><input id="auth-username" v-model="form.username" type="text" autocomplete="username" placeholder="请输入用户名" required /></div>
-          <div class="career-auth-field"><label for="auth-password">密码</label><input id="auth-password" v-model="form.password" type="password" autocomplete="new-password" placeholder="设置你的登录密码" required /></div>
-          <div class="career-auth-field"><label for="auth-confirm-password">确认密码</label><input id="auth-confirm-password" v-model="form.confirm_password" type="password" autocomplete="new-password" placeholder="再次输入密码" required /></div>
-          <div v-if="error" class="career-auth-error" role="alert">{{ error }}</div>
-          <button type="submit" class="career-button career-button-primary career-auth-submit" :disabled="loading"><span v-if="loading" class="loading loading-spinner loading-xs"></span>{{ loading ? '创建中…' : '创建账号' }}</button>
-          <p class="career-auth-switch">已有账号？<router-link :to="{ path: '/login', query: { redirect: safeRedirect(route.query.redirect) } }" class="career-link">立即登录</router-link></p>
-        </form>
-      </section>
+  <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-base-200">
+    <!-- Background Elements -->
+    <div class="absolute inset-0 bg-gradient-to-r from-white to-purple-100 dark:from-gray-900 dark:to-gray-800 pointer-events-none"></div>
+    <div class="absolute top-[-10%] left-[-5%] w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse-slow delay-1000 pointer-events-none"></div>
+
+    <div class="w-full max-w-md p-8 glass-card relative z-10 animate-fade-in-up">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent to-primary mb-2">创建账户</h1>
+        <p class="text-base-content/60">加入我们，规划你的职业未来</p>
+      </div>
+      
+      <form @submit.prevent="register" class="space-y-6">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">用户名</span>
+          </label>
+          <input
+            v-model="form.username"
+            type="text"
+            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            placeholder="请输入用户名"
+            required
+          />
+        </div>
+        
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">密码</span>
+          </label>
+          <input
+            v-model="form.password"
+            type="password"
+            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            placeholder="请输入密码"
+            required
+          />
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">确认密码</span>
+          </label>
+          <input
+            v-model="form.confirm_password"
+            type="password"
+            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            placeholder="请确认密码"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary w-full rounded-full shadow-glow hover:shadow-lg transition-all duration-300"
+          :disabled="loading"
+        >
+          <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+          {{ loading ? '注册中...' : '立即注册' }}
+        </button>
+
+        <div class="text-center text-sm">
+          <span class="text-base-content/70">已有账号？</span>
+          <router-link :to="{ path: '/login', query: { redirect: safeRedirect(route.query.redirect) } }" class="link link-primary font-medium ml-1">立即登录</router-link>
+        </div>
+      </form>
+      
+      <div v-if="error" class="mt-6 p-4 rounded-lg bg-red-50 text-red-600 border border-red-100 flex items-center gap-2 animate-shake">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        </svg>
+        <span>{{ error }}</span>
+      </div>
     </div>
   </div>
 </template>

@@ -1,227 +1,240 @@
 <template>
-  <div class="career-paths-page">
-    <main class="career-container">
-      <header class="paths-heading">
-        <div><p class="career-eyebrow">职业路径 / 发展方向</p><h1>五条路放在一起，<br />先比较，再决定</h1><p>从你想要的学习和工作方式出发，了解不同方向需要准备什么。</p></div>
-        <router-link to="/career-paths/employment/self-introduction" class="career-button career-button-primary">梳理我的背景 →</router-link>
+  <div class="bg-[#0f1115] text-white min-h-screen selection:bg-secondary selection:text-white">
+    <main class="pt-32 pb-24 px-8 max-w-7xl mx-auto">
+      <!-- Hero Header -->
+      <header class="mb-20 text-center">
+        <div class="inline-block px-4 py-1.5 mb-6 rounded-full border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+          Professional Navigation System
+        </div>
+        <h1 class="text-6xl md:text-8xl font-extrabold tracking-tighter text-white mb-6">
+          未来 <span class="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-tertiary-fixed-dim">职业路径</span>
+        </h1>
+        <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+          为计算机科学精英定制。通过多维度的路径分析与艺术化的资源呈现，助力你在数字浪潮中精准定位，构建巅峰职业蓝图。
+        </p>
       </header>
-      <div class="paths-layout">
-        <section class="paths-table" aria-label="发展方向比较">
-          <div class="paths-table-heading"><span>发展方向</span><span>重点准备</span><span>了解详情</span></div>
-          <article v-for="(direction,index) in careerDirections" :key="direction.id" class="path-item">
-            <div class="path-title"><span>0{{ index + 1 }}</span><div><h2>{{ direction.name }}</h2><p>{{ direction.tags.join(' / ') }}</p></div></div>
-            <div class="path-description"><h3>{{ direction.focus }}</h3><p>{{ direction.description }}</p></div>
-            <router-link :to="'/career-paths/' + direction.id" class="career-link">查看方向 →</router-link>
-          </article>
-          <p class="paths-note">具体报考、征集与招聘要求，以相关单位发布的信息为准。</p>
+      <!-- Poster Grid Layout -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <!-- Section 1: Employment (The Main Poster) -->
+        <section class="md:col-span-12 relative h-[600px] rounded-[2rem] overflow-hidden group mb-6">
+          <img alt="职业路径就业" class="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-1000" src="../../assets/images/职业路径就业.png"/>
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-transparent"></div>
+          <div class="relative z-10 h-full p-12 flex flex-col justify-end">
+            <div class="flex items-center gap-3 mb-6">
+              <span class="w-12 h-0.5 bg-secondary"></span>
+              <span class="text-xs font-bold uppercase tracking-[0.4em] text-secondary">The Major Path</span>
+            </div>
+            <div class="relative mb-8">
+              <div class="flex">
+                <h2 class="text-7xl md:text-9xl font-black tracking-tighter leading-none mb-4 opacity-90">
+                  互联网
+                </h2>
+                <h2 class="text-7xl md:text-9xl font-black tracking-tighter leading-none mb-4 opacity-90 text-gray-100">
+                  就业
+                </h2>
+              </div>
+              <div class="flex flex-wrap gap-4 text-sm font-bold uppercase tracking-widest text-slate-300">
+                <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span> TOP TIER COMPANIES</span>
+                <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> HIGH SALARY PACKAGES</span>
+                <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> TECH LEADERSHIP</span>
+              </div>
+            </div>
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-8">
+              <p class="max-w-xl text-slate-300 text-lg leading-relaxed">
+                探索顶尖技术岗位的入职路径。从算法工程师到架构师，我们为您整理了行业最前沿的技能栈要求与职业成长阶梯。这里是开启职业生涯的第一步
+              </p>
+              <router-link to="/career-paths/employment/self-introduction" class="group relative overflow-hidden bg-secondary text-on-secondary px-12 py-5 rounded-xl font-headline font-bold text-lg shadow-[0_10px_30px_rgba(70,72,212,0.3)] hover:shadow-[0_15px_40px_rgba(70,72,212,0.4)] transition-all active:scale-95 flex items-center gap-3">
+                <span class="material-symbols-outlined">Just do it</span>
+                <span class="relative z-10 flex items-center gap-3">
+                  开始"自我评价"评估
+                </span>
+                <div class="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-container opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </router-link>
+            </div>
+          </div>
+          <!-- Overlay Value Props -->
+          <div class="absolute top-12 right-12 text-right hidden lg:block">
+            <div class="mb-4">
+              <div class="text-4xl font-black">100+</div>
+              <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cooperating Enterprises</div>
+            </div>
+            <div>
+              <div class="text-4xl font-black">98%</div>
+              <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Match Accuracy</div>
+            </div>
+          </div>
         </section>
-        <aside class="paths-aside"><h2>选择之前，先问自己</h2><ol><li><span>01</span><div><h3>我更期待怎样的下一阶段？</h3><p>进入工作、继续深造，还是探索其他发展方式。</p></div></li><li><span>02</span><div><h3>我现在能投入什么？</h3><p>看看自己的基础、时间和已有经历。</p></div></li><li><span>03</span><div><h3>下一步可以先做哪件事？</h3><p>从一份计划、一段项目经历或一次练习开始。</p></div></li></ol><router-link to="/career-evaluation" class="career-button">查看我的职业规划 →</router-link></aside>
+        <!-- Section 2: Civil Service -->
+        <section class="md:col-span-6 lg:col-span-3 poster-card group relative h-[500px] rounded-[2rem] overflow-hidden bg-[#1a1c23] border border-white/5">
+          <div class="inset-0 bg-gradient-to-br from-red-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div class="p-8 h-full flex flex-col">
+            <div class="mb-auto">
+              <div class="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-8 border border-red-500/20 overflow-hidden">
+                <img src="@/assets/images/考公.png" alt="考公" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="text-xs font-bold uppercase tracking-[0.3em] text-red-500 mb-2">Governmental Service</h3>
+              <h2 class="text-3xl font-extrabold text-gray-100 mb-4">考公板块</h2>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                "Serve the People" — 解读计算机类专业在国家及地方公务员考试中的岗位分布与竞争态势。
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer">招录简章</span>
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer">历年分数线</span>
+              </div>
+            </div>
+            <div class="mt-8 flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Learn More</span>
+              <router-link to="/career-paths/civil_service" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-red-500 transition-colors">
+                <span class="material-symbols-outlined text-sm">click</span>
+              </router-link>
+            </div>
+          </div>
+        </section>
+        <!-- Section 3: Graduate Entrance -->
+        <section class="md:col-span-6 lg:col-span-3 poster-card group relative h-[500px] rounded-[2rem] overflow-hidden bg-[#1a1c23] border border-white/5">
+          <div class="inset-0 bg-gradient-to-br from-blue-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div class="p-8 h-full flex flex-col">
+            <div class="mb-auto">
+              <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-8 border border-blue-500/20 overflow-hidden">
+                <img src="@/assets/images/考研.png" alt="考研" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="text-xs font-bold uppercase tracking-[0.3em] text-blue-500 mb-2">Master the Future</h3>
+              <h2 class="text-3xl font-extrabold text-gray-100 mb-4">考研板块</h2>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                深度解析CS学硕与专硕的研招趋势，提供院校专业排名与科研方向指南。
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors cursor-pointer">院校库</span>
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors cursor-pointer">导师导航</span>
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors cursor-pointer">真题库</span>
+              </div>
+            </div>
+            <div class="mt-8 flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Learn More</span>
+              <router-link to="/career-paths/postgraduate" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                <span class="material-symbols-outlined text-sm">click</span>
+              </router-link>
+            </div>
+          </div>
+        </section>
+        <!-- Section 4: Military -->
+        <section class="md:col-span-6 lg:col-span-3 poster-card group relative h-[500px] rounded-[2rem] overflow-hidden bg-[#1a1c23] border border-white/5">
+          <div class="inset-0 bg-gradient-to-br from-green-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div class="p-8 h-full flex flex-col">
+            <div class="mb-auto">
+              <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center mb-8 border border-green-500/20 overflow-hidden">
+                <img src="@/assets/images/入伍.png" alt="入伍" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="text-xs font-bold uppercase tracking-[0.3em] text-green-500 mb-2">Duty &amp; Honor</h3>
+              <h2 class="text-3xl font-extrabold text-gray-100 mb-4">入伍板块</h2>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                针对技术人才的强军计划，介绍计算机专业在国防现代化中的战略地位及入伍优待政策。
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-green-500/20 hover:text-green-400 transition-colors cursor-pointer">直招士官</span>
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-green-500/20 hover:text-green-400 transition-colors cursor-pointer">优待政策</span>
+              </div>
+            </div>
+            <div class="mt-8 flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Learn More</span>
+              <router-link to="/career-paths/military" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-green-500 transition-colors">
+                <span class="material-symbols-outlined text-sm">click</span>
+              </router-link>
+            </div>
+          </div>
+        </section>
+        <!-- Section 5: Entrepreneurship -->
+        <section class="md:col-span-6 lg:col-span-3 poster-card group relative h-[500px] rounded-[2rem] overflow-hidden bg-[#1a1c23] border border-white/5">
+          <div class="inset-0 bg-gradient-to-br from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div class="p-8 h-full flex flex-col">
+            <div class="mb-auto">
+              <div class="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-8 border border-purple-500/20 overflow-hidden">
+                <img src="@/assets/images/创业.png" alt="创业" class="w-full h-full object-cover"/>
+              </div>
+              <h3 class="text-xs font-bold uppercase tracking-[0.3em] text-purple-500 mb-2">Build The New</h3>
+              <h2 class="text-3xl font-extrabold text-gray-100 mb-4">创业板块</h2>
+              <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                对接科技创业孵化器，提供从项目打磨到投融资对接的专业资源，助力技术转化为商业价值。
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-purple-500/20 hover:text-purple-400 transition-colors cursor-pointer">融资指南</span>
+                <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:bg-purple-500/20 hover:text-purple-400 transition-colors cursor-pointer">办公空间</span>
+              </div>
+            </div>
+            <div class="mt-8 flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Learn More</span>
+              <router-link to="/career-paths/entrepreneurship" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-purple-500 transition-colors">
+                <span class="material-symbols-outlined text-sm">click</span>
+              </router-link>
+            </div>
+          </div>
+        </section>
       </div>
-      <section class="paths-tools"><div><h2>方向明确后，让准备更具体</h2><p>先把经历整理好，再了解岗位、练习表达。</p></div><div><router-link to="/resume" class="career-button">整理简历</router-link><router-link to="/company-reviews" class="career-button">了解企业与职位</router-link><router-link to="/interview" class="career-button">模拟面试 →</router-link></div></section>
+      <!-- Career Insights Callout -->
+      <div class="mt-10 rounded-[2.5rem] p-12 relative overflow-hidden" style="background-image: url('../../assets/images/就业.png'); background-size: cover; background-position: center;">
+        <div class="absolute inset-0 bg-black/10"></div>
+        
+        <div class="flex flex-col md:flex-row items-center gap-12 relative z-10">
+          <div class="w-full md:w-1/3 aspect-video rounded-3xl overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 shadow-2xl">
+            <img alt="就业" class="w-full h-full object-cover" src="@/assets/images/就业.jpg"/>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-6">
+              <span class="text-xs font-black uppercase tracking-[0.5em] text-white">Editor's Perspective</span>
+            </div>
+            <p class="text-2xl font-medium text-white leading-relaxed italic mb-8">
+              "预测职业路径的最佳方式是亲手创造它。在代码与系统的世界里，每一行逻辑都是你职业大厦的基石。"
+            </p>
+            <div class="flex flex-wrap gap-4">
+              <a href="https://www.ccf.org.cn/" target="_blank" class="flex justify-center items-center bg-white text-black px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-secondary hover:text-white transition-all inline-block text-center">
+                阅读行业周报
+              </a>
+              <a href="https://www.ieee.org/" target="_blank" class="flex justify-center items-center text-white border border-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white hover:text-black transition-all inline-flex">  
+                查看更多建议
+                <span class="material-symbols-outlined text-sm">north_east</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
+    <!-- Floating  -->    
+    <footer class="border-t border-white/5 py-12 px-8">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+        <span class="text-slate-500 text-xs font-bold uppercase tracking-widest">© 2026 CS Career Guide. Built for the next gen.</span>
+      </div>
+    </footer>
   </div>
 </template>
+
 <script setup>
-import { careerDirections } from '@/data/careerDirections.js'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '@/api'
+
+const router = useRouter()
 </script>
+
 <style scoped>
-.career-paths-page {
-  padding: 36px 0 64px;
-  background: var(--career-bg);
-  min-height: calc(100vh - 152px);
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
-.paths-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 30px;
+
+.glass-effect {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
-.paths-heading h1 {
-  margin: 15px 0 14px;
-  font-size: 36px;
-  line-height: 1.35;
-  letter-spacing: -.035em;
-  font-weight: 650;
-  color: var(--career-text);
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(255,255,255,0.4);
 }
-.paths-heading>div>p:last-child {
-  font-size: 15px;
-  color: var(--career-muted);
-  line-height: 1.8;
+
+.poster-card {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.paths-layout {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 280px;
-  gap: 24px;
-  align-items: start;
-}
-.paths-table {
-  border: 1px solid var(--career-border);
-  border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
-}
-.paths-table-heading {
-  display: grid;
-  grid-template-columns: 165px minmax(0,1fr) 84px;
-  gap: 24px;
-  padding: 13px 22px;
-  background: #f1f5f9;
-  border-bottom: 1px solid var(--career-border);
-  font-size: 12px;
-  color: var(--career-muted);
-}
-.path-item {
-  display: grid;
-  grid-template-columns: 165px minmax(0,1fr) 84px;
-  align-items: center;
-  gap: 24px;
-  padding: 25px 22px;
-}
-.path-item+.path-item {
-  border-top: 1px solid var(--career-border);
-}
-.path-title {
-  display: flex;
-  gap: 15px;
-  align-items: flex-start;
-}
-.path-title>span {
-  font: 12px ui-monospace,Consolas,monospace;
-  color: #8b98a9;
-  padding-top: 5px;
-}
-.path-title h2 {
-  font-size: 18px;
-  color: #27374d;
-  font-weight: 600;
-}
-.path-title p {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--career-muted);
-}
-.path-description h3 {
-  font-size: 14px;
-  font-weight: 500;
-  color: #344054;
-}
-.path-description p {
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--career-muted);
-  margin-top: 6px;
-}
-.path-item>a {
-  font-size: 13px;
-  white-space: nowrap;
-}
-.paths-note {
-  padding: 14px 22px;
-  background: #fafbfd;
-  border-top: 1px solid var(--career-border);
-  font-size: 12px;
-  color: #7a8799;
-  line-height: 1.8;
-}
-.paths-aside {
-  padding: 22px;
-  border: 1px solid var(--career-border);
-  border-radius: 8px;
-  background: #fff;
-}
-.paths-aside>h2 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #344054;
-}
-.paths-aside ol {
-  margin-top: 22px;
-  display: grid;
-  gap: 24px;
-}
-.paths-aside li {
-  display: flex;
-  gap: 12px;
-}
-.paths-aside li>span {
-  font: 11px ui-monospace,Consolas,monospace;
-  color: #6790bd;
-  padding-top: 4px;
-}
-.paths-aside h3 {
-  font-size: 13px;
-  color: #344054;
-  font-weight: 500;
-}
-.paths-aside p {
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--career-muted);
-  margin-top: 6px;
-}
-.paths-aside .career-button {
-  width: 100%;
-  margin-top: 26px;
-  font-size: 13px;
-}
-.paths-tools {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 25px 0;
-  margin-top: 30px;
-  border-top: 1px solid var(--career-border);
-}
-.paths-tools h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #344054;
-}
-.paths-tools p {
-  font-size: 14px;
-  color: var(--career-muted);
-  margin-top: 8px;
-}
-.paths-tools>div:last-child {
-  display: flex;
-  gap: 10px;
-}
-@media(max-width:1100px) {
-  .paths-layout {
-    grid-template-columns: minmax(0,1fr) 250px;
-  }
-  .path-item,.paths-table-heading {
-    grid-template-columns: 130px minmax(0,1fr) 80px;
-    gap: 16px;
-  }
-  .paths-tools {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-@media(max-width:760px) {
-  .paths-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .paths-heading h1 {
-    font-size: 29px;
-  }
-  .paths-layout {
-    grid-template-columns: 1fr;
-  }
-  .paths-table-heading {
-    display: none;
-  }
-  .path-item {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .paths-tools>div:last-child {
-    flex-wrap: wrap;
-  }
+
+.poster-card:hover {
+  transform: translateY(-8px);
 }
 </style>
