@@ -92,3 +92,20 @@ start支持 question_ids（1到20个UUID）。成员5重新校验题目与岗位
   "evidence": "output/split-delivery/business-complete.json; output/split-delivery/scaffold.json; ci/test_project_changes.py; docs/split-delivery.md"
 }
 ```
+
+
+### 2026-11-01 首次网关切换工具
+
+本模块业务与固定验收不变；交付工具测试不代表业务完成。
+
+```acceptance-record
+{
+  "commit": "7909ecf + dirty",
+  "command": "python -m unittest discover -s ci -p test_*.py -q; preserved complete acceptance in Actions 41304123356",
+  "result": "failed",
+  "environment": "Windows/WSL isolated offline fixtures; 2026-11-01",
+  "scope": "85 delivery tests passed on WSL; 71 passed and 14 POSIX skipped on Windows. Cutover success, pull failure, environment mismatch and frontend rollback tested. Original business complete suite remains failed (501 skeletons), not modified.",
+  "limitations": "No business implementation; no model calls or database migrations. Server install not yet performed in this record. Existing business failure accepted for delivery-only merge.",
+  "evidence": "ci/test_server_cutover.py; ci/test_split_topology.py; Actions 41304123356; docs/split-delivery.md"
+}
+```
