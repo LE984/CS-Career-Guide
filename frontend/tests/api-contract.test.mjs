@@ -8,15 +8,10 @@ const require = createRequire(import.meta.url)
 const dataModule = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`
 const configSource = (await readFile(new URL('../src/config.js', import.meta.url), 'utf8'))
   .replaceAll('import.meta.env', JSON.stringify({ BASE_URL: '/' }))
-const apiModules = ['clients', 'auth', 'users', 'resumes', 'interview', 'companies']
-const apiBodies = await Promise.all(apiModules.map(async name => (await readFile(new URL(`../src/api/${name}.js`, import.meta.url), 'utf8'))
-  .split('\n')
-  .filter(line => !line.startsWith('import '))
-  .join('\n')))
-const apiSource = `import axios from '${pathToFileURL(require.resolve('axios/unsafe/axios.js')).href}'
-import { API_BASE_URL, COMPANY_API_BASE_URL, API_TIMEOUT, COMPANY_API_TIMEOUT, apiUrl } from '${dataModule(configSource)}'
-import { createApiFetch, installAuthInterceptors } from '${new URL('../src/api/transport.js', import.meta.url).href}'
-${apiBodies.join('\n')}`
+const apiSource = (await readFile(new URL('../src/api/index.js', import.meta.url), 'utf8'))
+  .replace("from 'axios'", `from '${pathToFileURL(require.resolve('axios/unsafe/axios.js')).href}'`)
+  .replace("from '../config'", `from '${dataModule(configSource)}'`)
+  .replace("from './transport.js'", `from '${new URL('../src/api/transport.js', import.meta.url).href}'`)
 const { default: api, resumeAPI, interviewAPI, companyInfoAPI } = await import(dataModule(apiSource))
 globalThis.localStorage = { getItem: () => 'contract-test-token' }
 
