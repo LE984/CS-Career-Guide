@@ -7,9 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#3B82F6', // Modern Blue
-        secondary: '#10B981', // Emerald Green
-        accent: '#8B5CF6', // Violet
+        primary: '#1768C4',
+        secondary: '#1768C4',
+        accent: '#13867D',
+        surface: '#FFFFFF',
+        'surface-container-lowest': '#FFFFFF',
+        'surface-container-low': '#F5F7FA',
+        'surface-container-highest': '#E8EDF4',
+        'surface-variant': '#DFE5EC',
+        'primary-container': '#203C61',
+        'primary-fixed': '#EDF4FF',
+        'secondary-container': '#EDF4FF',
+        'on-background': '#1D2939',
+        'on-surface': '#1D2939',
+        'on-surface-variant': '#667085',
+        'on-primary-container': '#586577',
+        'on-secondary': '#FFFFFF',
+        'on-error': '#FFFFFF',
+        'on-tertiary-container': '#2A6B66',
+        'tertiary-fixed': '#E8F5F2',
+        'tertiary-fixed-dim': '#A7CEC7',
+        outline: '#8996A8',
+        'outline-variant': '#DFE5EC',
         neutral: '#1F2937', // Gray-800
         'base-100': '#FFFFFF',
         'base-200': '#F3F4F6', // Gray-100
@@ -55,9 +74,9 @@ export default {
       {
         light: {
           ...require("daisyui/src/theming/themes")["light"],
-          primary: "#3B82F6",
-          secondary: "#10B981",
-          accent: "#8B5CF6",
+          primary: "#1768C4",
+          secondary: "#1768C4",
+          accent: "#13867D",
           "base-100": "#ffffff",
           "base-200": "#f3f4f6",
         },
