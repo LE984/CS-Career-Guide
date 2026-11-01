@@ -15,19 +15,29 @@ import server_maintenance
 class ServerMaintenanceTests(unittest.TestCase):
     def test_gateway_mirror_never_changes_application_tags_and_verifies_digest(self):
         repository = 'registry.example/demo/cs-career-guide-frontend'
-        image = {'Id': 'sha256:' + 'a' * 64, 'Os': 'linux', 'Architecture': 'amd64'}
+        image = {'Id': 'sha256:' + 'a' * 64, 'Os': 'linux', 'Architecture': 'amd64',
+                 'RootFS': {'Layers': ['sha256:' + 'e' * 64]},
+                 'Config': {'Entrypoint': ['/docker-entrypoint.sh'], 'Cmd': ['nginx'], 'User': ''}}
         with patch('server_maintenance.run', side_effect=[
                 [image], '', 'digest: sha256:' + 'b' * 64, '', [image]]) as run:
-            reference, identity = server_maintenance.publish_gateway(repository + '@sha256:' + 'c' * 64)
+            reference, identity, fingerprint = server_maintenance.publish_gateway(repository + '@sha256:' + 'c' * 64)
         self.assertEqual(reference, repository + '@sha256:' + 'b' * 64)
         self.assertEqual(identity, image['Id'])
         tag = run.call_args_list[1].args[0][-1]
         self.assertEqual(tag, repository + ':gateway-nginx-' + 'a' * 64)
         self.assertNotIn(':latest', str(run.call_args_list))
-        changed = dict(image, Id='sha256:' + 'd' * 64)
+        changed = dict(image, RootFS={'Layers': ['sha256:' + 'd' * 64]})
         with patch('server_maintenance.run', side_effect=[
                 [image], '', 'digest: sha256:' + 'b' * 64, '', [changed]]), self.assertRaises(ValueError):
             server_maintenance.publish_gateway(repository + '@sha256:' + 'c' * 64)
+
+    def test_engine_specific_image_id_does_not_change_content_identity(self):
+        image = {'Id': 'sha256:' + 'a' * 64, 'Os': 'linux', 'Architecture': 'amd64',
+                 'RootFS': {'Layers': ['sha256:' + 'e' * 64]}, 'Config': {'Cmd': ['nginx']}}
+        other_engine = dict(image, Id='sha256:' + 'b' * 64)
+        self.assertEqual(server_maintenance.image_fingerprint(image), server_maintenance.image_fingerprint(other_engine))
+        other_engine['Config'] = {'Cmd': ['unreviewed-command']}
+        self.assertNotEqual(server_maintenance.image_fingerprint(image), server_maintenance.image_fingerprint(other_engine))
 
     def test_gateway_import_checks_archive_and_loaded_image_identity(self):
         archive = b'synthetic-unit-test-archive'

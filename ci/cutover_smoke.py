@@ -60,7 +60,7 @@ def main():
             base = ['docker', 'compose', '--project-directory', directory, '--env-file', str(env),
                     '-p', project, '-f', str(compose)]
             run([*base, 'up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '180', 'backend', 'frontend'])
-            gateway_reference, gateway_id = server_maintenance.publish_gateway(images['frontend'])
+            gateway_reference, gateway_id, fingerprint = server_maintenance.publish_gateway(images['frontend'])
             server_maintenance.install(str(env), {
                 'template': template, 'frontend_image': images['frontend'],
                 'topology_source': (root / 'ci/split_topology.py').read_text(),
@@ -68,6 +68,7 @@ def main():
                 'helpers': {name: (root / 'ci' / name).read_text() for name in ('sync_runtime_env.py', 'deploy_component.py')},
                 'gateway_image': gateway_reference,
                 'gateway_image_id': gateway_id,
+                'gateway_fingerprint': fingerprint,
             })
             print('Disposable real cutover passed: backend/env retained, gateway routes and single frontend activation verified.')
         finally:

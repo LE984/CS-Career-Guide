@@ -10,6 +10,8 @@
 
 [压缩传输安装 41309978998](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41309978998) 的 runner 拉取/导出约 6 秒完成，随后 SSH 阶段达到 20 分钟超时；[审计 41311002510](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41311002510) 再次确认原前后端 ID 不变且 healthy、gateway 未配置。后续首次安装改为专用 ACR 基础设施标签和 digest 拉取，实际结果需单独核验。
 
+[ACR 安装 41312620884](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41312620884) 已通过镜像发布/回读，SSH 约 7 秒内在 pull-images 后的身份核验拒绝，未切换；[审计 41312715459](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41312715459) 证明旧应用 ID 未变且 healthy。后续网关核验采用不可变 RepoDigest、内容层和启动配置指纹，兼容 Docker 引擎的本地 ID 表示差异；安装结果另行记录。
+
 本轮没有重启后端、数据库迁移、真实模型调用或浏览器验收。构建缓存命中及耗时证据见[CI/CD](ci-cd.md#缓存与耗时定位)。
 
 ## 2026-10-26 历史发布与业务基线：82f1293

@@ -63,7 +63,7 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 安装成功后使用同一单组件激活函数再重建一次 frontend，确认 backend/gateway ID 与 `.env` inode/大小/mtime 均不变，并验证 SPA、401、static 和不存在的 media 返回 404。不创建业务账号、不调用真实模型。失败时恢复原 Compose、前端 digest 与原端口；不删除数据库或用户卷，Watchtower 保持停止。单组件工具安装在本次 `.split-backup-<时间>/tools/ci/`，实际相对路径记录于 install Artifact；该目录是受保护的运维备份，不清理。
 
-服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，镜像到现有前端 ACR 仓库的专用 `gateway-nginx-<完整imageID>` 标签。该基础设施标签不覆盖 `latest` 或应用 SHA 标签；runner 按发布 digest 再拉取并核对 image ID 与 linux/amd64，SSH 只传小型配置载荷。服务器从已授权 ACR 拉取 frontend/gateway，核对网关 image ID 后 `--pull never` 启动；不要求直连 Docker Hub，也不通过 SSH 传镜像大归档。网关在实际基础 Compose 中固定完整 digest；仅首次明确维护会创建这个镜像标签，audit 不登录或发布 ACR。
+服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，镜像到现有前端 ACR 仓库的专用 `gateway-nginx-<完整imageID>` 标签。该基础设施标签不覆盖 `latest` 或应用 SHA 标签；runner 按发布 digest 再拉取并核对内容层、启动配置与 linux/amd64，SSH 只传小型配置载荷。服务器从已授权 ACR 拉取 frontend/gateway，核对完整 RepoDigest、内容层、启动配置与平台后 `--pull never` 启动；不要求直连 Docker Hub，也不通过 SSH 传镜像大归档。网关在实际基础 Compose 中固定完整 digest；仅首次明确维护会创建这个镜像标签，audit 不登录或发布 ACR。
 
 各组件 publisher 的 `published-<组件>-<run-id>` Artifact 内含 `published-images.json`：检查 `complete=true`、`components`、`compatibility` 证据范围、完整源码 commit 和 `images.<组件>.reference`。不同组件可来自不同已完成发布，不要求同一个源码提交；仍须核对目标 API/schema 兼容。
 
@@ -107,3 +107,5 @@ config/pull 失败保留原 `.env` 和 pin，删除候选文件；激活/健康�
 上述运行的总结果仍为 failure：SQLite/MySQL 的原完整业务验收因现有 501 骨架失败，release-summary 正确报告业务门禁失败，两个 publisher/deploy 均 skipped。不能将交付检查通过写成整个 CI 通过或已发布/已部署。其后的公司查询默认构建参数保持 /company-api 与服务器拓扑校验补丁，需以最终 head 的 Actions 再确认，不能沿用此处提交证据。
 
 首次维护任务使用 30 分钟预算，SSH 子进程最多 20 分钟；runner 仅输出不含连接信息的阶段码。2026-11-01 未压缩传输曾达到旧的 12 分钟上限而取消；独立 audit 确认原应用容器和旧入口未变，不能将该次任务记为安装成功。
+
+网关跨 Docker 引擎校验使用不可变 RepoDigest、RootFS 内容层和 Entrypoint/Cmd/User/平台指纹。classic 与 containerd 引擎的本地 `.Id` 表示可能不同，不将本地 ID 相等作为跨引擎内容身份条件。runner 原镜像与镜像仓库取回镜像、服务器拉取镜像的指纹必须一致；缺少内容层或 digest 不匹配时拒绝安装。
