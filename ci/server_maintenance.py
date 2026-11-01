@@ -12,11 +12,29 @@ import subprocess
 import sys
 import tempfile
 
+STAGE = 'start'
+
+
+def stage(value):
+    global STAGE
+    STAGE = value
+
+
+class MaintenanceFailure(RuntimeError):
+    def __init__(self, code):
+        self.code = code
+        super().__init__('Server maintenance operation failed; raw diagnostics withheld')
+
 
 def run(command, *, json_output=False):
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600)
     if result.returncode:
-        raise RuntimeError('Server inventory command failed; raw diagnostics withheld')
+        diagnostic = result.stderr.lower()
+        code = ('registry-timeout' if b'timeout' in diagnostic or b'timed out' in diagnostic else
+                'registry-auth' if b'unauthorized' in diagnostic or b'authentication required' in diagnostic else
+                'registry-unreachable' if b'connection refused' in diagnostic or b'no such host' in diagnostic else
+                'image-missing' if b'manifest unknown' in diagnostic else 'command-failed')
+        raise MaintenanceFailure(code)
     return json.loads(result.stdout) if json_output else result.stdout.decode().strip()
 
 
@@ -85,6 +103,7 @@ def install(env_path, payload):
     from urllib.error import HTTPError
     from urllib.request import Request, urlopen
 
+    stage('existing-config')
     path, base, existing = existing_deployment(env_path)
     lock_fd = os.open(str(path) + '.ai-sync.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     lock_info = os.fstat(lock_fd)
@@ -113,6 +132,7 @@ def install(env_path, payload):
                 raise ValueError('Expected one existing application container')
             return run(['docker', 'inspect', ids[0]], json_output=True)[0]
 
+        stage('existing-containers')
         before = {name: container(name) for name in ('backend', 'frontend')}
         project = existing['name']
         for item in before.values():
@@ -131,6 +151,7 @@ def install(env_path, payload):
                 raise ValueError('Existing image needs one unambiguous repository digest')
             return refs[0]
 
+        stage('existing-digests')
         backend_digest, old_frontend_digest = digest('backend'), digest('frontend')
         frontend_digest = payload['frontend_image']
         expected_repo = old_frontend_digest.split('@')[0]
@@ -157,14 +178,19 @@ def install(env_path, payload):
             json.dump(topology, output)
         candidate_base = ['docker', 'compose', '--project-directory', str(path.parent), '--env-file', str(path),
                           '--project-name', project, '-f', str(candidate)]
+        stage('candidate-config')
         rendered = run([*candidate_base, '--profile', '*', 'config', '--format', 'json'], json_output=True)
+        stage('candidate-environment')
         for name in existing['services']:
             for key, value in existing['services'][name].get('environment', {}).items():
                 if rendered['services'][name].get('environment', {}).get(key) != value:
                     raise ValueError('Candidate changes an existing runtime environment value')
+        stage('candidate-storage')
         if rendered.get('volumes') != existing.get('volumes') or rendered.get('networks') != existing.get('networks'):
             raise ValueError('Candidate changed existing network or volume identities')
+        stage('pull-images')
         run([*candidate_base, 'pull', 'frontend', 'gateway'])
+        stage('backup')
         if ((path.stat().st_ino, path.stat().st_mtime_ns, path.stat().st_size) != env_identity
                 or compose_path.read_bytes() != original_compose):
             raise ValueError('Deployment configuration changed during preparation')
@@ -221,8 +247,10 @@ def install(env_path, payload):
             for component, image in (('backend', backend_digest), ('frontend', frontend_digest)):
                 write_private(path.parent / f'docker-compose.{component}-image.json',
                               json.dumps({'services': {component: {'image': image}}}).encode())
+            stage('activate-gateway')
             run([*current_base, 'up', '-d', '--no-deps', '--no-build', '--pull', 'never',
                  '--force-recreate', '--wait', '--wait-timeout', '180', 'frontend', 'gateway'])
+            stage('verify-gateway')
             routes = probe()
             gateway_before = container('gateway')['Id']
             frontend_before = container('frontend')['Id']
@@ -231,6 +259,7 @@ def install(env_path, payload):
             exec(compile(payload['helpers']['sync_runtime_env.py'], 'sync_runtime_env', 'exec'), helper)
             # The component helper takes this same flock itself. Release our
             # descriptor while it owns the activation, then resume the cutover lock.
+            stage('verify-frontend-recreation')
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             try:
                 with contextlib.redirect_stdout(io.StringIO()):
@@ -264,7 +293,7 @@ def install(env_path, payload):
             write_private(rollback_pin, json.dumps({'services': {'frontend': {'image': old_frontend_digest}}}).encode())
             run([*current_base, '-f', str(rollback_pin), 'up', '-d', '--no-deps', '--no-build', '--pull', 'never',
                  '--force-recreate', '--wait', '--wait-timeout', '180', 'frontend'])
-            raise RuntimeError('Cutover failed; previous frontend restored, backend retained') from None
+            raise MaintenanceFailure('cutover-failed-frontend-restored') from None
         report = {'action': 'install', 'success': True, 'project': project,
                   'backend_container_unchanged': True, 'env_file_unchanged': True,
                   'frontend_image': frontend_digest, 'backend_image': backend_digest,
@@ -281,6 +310,7 @@ def install(env_path, payload):
 
 
 def remote(action, frontend_image=''):
+    stage('verified-ssh')
     required = ('DEPLOY_SSH_HOST', 'DEPLOY_SSH_USER', 'DEPLOY_ENV_PATH',
                 'DEPLOY_SSH_KEY', 'DEPLOY_SSH_KNOWN_HOSTS')
     if any(not os.environ.get(key, '').strip() for key in required):
@@ -324,7 +354,16 @@ def remote(action, frontend_image=''):
             f'{user}@{host}', command], input=payload, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=1200)
         if result.returncode:
-            raise RuntimeError('Verified SSH inventory failed; raw diagnostics withheld')
+            try:
+                failure = json.loads(result.stdout)
+            except (ValueError, TypeError):
+                raise MaintenanceFailure('ssh-command-failed') from None
+            if (set(failure) == {'success', 'stage', 'failure'} and failure['success'] is False
+                    and all(isinstance(failure[key], str) and re.fullmatch(r'[a-z-]{1,80}', failure[key])
+                            for key in ('stage', 'failure'))):
+                stage(failure['stage'])
+                raise MaintenanceFailure(failure['failure'])
+            raise MaintenanceFailure('ssh-command-failed')
         report = json.loads(result.stdout)
     output = Path('output/server-maintenance')
     output.mkdir(parents=True, exist_ok=True)
@@ -351,5 +390,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception:
-        raise SystemExit('Server maintenance failed; raw configuration/SSH diagnostics withheld')
+    except Exception as error:
+        print(json.dumps({'success': False, 'stage': STAGE,
+                          'failure': error.code if isinstance(error, MaintenanceFailure) else 'validation-or-runtime'}))
+        raise SystemExit(1)
