@@ -2,6 +2,8 @@
 
 开始工作先阅读 [agent.md](agent.md) 的文档索引，再按任务阅读 [Git 规范](docs/git-workflow.md)、[开发指南](docs/development.md) 及对应业务或运维文档。
 
+- 需求范围、技术路线与五人分工以 [当前需求方案](docs/career_platform_plan.md) 为唯一依据；旧需求方案已移出仓库，不使用旧方案或历史会话摘要替代当前方案。方案描述的是待开发目标，不代表已实现，也不自动授权整份实现、数据库切换或部署。
+
 - 本仓库主分支是 `master`，个人长期开发分支是 `codex/personal`。默认在个人分支开发并向本 fork 的 master 提 PR；用户明确授权直接合并/推送时按该授权执行，不额外要求重复确认。
 - 只操作 `origin` 对应的 `vacontinuejatotired/CS-Career-Guide`。`upstream` 是参考仓库；未获明确指示不向其推送、提 PR 或发送评论。`gh` 命令显式指定 `--repo`。
 - 修改前核对 Git 状态、分支和相关实现。保留已有 dirty 文件，按职责显式暂存；不默认使用 `git add .`、reset、clean、stash 或强推。

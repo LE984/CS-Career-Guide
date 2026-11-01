@@ -1,5 +1,15 @@
 # CI/CD 流水线
 
+## 五人实施门禁（2026-10-28 新增）
+
+主workflow通过可复用 `career-platform.yml` 调用 Platform gates。文档检查按Git基线差异运行 `ci/check_project_changes.py`，使用基线中的模块归属表防止PR自行删除映射逃避验收。成员代码需要对应实施文档，公共契约/固定测试/迁移/CI需要六份；文档须更新包含commit、command、result、environment、scope、limitations、evidence的 `acceptance-record` JSON块，仅改空白不通过。
+
+首次基线没有归属表时识别bootstrap，只要求骨架通过，并实际验证五个complete均因501/FeatureNotImplemented失败；不会标记业务完成。后续由diff选择对应模块complete，公共改动运行全部模块及集成。SQLite/MySQL两个runner都执行真实迁移和读写；本机不跑Docker。测试依赖仅Django/DRF/Pillow/mysqlclient，不读取真实.env或调用模型。
+
+文档检查状态 `Platform documentation`，自定义检查 `Platform acceptance (sqlite)` 和 `Platform acceptance (mysql)`；在UI中嵌套于Platform gates，保护规则设置前须查实际check-run名称，不猜字符串。主发布job依赖Platform gates，门禁失败不能发布新镜像。原登录/API/面试/ASR/配置/双镜像冒烟等回归继续保留，前端运行全部 `tests/*.test.mjs`。
+
+保护规则仅在骨架PR合入且最新检查通过后设置：master必须PR、最新基线、至少1审核、CODEOWNER、必要检查、禁止强推/删除。CODEOWNERS已声明集成人；这份文件本身不代表GitHub保护已启用。管理员不能自审自己的PR，须其他账号参与。当前业务模块未实现，不能把骨架CI绿色写成MVP完成或真实模型验收。
+
 发布后可选的 AI 配置同步与自动重建步骤见 [AI 环境同步](ai-env-sync.md)。该步骤默认关闭，需配置专用 SSH Secrets 并显式启用。
 
 > 2026-10-23：新增同步 Job、面试测试及 TTS 构建参数已随 `33cbc57` 通过 [build-only Actions 39979362642](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/39979362642)，并整合进主分支 master。个人开发分支统一为 codex/personal；master 的实际发布结果以对应最新运行记录为准。服务器账号已配置，AI 自动同步仍关闭。完整状态见 [接手记录](deployment-status.md)。

@@ -28,15 +28,18 @@ class InterviewBehaviorTests(unittest.TestCase):
         history = [{'user': '问题一', 'ai': '回答一'}, {'user': '', 'ai': '回答二'}]
         turn = self.service.prepare_turn('本轮回答', history, 'technical')
         self.assertEqual(turn.user, '对话历史：\n用户：问题一\n面试官：回答一\n面试官：回答二\n本轮回答')
-        self.assertEqual(turn.system, '面试系统\n\n风格：极致理性的硬核技术深挖，针对底层原理进行连环追问。')
+        self.assertTrue(turn.system.startswith('面试系统\n\n风格：极致理性的硬核技术深挖，针对底层原理进行连环追问。'))
+        self.assertIn('只输出纯文本，不使用 Markdown', turn.system)
         self.assertEqual(self.service.prepare_turn('字' * 3001, [], 'gentle').user, '字' * 3000 + '...')
-        self.assertTrue(self.service.prepare_turn('回答', [], 'pressure').system.endswith('对面试人员使用及其压迫的提问方式，要求候选人在短时间内给出回答。'))
-        self.assertTrue(self.service.prepare_turn('回答', [], 'behavioral').system.endswith('关注过往经历中的决策、冲突处理及团队协作等软技能。'))
+        self.assertIn('对面试人员使用及其压迫的提问方式，要求候选人在短时间内给出回答。', self.service.prepare_turn('回答', [], 'pressure').system)
+        self.assertIn('关注过往经历中的决策、冲突处理及团队协作等软技能。', self.service.prepare_turn('回答', [], 'behavioral').system)
         self.assertEqual(self.service.prepare_turn('回答', [], 'unknown'), self.service.prepare_turn('回答', [], 'gentle'))
 
     def test_review_retains_legacy_chat_system_and_review_user_prefix(self):
         turn = self.service.prepare_turn('本次对话', [], 'pressure', review=True)
-        self.assertEqual(turn, InterviewPrompt(system='聊天系统', user='复盘要求\n\n本次对话'))
+        self.assertTrue(turn.system.startswith('聊天系统\n\n输出要求：'))
+        self.assertIn('只输出纯文本', turn.system)
+        self.assertEqual(turn.user, '复盘要求\n\n本次对话')
 
     def test_review_parsing_keeps_existing_markers_and_missing_values(self):
         content = '回答的优点：\n1. 清晰\n（2）具体\n需要改进的地方：\n1、举例不足\n具体改进建议：\n补充证据\n下次面试准备\n综合评分：82.5'
@@ -121,7 +124,9 @@ class ChatRouteIntegrationTests(unittest.TestCase):
             'Queue': Queue, 'threading': threading, 'asyncio': asyncio,
             'AIConversation': SimpleNamespace(objects=conversations),
             'AIChatPair': SimpleNamespace(objects=pairs), 'memory_agent': Mock(),
-            'settings': SimpleNamespace(ENABLE_TTS=False), 'get_llm_kwargs': lambda: {'model': 'offline'},
+            # Even when enabled on the server, a text-only client must never
+            # touch the WebSocket provider (not present in this namespace).
+            'settings': SimpleNamespace(ENABLE_TTS=True), 'get_llm_kwargs': lambda: {'model': 'offline'},
             'build_user_profile_prompt': lambda request: '职业背景：',
         }
         exec(compile(ast.Module(body=[view], type_ignores=[]), str(source), 'exec'), namespace)

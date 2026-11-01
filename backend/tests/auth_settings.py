@@ -21,5 +21,5 @@ CORS_ALLOWED_ORIGINS = ['https://ui.test']
 CORS_ALLOW_ALL_ORIGINS = False
 # Only the temporary database is initialized by Django's test runner.
 MIGRATION_MODULES = {'users': None, 'career_paths': None, 'career_evaluation': None,
-                     'company_reviews': None, 'resumes': None}
+                     'company_reviews': None, 'resumes': None, 'career_platform': None}
 SILENCED_SYSTEM_CHECKS = ['fields.E210']  # ImageField requires Pillow only for uploads.

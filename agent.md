@@ -13,12 +13,23 @@
 
 ## 业务实现与验收
 
+五人开发先读 [公共约定](docs/implementation/00-shared-contracts.md)，再读对应专用文档：
+
+- [成员1：数据目录](docs/implementation/01-data-catalog.md)：来源、导入、岗位/企业/题库与专项验收。
+- [成员2：评估调优](docs/implementation/02-evaluation.md)：数据集拆分、指标、策略和对照。
+- [成员3：简历优化](docs/implementation/03-resume-optimization.md)：证据、编辑确认和版本冲突。
+- [成员4：面试RAG](docs/implementation/04-interview-rag.md)：检索、来源、反馈和记录交接。
+- [成员5：练习记录](docs/implementation/05-practice-records.md)：快照、幂等、总结与重试。
+
 | 文档 | 内容与边界 |
 | --- | --- |
+| [当前需求方案与五人分工](docs/career_platform_plan.md) | 唯一有效的需求与分工依据；制定实施计划、拆分模块及约定接口前先读，内容是待开发目标 |
 | [统一登录门槛](docs/authentication-gate.md) | 前端路由与后端鉴权、Token 行为、隔离测试 |
-| [模拟面试重构](docs/interview-refactor.md) | 现有 legacy 实现、服务契约、替换点与验收；不代表真实语音已跑通 |
+| [模拟面试重构](docs/interview-refactor.md) | legacy 主链路、交互与简历观览；ASR/TTS 和浏览器录音的验收边界 |
 
 新业务模块有独立接口、数据模型或流程约定时，在 docs 下增加短文档并补到本表。需求提案和实现说明分别标注，未提交的个人草稿不作为团队事实来源。
+
+为各成员准备需求文档前，先以最新 `origin/master` 和部署状态核对现有能力；旧个人分支可能落后，方案中列出的 MySQL、RAG、模型评估和逐题记录均需逐项确认，不直接当作已实现。
 
 ## 发布与运维
 

@@ -15,7 +15,7 @@
 | `backend/career_paths/`、`career_evaluation/`、`company_reviews/` | 职业路径、评估、企业相关业务 |
 | `backend/ai_integration/` | 共享模型接口、会话/复盘记录、职业报告、检索和 LangGraph 实现 |
 | `backend/ai_integration/interview/` | 网页面试当前使用的提示词策略与复盘解析 |
-| `backend/asr/` | 后端语音识别调用，当前模型协议兼容仍待验收 |
+| `backend/asr/` | Fun-ASR 协议和真实短音频上传已验证；浏览器录音权限与完整语音流程另行验收 |
 | `ci/`、`.github/workflows/` | 离线脚本测试、runner 联调、镜像发布及可选 AI 配置同步 |
 | `deploy/` | Compose、部署配置样例与 digest override |
 
@@ -59,6 +59,16 @@ Linux/macOS 对应 Python 路径通常为 `.venv/bin/python`。ci/sync_runtime_e
 
 真实模型/语音、浏览器账号和服务器检查按实际授权执行，记录时间、环境、输入范围及结果；保留失败证据，不把模拟通过写成真实服务成功。相关接口与验收见 [面试重构](interview-refactor.md)。
 
-## 增量维护文档
+## 五人课程模块开发准备（2026-10-28）
+
+先读 [公共约定](implementation/00-shared-contracts.md) 和本人实施文档。新入口位于 `/career-platform/catalog`、`resume`、`practice`、`records`、`evaluation`；这些页面明确显示开发骨架，新业务有效请求返回501，不能据此演示业务已完成。默认自由面试保持原入口。
+
+隔离命令 `python ci/project_acceptance.py --stage scaffold` 验证路由/鉴权/真实迁移和空实现；`--stage complete --module <catalog|evaluation|resume|rag|records|all>` 运行固定业务验收，当前空实现应失败。报告区分business_complete、commit、dirty、环境和real_model。工作树可复用原目录Python，不能误在个人目录执行开发。
+
+服务端从应用服务实现，依赖通过 contracts.py 端口注入，唯一生产组装点 composition.py。测试替身仅在tests内。Company/Job来源字段默认pending，既有数据不会自动视为已审核；新增托管题库/分析/练习/评估表，简历增加edit_revision。迁移本地仅隔离SQLite，MySQL迁移/读写由Actions验证；本阶段不切线上数据库或导入服务器数据。
+
+正式题库材料说明见 `data/career-platform/README.md`，fixture不是30道正式人审演示题。CI和审阅见 [CI/CD](ci-cd.md) 及公共约定，不能用修改状态标记跳过complete。
+
+## 文档维护
 
 修改功能时优先补对应文档中的行为、使用方法和验证，不扩写无关内容；新主题文档加入 agent.md 索引。配置、接口、迁移和部署变化的具体要求见 [文档更新表](git-workflow.md#开发时补多少文档)。历史接手记录提供线索，实际开发仍以当前代码和查询结果为准。

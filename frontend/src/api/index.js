@@ -41,7 +41,7 @@ export const userAPI = {
 
 // Shared by the editing workspace and personal center; paths match Django's routers.
 export const resumeAPI = {
-  get: () => api.get('/resumes/my/'),
+  get: (config) => api.get('/resumes/my/', config),
   save: (data) => api.post('/resumes/my/', data),
   uploadAvatar: (formData) => api.post('/resumes/upload_avatar/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -60,13 +60,14 @@ export const interviewAPI = {
 
 export const aiAPI = {
   chat: (message, mode, interview_style, session_id) => api.post('/ai/llm/chat/', { message, mode, interview_style, session_id }),
-  chatStream: (message, mode, interview_style, session_id) => {
+  chatStream: (message, mode, interview_style, session_id, options = {}) => {
     return apiFetch('/ai/llm/chat/', {
       method: 'POST',
+      signal: options.signal,
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ message, mode, interview_style, session_id })
+      body: JSON.stringify({ message, mode, interview_style, session_id, enable_tts: options.enableTts === true })
     })
   },
   getHistory: (sessionId) => api.get(`/ai/llm/chat/history/?session_id=${sessionId}`),

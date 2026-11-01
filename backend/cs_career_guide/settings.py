@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'users',
     'ai_integration',
     'resumes',
+    'career_platform',
 ]
 
 MIDDLEWARE = [

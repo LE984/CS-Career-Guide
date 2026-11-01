@@ -12,8 +12,22 @@ const apiSource = (await readFile(new URL('../src/api/index.js', import.meta.url
   .replace("from 'axios'", `from '${pathToFileURL(require.resolve('axios/unsafe/axios.js')).href}'`)
   .replace("from '../config'", `from '${dataModule(configSource)}'`)
   .replace("from './transport.js'", `from '${new URL('../src/api/transport.js', import.meta.url).href}'`)
-const { default: api, resumeAPI, interviewAPI, companyInfoAPI } = await import(dataModule(apiSource))
+const { default: api, resumeAPI, interviewAPI, companyInfoAPI, aiAPI } = await import(dataModule(apiSource))
 globalThis.localStorage = { getItem: () => 'contract-test-token' }
+
+test('streaming chat requires explicit voice opt-in and forwards cancellation', async () => {
+  const oldFetch = globalThis.fetch
+  const calls = []
+  globalThis.fetch = async (url, options) => { calls.push(options); return new Response('data: [DONE]\n\n') }
+  try {
+    await aiAPI.chatStream('文字', 'interview', 'gentle', 's1')
+    const controller = new AbortController()
+    await aiAPI.chatStream('语音', 'interview', 'gentle', 's1', {enableTts: true, signal: controller.signal})
+    assert.equal(JSON.parse(calls[0].body).enable_tts, false)
+    assert.equal(JSON.parse(calls[1].body).enable_tts, true)
+    assert.equal(calls[1].signal, controller.signal)
+  } finally { globalThis.fetch = oldFetch }
+})
 
 test('existing resume routes preserve request bodies and multipart uploads', async () => {
   const requests = []
@@ -24,7 +38,10 @@ test('existing resume routes preserve request bodies and multipart uploads', asy
   const body = { name: 'round-trip', education: [], projects: [], skills: '' }
   const result = await resumeAPI.save(body)
   assert.equal(result.name, 'round-trip')
-  await resumeAPI.get()
+  const controller = new AbortController()
+  await resumeAPI.get({ signal: controller.signal })
+  assert.equal(requests[1].signal, controller.signal)
+  assert.equal(requests[1].headers.get('Authorization'), 'Token contract-test-token')
   const upload = new FormData()
   upload.append('avatar', new Blob(['test'], { type: 'image/png' }), 'avatar.png')
   await resumeAPI.uploadAvatar(upload)

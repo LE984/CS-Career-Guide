@@ -8,6 +8,7 @@ def avatar_upload_path(instance, filename):
 
 class Resume(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='resume', verbose_name='用户')
+    edit_revision = models.PositiveBigIntegerField(default=0, editable=False)
     avatar = models.ImageField(upload_to=avatar_upload_path, null=True, blank=True, verbose_name='头像')
     name = models.CharField(max_length=100, null=True, blank=True, verbose_name='姓名')
     target_position = models.CharField(max_length=100, null=True, blank=True, verbose_name='意向岗位')
@@ -19,6 +20,14 @@ class Resume(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            self.edit_revision = models.F('edit_revision') + 1
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = set(kwargs['update_fields']) | {'edit_revision'}
+        super().save(*args, **kwargs)
+        self.refresh_from_db(fields=['edit_revision'])
+
     class Meta:
         db_table = 'resumes'
         verbose_name = '简历'

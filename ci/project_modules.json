@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "modules": {
+    "catalog": {
+      "owner": 1,
+      "doc": "01-data-catalog.md",
+      "paths": [
+        "backend/career_platform/catalog/",
+        "backend/career_platform/views/catalog.py",
+        "backend/career_platform/models/catalog.py",
+        "frontend/src/views/career-platform/Catalog.vue",
+        "backend/company_reviews/",
+        "data/career-platform/"
+      ]
+    },
+    "evaluation": {
+      "owner": 2,
+      "doc": "02-evaluation.md",
+      "paths": [
+        "backend/career_platform/evaluation/",
+        "backend/career_platform/views/evaluation.py",
+        "backend/career_platform/models/evaluation.py",
+        "frontend/src/views/career-platform/Evaluation.vue"
+      ]
+    },
+    "resume": {
+      "owner": 3,
+      "doc": "03-resume-optimization.md",
+      "paths": [
+        "backend/career_platform/resume/",
+        "backend/career_platform/views/resume.py",
+        "backend/career_platform/models/resume.py",
+        "frontend/src/views/career-platform/Resume.vue",
+        "backend/resumes/"
+      ]
+    },
+    "rag": {
+      "owner": 4,
+      "doc": "04-interview-rag.md",
+      "paths": [
+        "backend/career_platform/rag/",
+        "backend/career_platform/views/rag.py",
+        "frontend/src/views/career-platform/Practice.vue"
+      ]
+    },
+    "records": {
+      "owner": 5,
+      "doc": "05-practice-records.md",
+      "paths": [
+        "backend/career_platform/records/",
+        "backend/career_platform/views/records.py",
+        "backend/career_platform/models/practice.py",
+        "frontend/src/views/career-platform/Records.vue"
+      ]
+    }
+  },
+  "shared_paths": [
+    "backend/career_platform/contracts.py",
+    "backend/career_platform/composition.py",
+    "backend/career_platform/composition_base.py",
+    "backend/career_platform/serializers.py",
+    "backend/career_platform/api.py",
+    "backend/career_platform/urls.py",
+    "backend/career_platform/errors.py",
+    "backend/career_platform/permissions.py",
+    "backend/career_platform/models/base.py",
+    "backend/career_platform/models/__init__.py",
+    "backend/career_platform/migrations/",
+    "frontend/src/features/career-platform/",
+    "frontend/src/router/index.js",
+    "frontend/src/components/Navbar.vue",
+    "ci/project_",
+    "ci/check_project_",
+    ".github/",
+    "backend/career_platform/tests/",
+    "backend/career_platform/apps.py",
+    "backend/career_platform/test_",
+    "backend/cs_career_guide/settings.py",
+    "backend/cs_career_guide/urls.py",
+    "backend/tests/auth_settings.py",
+    "ci/test_project"
+  ]
+}

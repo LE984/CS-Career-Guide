@@ -1,4 +1,5 @@
 import { readLegacyStream } from './stream.js'
+import { interviewDuration } from '../session-clock.js'
 
 // The existing browser-driven, prompt-based interview implementation.
 // No Vue refs, DOM, audio player or concrete HTTP client is owned here.
@@ -10,7 +11,7 @@ export class LegacyInterviewImplementation {
     this.readResume = readResume
   }
 
-  async start({ style, sessionId }, onEvent) {
+  async start({ style, sessionId, durationMinutes, enableTts = false, signal }, onEvent) {
     let resumePrompt = null
     try {
       resumePrompt = formatLegacyResume(this.readResume())
@@ -20,7 +21,7 @@ export class LegacyInterviewImplementation {
       console.error('[RESUME] 解析简历数据失败:', error)
     }
     const promptType = style === 'pressure' ? 'pressure_interview' : 'interview'
-    let interviewPrompt = `【面试模式】你是一位${getStyleDescription(style)}面试官。请开始一场15分钟的面试。`
+    let interviewPrompt = `【面试模式】你是一位${getStyleDescription(style)}面试官。请开始一场${interviewDuration(durationMinutes)}分钟的面试。`
 
     if (resumePrompt) {
       interviewPrompt += `
@@ -44,7 +45,7 @@ ${resumePrompt}
     let timeout
     try {
       const response = await Promise.race([
-        this.chatStream(interviewPrompt, promptType, style, sessionId),
+        this.chatStream(interviewPrompt, promptType, style, sessionId, { enableTts, signal }),
         new Promise((_, reject) => {
           timeout = setTimeout(() => reject(new Error('请求超时')), 15000)
         })
@@ -55,7 +56,7 @@ ${resumePrompt}
     }
   }
 
-  async answer({ answer, style, sessionId }, onEvent) {
+  async answer({ answer, style, sessionId, enableTts = false, signal }, onEvent) {
     const userMessage = answer
     const promptType = style === 'pressure' ? 'pressure_interview' : 'interview'
     const response = await this.chatStream(
@@ -65,12 +66,12 @@ ${resumePrompt}
 1. 简要评价用户的回答（可选）
 2. 提出下一个面试问题
 
-注意：你只需扮演面试官角色，不要查询任何数据库信息。`, promptType, style, sessionId
+注意：你只需扮演面试官角色，不要查询任何数据库信息。`, promptType, style, sessionId, { enableTts, signal }
     )
     await readLegacyStream(response, onEvent)
   }
 
-  async generateReview({ messages, style, sessionId }, onEvent = () => {}) {
+  async generateReview({ messages, style, sessionId, signal }, onEvent = () => {}) {
     const conversation = reviewMessages(messages)
       .map(msg => `${msg.type === 'ai' ? '面试官' : '面试者'}：${msg.content}`)
       .join('\n')
@@ -90,7 +91,7 @@ ${conversation}
 2. 回答的优点
 3. 需要改进的地方
 4. 具体改进建议
-5. 下次面试的准备建议`, 'interview_review', style, sessionId || 'default_session'
+5. 下次面试的准备建议`, 'interview_review', style, sessionId || 'default_session', { enableTts: false, signal }
     )
     let content = ''
     await readLegacyStream(response, async event => {
@@ -101,13 +102,13 @@ ${conversation}
     return { skipped: false, content }
   }
 
-  saveReview({ messages, content, style, sessionId, remainingTime }) {
+  saveReview({ messages, content, style, sessionId, remainingTime, totalDurationSeconds = 900 }) {
     const conversation = reviewMessages(messages)
     return this.persistReview({
       session_id: sessionId || 'default_session',
       review_content: content,
       interview_style: style || 'gentle',
-      interview_duration: Math.floor((900 - remainingTime) / 60),
+      interview_duration: Math.max(0, Math.floor((totalDurationSeconds - remainingTime) / 60)),
       question_count: conversation.filter(msg => msg.type === 'ai').length,
       answer_count: conversation.filter(msg => msg.type === 'user').length
     })

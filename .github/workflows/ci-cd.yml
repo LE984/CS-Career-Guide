@@ -25,6 +25,10 @@ env:
   NODE_VERSION: '24'
 
 jobs:
+  platform-gates:
+    name: Platform gates
+    uses: ./.github/workflows/career-platform.yml
+
   changes:
     name: Detect code changes
     runs-on: ubuntu-24.04
@@ -132,7 +136,7 @@ jobs:
         run: |
           set -o pipefail
           npm ci 2>&1 | tee ../frontend-install.log
-          node --test tests/auth.test.mjs tests/config.test.mjs tests/api-contract.test.mjs tests/interview.test.mjs 2>&1 | tee ../frontend-test.log
+          node --test tests/*.test.mjs 2>&1 | tee ../frontend-test.log
       - name: Build frontend
         shell: bash
         working-directory: frontend
@@ -436,7 +440,7 @@ jobs:
 
   publish:
     name: Publish verified images
-    needs: [changes, backend-test, frontend-test, backend-image, frontend-image]
+    needs: [changes, backend-test, frontend-test, backend-image, frontend-image, platform-gates]
     if: needs.changes.outputs.publish == 'true' && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     env:

@@ -6,6 +6,8 @@
 
 先读 [agent.md 文档索引](agent.md)，日常开发参考 [开发指南](docs/development.md) 和 [Git/PR/commit 规范](docs/git-workflow.md)。自动化协作入口为 [AGENTS.md](AGENTS.md)。主分支统一使用 `master`，个人长期开发使用 `codex/personal`，通过 PR 合入本 fork 的 master；误建的 main 不再用于日常开发。功能、接口、配置或部署行为改变时，在同一 PR 补最少必要文档。
 
+当前需求与五人分工统一以 [career_platform_plan.md](docs/career_platform_plan.md) 为准。该文件是待开发目标；当前代码与线上能力、SQLite 演示环境、数据缺口和验收边界见 [部署状态](docs/deployment-status.md)，不要仅凭下方技术栈或功能介绍判断已实现范围。
+
 ## 🎯 项目目标
 
 - 为计算机学院本科生提供全方位的职业指导

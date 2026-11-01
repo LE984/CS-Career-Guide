@@ -1,0 +1,91 @@
+name: Career platform gates
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  documents:
+    name: Platform documentation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate ownership, records and negative gate cases
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s ci -p 'test_project*.py' -v
+          if [ "$EVENT" = pull_request ]; then
+            base="$PR_BASE"
+          elif [ "$EVENT" = push ] && [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            base="$PUSH_BEFORE"
+          else
+            base="$(git merge-base HEAD origin/master)"
+          fi
+          python ci/check_project_changes.py --base "$base" --head HEAD --output output/platform-selection.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: platform-selection
+          path: output/platform-selection.json
+          if-no-files-found: error
+
+  acceptance:
+    name: Platform acceptance (${{ matrix.database }})
+    needs: documents
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, mysql]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: platform-ci-only
+          MYSQL_DATABASE: platform_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pplatform-ci-only"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated platform test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev pkg-config
+          python -m pip install 'Django>=4.2,<5' 'djangorestframework>=3.14,<4' Pillow mysqlclient
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-selection
+          path: output
+      - name: Run migrations, contracts and selected business acceptance
+        env:
+          PLATFORM_TEST_MYSQL: ${{ matrix.database == 'mysql' && '1' || '0' }}
+          MYSQL_TEST_PASSWORD: platform-ci-only
+          PYTHONIOENCODING: utf-8
+        run: python ci/project_ci.py --selection output/platform-selection.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: platform-acceptance-${{ matrix.database }}
+          path: |
+            output/acceptance-*.json
+            output/expected-rejection-*.json
+            output/expected-rejection-*.log
+          if-no-files-found: error

@@ -269,6 +269,7 @@ def llm_chat(request):
     
     try:
         # 解析请求数据
+        requested_tts = False
         if request.FILES:
             user_message = request.POST.get('message', '')
             mode = request.POST.get('mode', '')
@@ -283,6 +284,7 @@ def llm_chat(request):
             mode = data.get('mode', '')
             interview_style = data.get('interview_style', '')
             session_id = data.get('session_id', '')
+            requested_tts = data.get('enable_tts') is True
         
         logger.info(f"Received message: {user_message}, mode: {mode}, session_id: {session_id}")
         
@@ -374,7 +376,7 @@ def llm_chat(request):
             
             def llm_chat_tts_work(llm, messages, mq, is_interview_mode_flag):
                 async def run_tts_tasks():
-                    enable_tts = settings.ENABLE_TTS
+                    enable_tts = settings.ENABLE_TTS and requested_tts
                     
                     if not is_interview_mode_flag or not enable_tts:
                         logger.info(f"TTS disabled - interview_mode={is_interview_mode_flag}, enable_tts={enable_tts}")

@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from ai_integration.career_report_views import career_report_generation
 
 urlpatterns = [
+    path('api/career-platform/', include('career_platform.urls')),
     path('admin/', admin.site.urls),
     path('api/career-paths/', include('career_paths.urls')),
     path('api/company-reviews/', include('company_reviews.urls')),

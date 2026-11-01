@@ -1,0 +1,26 @@
+{
+  "commit": "82f12931de08e2cab71823d9e8c2b9aa6d2a6dec",
+  "complete": true,
+  "images": {
+    "backend": {
+      "repository": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend",
+      "image_id": "sha256:e19d0be8254100c5adaff046ec05b266ae88f4301fff0ef6f6a9f3c21871b4b6",
+      "tags": [
+        "sha-82f1293",
+        "latest"
+      ],
+      "digest": "sha256:e2511b870b22f857606c659df139f517c02294024f7668cbd6d3ca90ccfff195",
+      "reference": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend@sha256:e2511b870b22f857606c659df139f517c02294024f7668cbd6d3ca90ccfff195"
+    },
+    "frontend": {
+      "repository": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend",
+      "image_id": "sha256:9ef2a54b6673fe06aca329c8367984fe40c2aec3f67c52a8099d35ac267be161",
+      "tags": [
+        "sha-82f1293",
+        "latest"
+      ],
+      "digest": "sha256:bb3ecb42b0e8996eff64c0fde2a88ab347fd33a5ceffb2b95a5f6544a3de1d35",
+      "reference": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:bb3ecb42b0e8996eff64c0fde2a88ab347fd33a5ceffb2b95a5f6544a3de1d35"
+    }
+  }
+}

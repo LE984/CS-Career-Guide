@@ -37,6 +37,9 @@ class LegacyPromptInterview:
             }
             description = styles.get(style, '语气友好亲切，侧重引导与交流，适合舒缓紧张感。')
             system = self.prompt_loader('interview') + '\n\n风格：' + description
+        system += ('\n\n输出要求：只输出纯文本，不使用 Markdown 标记、代码围栏、表格、标题符号或星号。'
+                   '代码和技术名词用普通文本表达。复盘使用中文段落标题和换行，'
+                   '保留“回答的优点：”“需要改进的地方：”“具体改进建议：”“综合评分：”等字段。')
         return InterviewPrompt(system=system, user=prompt)
 
     def parse_review(self, content):
