@@ -1,4 +1,6 @@
 import contextlib
+import base64
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -11,6 +13,21 @@ import server_maintenance
 
 
 class ServerMaintenanceTests(unittest.TestCase):
+    def test_gateway_import_checks_archive_and_loaded_image_identity(self):
+        archive = b'synthetic-unit-test-archive'
+        payload = {'gateway_archive_b64': base64.b64encode(archive).decode(),
+                   'gateway_archive_sha256': hashlib.sha256(archive).hexdigest(),
+                   'gateway_image_id': 'sha256:' + 'a' * 64}
+        image = {'Id': payload['gateway_image_id'], 'Os': 'linux', 'Architecture': 'amd64'}
+        with patch('server_maintenance.subprocess.run', return_value=subprocess.CompletedProcess([], 0, b'', b'')) as load, \
+                patch('server_maintenance.run', return_value=[image]):
+            server_maintenance.import_gateway(payload)
+        self.assertEqual(load.call_args.kwargs['input'], archive)
+        payload['gateway_archive_sha256'] = 'bad-checksum'
+        with patch('server_maintenance.subprocess.run') as load, self.assertRaises(ValueError):
+            server_maintenance.import_gateway(payload)
+        load.assert_not_called()
+
     def test_audit_emits_only_selected_metadata_and_never_environment_values(self):
         config = {'name': 'fixture', 'services': {
             'backend': {'environment': {'SECRET_KEY': 'synthetic-hidden-value'}},

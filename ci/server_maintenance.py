@@ -26,6 +26,25 @@ class MaintenanceFailure(RuntimeError):
         super().__init__('Server maintenance operation failed; raw diagnostics withheld')
 
 
+def import_gateway(payload):
+    """Import the exact runner-verified public Nginx image without server Hub access."""
+    import hashlib
+
+    archive = base64.b64decode(payload['gateway_archive_b64'], validate=True)
+    expected_id = payload['gateway_image_id']
+    if (len(archive) > 150 * 1024 * 1024
+            or hashlib.sha256(archive).hexdigest() != payload['gateway_archive_sha256']
+            or not re.fullmatch(r'sha256:[0-9a-f]{64}', expected_id)):
+        raise ValueError('Gateway archive integrity check failed')
+    loaded = subprocess.run(['docker', 'load'], input=archive, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, timeout=180)
+    if loaded.returncode:
+        raise MaintenanceFailure('gateway-import-failed')
+    image = run(['docker', 'image', 'inspect', 'nginx:1.27-alpine'], json_output=True)[0]
+    if image['Id'] != expected_id or image.get('Os') != 'linux' or image.get('Architecture') != 'amd64':
+        raise ValueError('Gateway imported image identity does not match runner verification')
+
+
 def run(command, *, json_output=False):
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600)
     if result.returncode:
@@ -189,7 +208,13 @@ def install(env_path, payload):
         if rendered.get('volumes') != existing.get('volumes') or rendered.get('networks') != existing.get('networks'):
             raise ValueError('Candidate changed existing network or volume identities')
         stage('pull-images')
-        run([*candidate_base, 'pull', 'frontend', 'gateway'])
+        if payload.get('gateway_archive_b64'):
+            stage('import-gateway')
+            import_gateway(payload)
+            stage('pull-frontend')
+            run([*candidate_base, 'pull', 'frontend'])
+        else:
+            run([*candidate_base, 'pull', 'frontend', 'gateway'])
         stage('backup')
         if ((path.stat().st_ino, path.stat().st_mtime_ns, path.stat().st_size) != env_identity
                 or compose_path.read_bytes() != original_compose):
@@ -327,8 +352,16 @@ def remote(action, frontend_image=''):
                           '--env-path', os.environ['DEPLOY_ENV_PATH']])
     payload = b''
     if action == 'install':
+        import hashlib
         import yaml
         root = Path(__file__).resolve().parents[1]
+        stage('runner-gateway-image')
+        run(['docker', 'pull', '--platform', 'linux/amd64', 'nginx:1.27-alpine'])
+        gateway = run(['docker', 'image', 'inspect', 'nginx:1.27-alpine'], json_output=True)[0]
+        with tempfile.TemporaryDirectory(prefix='gateway-export-') as archive_dir:
+            archive_path = Path(archive_dir) / 'gateway.tar'
+            run(['docker', 'save', '--output', str(archive_path), 'nginx:1.27-alpine'])
+            archive = archive_path.read_bytes()
         payload = json.dumps({
             'frontend_image': frontend_image,
             'topology_source': (root / 'ci/split_topology.py').read_text(),
@@ -336,7 +369,11 @@ def remote(action, frontend_image=''):
             'nginx': (root / 'deploy/nginx.conf').read_text(),
             'helpers': {name: (root / 'ci' / name).read_text()
                         for name in ('sync_runtime_env.py', 'deploy_component.py')},
+            'gateway_archive_b64': base64.b64encode(archive).decode('ascii'),
+            'gateway_archive_sha256': hashlib.sha256(archive).hexdigest(),
+            'gateway_image_id': gateway['Id'],
         }).encode()
+    stage('verified-ssh')
     with tempfile.TemporaryDirectory(prefix='split-maintenance-') as directory:
         os.chmod(directory, 0o700)
         key, known = Path(directory) / 'identity', Path(directory) / 'known_hosts'

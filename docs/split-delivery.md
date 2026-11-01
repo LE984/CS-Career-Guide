@@ -63,6 +63,8 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 安装成功后使用同一单组件激活函数再重建一次 frontend，确认 backend/gateway ID 与 `.env` inode/大小/mtime 均不变，并验证 SPA、401、static 和不存在的 media 返回 404。不创建业务账号、不调用真实模型。失败时恢复原 Compose、前端 digest 与原端口；不删除数据库或用户卷，Watchtower 保持停止。单组件工具安装在本次 `.split-backup-<时间>/tools/ci/`，实际相对路径记录于 install Artifact；该目录是受保护的运维备份，不清理。
 
+服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，导出归档并经已核验 SSH stdin 传送；服务器校验归档 SHA-256、加载后 image ID 与 linux/amd64 平台，再只从 ACR pull frontend。网关随后 `--pull never` 启动，不要求服务器直连 Docker Hub。归档只含公开 Nginx，不上传服务器配置或凭据。
+
 各组件 publisher 的 `published-<组件>-<run-id>` Artifact 内含 `published-images.json`：检查 `complete=true`、`components`、`compatibility` 证据范围、完整源码 commit 和 `images.<组件>.reference`。不同组件可来自不同已完成发布，不要求同一个源码提交；仍须核对目标 API/schema 兼容。
 
 自动激活从对应 publisher output 读取完整 digest，`DEPLOY_IMAGE` 不追踪 latest。脚本在锁内校验候选 Compose，pull 单服务，再持久化 `docker-compose.<组件>-image.json`，最后执行：
