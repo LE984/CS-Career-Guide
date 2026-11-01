@@ -49,6 +49,8 @@ class BuildLayoutTests(unittest.TestCase):
                          'proxy_pass $frontend$request_uri', 'proxy_buffering off',
                          'proxy_read_timeout 300s', 'alias /var/www/backend-static/', 'alias /var/www/media/'):
             self.assertIn(expected, gateway)
+        for name in ('client_body', 'proxy', 'fastcgi', 'uwsgi', 'scgi'):
+            self.assertIn(name + '_temp_path /tmp/', gateway)
         self.assertNotIn('/var/log/nginx/', gateway)
 
 

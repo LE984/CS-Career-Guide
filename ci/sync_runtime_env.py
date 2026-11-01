@@ -116,6 +116,8 @@ def apply_remote(env_path, values, component='backend', image=None):
 
     if component not in ('backend', 'frontend'):
         raise ValueError('Unsupported deployment component')
+    if not isinstance(values, dict):
+        raise ValueError('Deployment settings must be a mapping')
     if component == 'frontend' and values:
         raise ValueError('Frontend deployments must not receive AI settings')
     if values:

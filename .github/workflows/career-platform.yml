@@ -28,6 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python -m pip install PyYAML
           python -m unittest discover -s ci -p 'test_project*.py' -v
           if [ "$EVENT" = pull_request ]; then
             base="$PR_BASE"

@@ -89,7 +89,8 @@ def run_demo(project, base_url, logs_dir):
 
     logs_dir.mkdir(parents=True, exist_ok=True)
     try:
-        compose('up', '--detach', '--no-build', '--pull', 'never', 'backend', 'frontend', 'gateway')
+        compose('up', '--detach', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '180',
+                'backend', 'frontend', 'gateway')
         before = None
         for service in ('backend', 'frontend', 'gateway'):
             container = compose('ps', '-q', service).stdout.strip()

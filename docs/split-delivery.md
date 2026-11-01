@@ -16,6 +16,8 @@
 
 构建上下文严格为 `frontend/` 和 `backend/`，Dockerfile、`.dockerignore` 与各自依赖位于对应目录。backend 的 UTF-16 `requirements.txt` 和运行依赖只搬迁、不升级；根目录两个 requirements 文件是 pip 转发入口。前端公开 build args 为 `VITE_API_BASE_URL`、`VITE_COMPANY_API_BASE_URL`、`VITE_ENABLE_TTS`，不允许传密钥。
 
+Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，放入虚构环境/私钥/运行数据探针并核对它们被 Dockerignore 排除。仅 runner 执行；不读取真实环境文件。
+
 ## 单端兼容策略与门禁
 
 单端变更运行自身完整离线回归与镜像冒烟。前端沿用 API/Token/401、legacy 面试请求与 SSE 解码合同测试；后端沿用鉴权、配置、面试/ASR 和迁移隔离回归。前端镜像冒烟不创建 backend，也不提供 backend DNS。
@@ -24,7 +26,7 @@
 
 共享交付变更必须运行两个候选镜像的 `integration`：真实 Django/Nginx 的登录、鉴权拒绝、资料读写、后端静态文件、SQLite 重建持久化；分别重建单端并确认另一端与 gateway 容器 ID 不变。`gateway_smoke.py` 再以合成上游验证 Authorization/Cookie/query、static/media、首个 SSE 事件及时到达，以及两端强制换 IP 后 gateway 无需重启即可恢复。合成 SSE 不调用真实模型。
 
-业务门禁独立于交付门禁：`ci/check_project_changes.py` 只把 `.github/workflows/ci-cd.yml` 视作交付编排例外。业务路径/公共契约/未知业务文件仍按基线归属表要求实施文档和原 complete 用例。`career-platform.yml`、`ci/project_*`、检查器、固定测试等验收规则改动仍要求全部业务验收；交付文件与业务文件混改不能逃逸。普通前端静态变更不启动数据库 runner，前端业务模块变更仍执行其原业务验收。
+业务门禁独立于交付门禁：`ci/check_project_changes.py` 仅在基线与当前前后端测试 Job 保持一致时，将 `.github/workflows/ci-cd.yml` 视作交付编排例外；测试命令、跳过条件、continue-on-error、删除测试等变化仍触发原完整业务门禁。业务路径/公共契约/未知业务文件仍按基线归属表要求实施文档和原 complete 用例。`career-platform.yml`、`ci/project_*`、检查器、固定测试等验收规则改动仍要求全部业务验收；交付文件与业务文件混改不能逃逸。普通前端静态变更不启动数据库 runner，前端业务模块变更仍执行其原业务验收。
 
 **本轮限制：本分支修改了门禁检查器与 career-platform.yml，因此自身仍选择原完整业务验收。五个模块当前是 501 骨架，2026-11-01 的本地 17 项 complete 用例为 14 failures、3 errors，均为 501/FeatureNotImplemented；没有降低该门禁或实现这五项业务来制造绿色。交付构建/网关联调与此业务阻塞分别记录。**
 

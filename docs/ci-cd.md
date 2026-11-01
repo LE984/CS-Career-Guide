@@ -30,7 +30,7 @@ changes -> frontend-test -> frontend-image -> publish-frontend -> deploy-fronten
 
 ## 业务门禁
 
-Platform documentation 继续以 PR base / push before 的归属表为准检查模块文档和 acceptance-record。交付编排 ci-cd.yml 被明确区分；业务代码、公共契约、固定测试/验收规则和未知 workflow 仍按原规则选择 complete。普通前端静态变更不启动 SQLite/MySQL 业务 runner，前端模块路径仍触发原业务验收。混入业务文件不会因同时有交付文件而被豁免。
+Platform documentation 继续以 PR base / push before 的归属表为准检查模块文档和 acceptance-record。交付编排 ci-cd.yml 仅在前后端既有测试 Job 与基线保持一致时被区分；修改测试命令、跳过条件、continue-on-error 或删除测试仍进入原完整业务门禁。业务代码、公共契约、固定测试/验收规则和未知 workflow 仍按原规则选择 complete。普通前端静态变更不启动 SQLite/MySQL 业务 runner，前端模块路径仍触发原业务验收。混入业务文件不会因同时有交付文件而被豁免。
 
 本分支修改了检查器与 career-platform.yml，所以本分支自身仍需要六份实施记录及原全部业务验收。五个模块当前仍是 501 骨架；本地 17 项 complete 失败如实保留，不能靠降低固定测试标准使发布通过。交付验证和业务完成分开记录。
 
@@ -43,6 +43,8 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 `published-frontend-<run-id>` / `published-backend-<run-id>` 各自保存 `published-images.json`，含 components、compatibility（component-contracts / candidate-integration / not-recorded）、完整 commit、image ID、标签、digest/reference 与 complete。complete=false 是部分失败，不可部署；latest/SHA tag 可改写，精确恢复用 digest。两个 publisher 相互独立，不承诺两端发布原子性。
 
 归档保留 1 天，普通日志 7 天，发布记录 30 天；不上传真实环境/凭据。一个 ref 的 push 发布不取消旧运行，PR 可取消旧运行；服务器激活共用独立 concurrency group 和远端文件锁。Actions 并发组不替代手工回滚协调。
+
+`check_build_context.py` 在 runner 用 scratch COPY 导出实际上下文，核对虚构的 .env、私钥、SQLite/media/LanceDB 或 node_modules 探针未进入上下文；正常源码与样例仍存在。该脚本拒绝在非 Actions 环境运行，本地只测其拒绝/泄漏判定。
 
 ## 验收与失败排查
 

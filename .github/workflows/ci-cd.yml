@@ -269,6 +269,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Verify isolated Docker build context
+        run: python3 ci/check_build_context.py --component backend
       - name: Resolve local image coordinates
         shell: bash
         run: |
@@ -340,6 +342,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Verify isolated Docker build context
+        run: python3 ci/check_build_context.py --component frontend
       - name: Resolve local image coordinates
         shell: bash
         run: |

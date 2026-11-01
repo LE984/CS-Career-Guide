@@ -250,6 +250,15 @@ class RemoteTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(path.stat().st_ino, inode)
 
+    def test_invalid_payload_is_rejected_before_docker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.prepare(directory)
+            for values in (None, [], ['LLM_MODEL']):
+                with self.subTest(values=values), patch('sync_runtime_env.compose_run') as compose:
+                    with self.assertRaises(ValueError):
+                        apply_remote(str(path), values, 'backend', IMAGES['backend'])
+                    compose.assert_not_called()
+
 
 
 class WorkflowTests(unittest.TestCase):
