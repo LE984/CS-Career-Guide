@@ -96,9 +96,9 @@ git push origin codex/personal
 
 ## CI 与发布注意事项
 
-个人分支 push 和 PR 按变更范围执行 build-only；master 代码 push 会在验证后发布 ACR 镜像。master 手动触发 workflow 也可能发布，不可当作只读检查。
+个人分支 push 和 PR 按变更范围执行 build-only；master 代码 push 在对应验证通过且 `SPLIT_DELIVERY_RELEASE_ENABLED=true` 时，分别发布选中组件的 ACR 镜像。共享变更要求双端与完整候选联调。master 手动触发 workflow 也可能发布，不可当作只读检查。
 
-服务器 AI 同步只有 `DEPLOY_ENV_SYNC_ENABLED=true` 才执行，但服务器已有 Watchtower 时，镜像发布本身仍可能引发自动更新。合并前应了解该副作用，不把“没有手动 SSH 重建”写成“服务器一定没有更新”。CI、发布和服务器状态分别确认，见 [流水线](ci-cd.md) 与 [运维状态](deployment-status.md)。
+服务器分端激活需对应 publisher 成功、`DEPLOY_ENV_SYNC_ENABLED=true` 与对应 `DEPLOY_FRONTEND_ENABLED` / `DEPLOY_BACKEND_ENABLED=true`；只部署本次发布的对应 digest。frontend 不同步 AI 或替换 `.env`。其他环境已有 Watchtower 时，镜像发布本身仍可能引发自动更新。合并前应了解该副作用，不把“没有手动 SSH 重建”写成“服务器一定没有更新”。CI、发布和服务器状态分别确认，见 [流水线](ci-cd.md) 与 [运维状态](deployment-status.md)。
 
 当前纯文档识别只覆盖 README.md 和 docs/；按 frontend/backend 目录选择自身，deploy/ci 等共享与未知路径选择两端。根目录 `agent.md`、`AGENTS.md` 不在该跳过规则内，改它们会触发镜像检查。不要根据文件内容自行假定流水线会跳过。
 

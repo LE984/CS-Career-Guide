@@ -2,15 +2,15 @@
 
 > 2026-11-01 交付拆分：以[单仓库独立交付](split-delivery.md)为当前操作入口；实际发布、服务器安装与自动部署开关见[带日期的状态记录](deployment-status.md)。历史证据不能代替当前运行状态。
 
-> 2026-10-26：已验证 `csdeploy` 的私有 ACR 拉取，补齐服务器 AI 映射并通过 Actions 同步与重建应用；旧 Watchtower 已停止。服务器定制的 80 和 48080 端口已写入实际基础 Compose，避免同步只加载基础文件时丢失 80 端口。操作前已备份 SQLite、环境文件、Compose 和容器身份；实时业务验收见 [当前状态](deployment-status.md)。下文 2026-10-23 的账号创建记录是历史背景。
+> 2026-10-26 的账号、ACR 与 AI 映射记录是历史背景。2026-11-01 已完成新 gateway 首次切换：真实服务器的 80 和 48080 仍由 gateway 承接，原 backend、数据卷和 `.env` 保留，Watchtower 已停止；安装与 audit 证据见[当前状态](deployment-status.md)。下文的默认 Compose 命令只适用于全新环境，现存环境应优先使用单组件 digest 工具。
 
-当前仓库以保护宿主机优先：默认仅绑定回环地址、限制资源与日志、启动前后端与独立 gateway，Watchtower 需要单独启用。新前端监听 `8080`，不能把新 Compose 与旧 `c1d7b6a` 前端镜像混用；执行部署前确认镜像与配置兼容，见 [宿主机保护边界](host-protection.md)。本次仅更新操作手册。
+当前仓库以保护宿主机优先：示例默认仅绑定回环地址、限制资源与日志、启动前后端与独立 gateway，Watchtower 需要单独启用。真实服务器另有已核对的 80/48080 入口；新前端监听 `8080`，不能把新 Compose 与旧 `c1d7b6a` 前端镜像混用。执行部署前确认镜像与配置兼容，见[宿主机保护边界](host-protection.md)。
 
 ## 专用部署账号与配置归属
 
 本会话已创建 `csdeploy`：独立 Ed25519 密钥登录、密码锁定、没有 sudo、加入 Docker 组。部署目录由 `csdeploy:ubuntu` 拥有且权限为 750，`.env` 为 `csdeploy:csdeploy`、600；只更改了所有权和权限，没有改环境文件内容。账号的 `authorized_keys` 使用 `restrict`，不提供 PTY、端口/agent/X11 转发；管理隧道继续使用管理员自己的连接。
 
-实际服务器主机、端口、账号、环境文件路径和专用凭据保存在六个 `DEPLOY_*` Secrets 中，见 [配置表](ai-env-sync.md#github-配置)。不要将私钥、服务器真实 `.env` 或未经脱敏的 `docker inspect`/`docker compose config` 输出放进文档。
+实际服务器主机、端口、账号、环境文件路径和专用凭据保存在六个 `DEPLOY_*` Secrets 中，见[配置归属](ai-env-sync.md#凭据与配置归属)。不要将私钥、服务器真实 `.env` 或未经脱敏的 `docker inspect`/`docker compose config` 输出放进文档。
 
 部署账号已验证目录读写、Docker 调用和 Python 3，2026-10-26 已以该账号成功拉取前后端私有镜像。现有管理员或 Watchtower 的登录不能替代部署账号登录。自动同步脚本使用部署账号默认 Docker CLI 凭据，须以该账号配置本项目 ACR 登录；`DOCKER_CONFIG_DIR` 只决定 Watchtower 挂载目录，不会自动影响 CLI。
 
@@ -91,10 +91,12 @@ docker compose config --quiet
 
 ## 启动与验证
 
+下面的整套命令只用于**全新服务器首次安装**。现存服务器不要用它覆盖真实 `.env`、项目名、卷或已固定的镜像版本；日常更新/回滚先读取对应发布记录，再按[独立交付](split-delivery.md#单服务部署与-digest-回滚)只激活目标组件。手工 Compose 必须显式加载已经存在的 `docker-compose.backend-image.json`、`docker-compose.frontend-image.json` pin override；没有 pin 时先停止并核对，不要退回 tag。
+
 ```bash
 cd deploy
 docker --config /etc/cs-career-guide/acr compose pull backend frontend gateway
-docker compose up -d --no-build backend frontend gateway
+docker --config /etc/cs-career-guide/acr compose up -d --no-build backend frontend gateway
 docker compose ps
 docker compose logs --tail=100 backend
 docker compose logs --tail=100 frontend
@@ -169,6 +171,6 @@ Compose 会把 `DATABASE_NAME`、`DATABASE_USER`、`DATABASE_PASSWORD`、`DATABA
 
 - 没有 HTTPS 和域名证书。
 - 没有自动迁移已有媒体或 SQLite 数据。
-- 没有真实 MySQL 迁移验证。
+- 没有把线上 SQLite 切换到 MySQL，也没有执行真实数据迁移；Actions runner 的隔离 MySQL 配置/验收不能替代线上迁移验收。
 - 少量真实文本和面试音频调用已授权并验证，不代表完整费用、配额或负载验收。
 - 不能宣称已完成公网上线。

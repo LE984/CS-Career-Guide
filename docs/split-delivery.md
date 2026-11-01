@@ -100,11 +100,11 @@ config/pull 失败保留原 `.env` 和 pin，删除候选文件；激活/健康�
 - 服务器：分端激活健康与业务检查单独记录；发布本身不证明服务器运行该 digest。
 - 浏览器、真实模型、语音和生产数据库迁移：均需单独授权与验收，本轮没有执行。
 
-### 2026-11-01 Actions 阶段证据
+### 2026-11-01 早期 Actions 阶段证据（历史）
 
 修复网关临时目录后的 `a1ea092` 已在 push 运行 41301386969 与 PR 运行 41301390611 通过两端代码测试、各自实际构建/无发布归档验证、实际 Dockerignore scratch 导出探针，以及完整 gateway/Django/SQLite 联调。合成上游的 headers/query、static/media、无缓冲 SSE、两端强制 IP 变更也通过。
 
-上述运行的总结果仍为 failure：SQLite/MySQL 的原完整业务验收因现有 501 骨架失败，release-summary 正确报告业务门禁失败，两个 publisher/deploy 均 skipped。不能将交付检查通过写成整个 CI 通过或已发布/已部署。其后的公司查询默认构建参数保持 /company-api 与服务器拓扑校验补丁，需以最终 head 的 Actions 再确认，不能沿用此处提交证据。
+上述运行的总结果仍为 failure：SQLite/MySQL 的原完整业务验收因现有 501 骨架失败，release-summary 正确报告业务门禁失败，两个 publisher/deploy 均 skipped。该记录不能覆盖后续补丁；最终结果见下方“最终交付证据”。
 
 首次维护任务使用 30 分钟预算，SSH 子进程最多 20 分钟；runner 仅输出不含连接信息的阶段码。2026-11-01 未压缩传输曾达到旧的 12 分钟上限而取消；独立 audit 确认原应用容器和旧入口未变，不能将该次任务记为安装成功。
 

@@ -1,6 +1,6 @@
 # Docker 镜像
 
-当前分支的构建入口为 frontend/Dockerfile 与 backend/Dockerfile，构建上下文分别是 frontend/、backend/。仓库仍是一个 Git 仓库，ACR 仍为 cs-career-guide-frontend、cs-career-guide-backend 两个独立镜像仓库；不再成对构建或成对发布。历史发布证据见 deployment-status.md，新拓扑与操作见[独立交付](split-delivery.md)。
+已合入 master 的构建入口为 frontend/Dockerfile 与 backend/Dockerfile，构建上下文分别是 frontend/、backend/。仓库仍是一个 Git 仓库，ACR 仍为 cs-career-guide-frontend、cs-career-guide-backend 两个独立镜像仓库；两端可以分别构建和发布；共享变更仍同时验证两端。历史发布证据见 deployment-status.md，新拓扑与操作见[独立交付](split-delivery.md)。
 
 ## 独立构建
 
@@ -29,4 +29,4 @@ GLB 与 VAD ONNX/WASM/worklet 为公开运行资源，必须保留。根 `.docke
 
 两端 cache scope 不变，使用 type=gha，provenance/sbom=false。各自测试后导出归档，publisher 验证完整 commit、image ID、linux/amd64 后发布同一镜像；不重新构建、不要求另一端归档。单端/共享验证策略、发布记录和 digest 回滚见[独立交付](split-delivery.md)。
 
-截至 2026-11-01，本地只验证离线测试与生产前端编译；Docker、网关联调结果必须来自当前提交 Actions，未部署服务器。
+2026-11-01 的最终交付代码已通过 Actions 双端镜像与网关联调；新 frontend 与 gateway 已安装到服务器，保留原 backend。网关镜像经既有 ACR 仓库的专用 `gateway-nginx-<imageID>` 标签传送并在服务器固定 digest，不覆盖前端应用标签。实际发布/安装/独立审计证据见[部署状态](deployment-status.md)，本机没有 Docker 构建。缓存命中与耗时见[CI/CD](ci-cd.md#缓存与耗时定位)。

@@ -6,12 +6,14 @@
 
 后端复制 `backend/.env.example` 为 `backend/.env`，前端复制 `frontend/.env.example` 为 `frontend/.env`。也可以在服务器或容器中直接注入环境变量。后端的系统环境变量优先于 `.env`；前端沿用 Vite 的环境变量规则。
 
-2026-10-23 新增可选的 [Actions AI 配置同步](ai-env-sync.md)，已经过 build-only CI 并整合进 master，启用开关未设置。模型 Key 和模型配置已保存在 Actions；保存并不会自动传给服务器或改变运行中容器。镜像发布以对应 master Actions 为准。
+[Actions AI 配置同步](ai-env-sync.md) 现为后端分端部署的一部分；前端部署不接收模型字段、不替换真实 `.env`。2026-11-01 独立安装完成后已开启发布和分端部署开关，详见[部署状态](deployment-status.md)。仅保存 Secret/Variable 不会触发发布或改变运行中容器；需要对应组件通过验证、发布并激活。
 
 配置归属按以下规则管理：
 
 | 来源 | 配置 | 更新方式 |
 | --- | --- | --- |
+| Actions 交付开关 | `SPLIT_DELIVERY_RELEASE_ENABLED`、`DEPLOY_ENV_SYNC_ENABLED`、`DEPLOY_FRONTEND_ENABLED`、`DEPLOY_BACKEND_ENABLED` | 均缺省关闭；发布需第一项，部署还需总同步及对应分端开关；按当前部署状态确认实际值 |
+| Actions 激活输入 | `DEPLOY_COMPONENT`、`DEPLOY_IMAGE` | workflow 从对应 publisher 传入组件和完整 digest，不从 latest 猜测版本 |
 | Actions Secrets | 三个模型 API Key、六个 SSH 连接字段 | 只在启用后的同步 Job 使用；SSH 字段不写应用 `.env` |
 | Actions Variables | 模型名、LLM/ASR/TTS URL、音色、`ENABLE_TTS` | AI 白名单合并到服务器 `.env`；非空值更新，空可选值保留旧值 |
 | 前端构建 Variable | `VITE_API_BASE_URL`、`VITE_COMPANY_API_BASE_URL`、`VITE_ENABLE_TTS` | Docker build-arg 写入静态资源，需重建前端；不能存密钥 |

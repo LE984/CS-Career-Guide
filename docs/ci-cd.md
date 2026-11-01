@@ -36,6 +36,20 @@ Platform documentation 继续以 PR base / push before 的归属表为准检查�
 
 2026-11-01 用户明确授权保留并说明此既有业务失败后合并拆分 PR、更新服务器。该授权不改变测试结果或固定规则。首次合并关闭发布与自动激活，服务器操作通过手动 `Split delivery maintenance` workflow 的严格 SSH 核验通道执行；当前 `audit` 只输出镜像/容器/端口/卷等选定元数据，不读取或替换真实 `.env` 内容，不输出展开的 Compose 或容器环境值。
 
+### SQLite/MySQL 验收失败对开发与发布的影响
+
+两个 `Platform acceptance` job 运行 `ci/project_ci.py`：先在各自隔离数据库执行 scaffold（含迁移/鉴权/契约），再按 `platform-selection.json` 选择完整业务用例。2026-11-01 两种数据库的完整 17 项均出现 14 failures、3 errors，日志指向五模块 `501 / FEATURE_NOT_IMPLEMENTED`；不能据 job 名称将其认定为数据库连接/迁移故障。后续若出现连接或迁移异常，仍需按该次日志单独处理。
+
+| 变更范围 | 业务验收与发布影响 |
+| --- | --- |
+| README.md / docs/ | 不选择应用镜像；文档检查成功不表示业务 complete 通过 |
+| 普通前端静态资源、非业务交付脚本 | 按路径不启动完整业务验收；交付共享改动仍需双端镜像和网关联调 |
+| 普通后端代码 | 可启动 SQLite/MySQL scaffold；具体 complete 选择以报告为准，不无条件跑五模块 |
+| 五模块归属路径（含对应前端页面） | 运行选中的模块 complete；该模块 501 失败会阻止本次选中组件发布 |
+| 公共契约、固定验收规则、未知 workflow 等共享归属路径 | 运行原全模块 complete；当前未完成业务会使门禁和对应发布失败 |
+
+这些失败不停止已部署容器，也不要求切换服务器数据库。用户接受既有失败后合并的授权适用于本轮交付拆分，不自动放行未来业务发布；对应业务实现应保留固定验收并让其转绿。
+
 ## 发布与记录
 
 ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取（Variables 优先）；ALIYUN_ACR_USERNAME/ALIYUN_ACR_PASSWORD 用于登录。构建/联调不读取注册表凭据。镜像缓存 scope 仍按两端分别设置，关闭 provenance/SBOM 保留现有 ACR 兼容。

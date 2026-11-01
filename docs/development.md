@@ -71,6 +71,12 @@ Linux/macOS 对应 Python 路径通常为 `.venv/bin/python`。ci/sync_runtime_e
 
 正式题库材料说明见 `data/career-platform/README.md`，fixture不是30道正式人审演示题。CI和审阅见 [CI/CD](ci-cd.md) 及公共约定，不能用修改状态标记跳过complete。
 
+## 独立交付与客户端边界
+
+前端/后端的构建入口分别为 `frontend/Dockerfile`、`backend/Dockerfile`，上下文各自限定在本目录；应用间通过现有 API/Token 协议通信。日常单端改动独立测试、发布和激活，公共契约或共享交付配置按[CI/CD](ci-cd.md)选择必要联调。App 客户端由其他成员负责，本轮不新增 App 页面、接口或鉴权协议；浏览器跨域的公开 API URL 与 CORS/CSRF 配置见[环境变量](environment.md)。
+
+`Platform acceptance (sqlite/mysql)` 同时检验数据库迁移、契约与按变更范围选择的业务，并非只测数据库连接。2026-11-01 的五模块完整验收因 `501 / FEATURE_NOT_IMPLEMENTED` 失败，已发布服务与这一未完成业务分别记录。排查依据和哪些改动会阻止发布见[业务门禁](ci-cd.md#业务门禁)；不得删除固定测试或把完整联调的 skipped 写成通过。
+
 ## 文档维护
 
 修改功能时优先补对应文档中的行为、使用方法和验证，不扩写无关内容；新主题文档加入 agent.md 索引。配置、接口、迁移和部署变化的具体要求见 [文档更新表](git-workflow.md#开发时补多少文档)。历史接手记录提供线索，实际开发仍以当前代码和查询结果为准。

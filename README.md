@@ -119,8 +119,11 @@ npm run dev
 
 ## 🚀 部署与运维
 
-2026-10-23，AI 环境同步、自动重建和面试 legacy 重构的提交 `33cbc57` 已通过 [build-only Actions 39979362642](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/39979362642)，随后按主分支约定整合进 master。本会话已观察到服务器前后端健康、旧 Watchtower 运行，并完成专用部署账号及 Actions 配置。当前 master 的验证与发布以 [Actions](https://github.com/vacontinuejatotired/CS-Career-Guide/actions?query=branch%3Amaster) 为准；服务器 AI 同步仍关闭，真实模型、语音及浏览器全流程待验收。请先阅读：
+2026-11-01 已完成单仓库独立交付拆分和服务器首次网关切换：`frontend/`、`backend/` 使用各自构建上下文、CI、镜像 publisher 和 digest 激活入口。单端发布或回滚不拉取、不重建另一端；共享配置仍要求双端和完整网关联调。服务器 80/48080 由独立 gateway 承接，新前端已部署，原后端容器、数据库卷及 `.env` 保留；发布与分端部署开关已开启，Watchtower 保持停止。
 
+运行状态是带日期的快照，完整 digest、Actions、单端重建和未验收范围见[部署状态](docs/deployment-status.md)。五个课程模块的 `501 / FEATURE_NOT_IMPLEMENTED` 属于尚未完成的业务，SQLite/MySQL 业务验收失败及其发布影响见[业务门禁](docs/ci-cd.md#业务门禁)，不能据此判断服务器数据库损坏。App 客户端由其他成员实现，本仓库保留独立后端 API/Token 接口边界；独立域名浏览器配置见[环境变量](docs/environment.md)。请先阅读：
+
+- [单仓库独立交付与单服务 digest 回滚](docs/split-delivery.md)
 - [部署与运维总览](docs/deployment.md)
 - [宿主机保护边界](docs/host-protection.md)
 - [验收状态与接手记录](docs/deployment-status.md)
@@ -145,18 +148,26 @@ npm run dev
 ```
 cs-career-guide/
 ├── backend/                    # 后端Django项目
+│   ├── Dockerfile              # 后端独立构建，context=backend/
+│   ├── requirements.txt        # 完整开发/测试依赖；根入口转发至此
+│   ├── requirements-runtime.txt # 镜像运行依赖
 │   ├── ai_integration/         # AI集成模块
 │   ├── career_evaluation/      # 职业测评模块
 │   ├── career_paths/           # 职业路径模块
 │   ├── company_reviews/        # 企业评价模块
 │   └── cs_career_guide/        # Django配置
 ├── frontend/                   # 前端Vue项目
+│   ├── Dockerfile              # 前端独立构建，context=frontend/
+│   ├── nginx.conf              # 只提供前端静态资源与 history fallback
 │   ├── src/
 │   │   ├── components/         # 组件
 │   │   ├── views/              # 页面视图
 │   │   ├── api/                # API接口
 │   │   └── stores/             # 状态管理
 │   └── public/                 # 静态资源
+├── deploy/                     # Compose、独立网关 nginx.conf、配置样例
+├── ci/                         # 组件选择、镜像验证、部署与回滚工具
+├── .github/workflows/          # 按组件交付与手动服务器维护
 └── README.md                   # 项目文档
 ```
 
