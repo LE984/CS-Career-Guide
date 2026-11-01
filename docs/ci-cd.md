@@ -32,7 +32,7 @@ changes -> frontend-test -> frontend-image -> publish-frontend -> deploy-fronten
 
 Platform documentation 继续以 PR base / push before 的归属表为准检查模块文档和 acceptance-record。交付编排 ci-cd.yml 仅在前后端既有测试 Job 与基线保持一致时被区分；修改测试命令、跳过条件、continue-on-error 或删除测试仍进入原完整业务门禁。业务代码、公共契约、固定测试/验收规则和未知 workflow 仍按原规则选择 complete。普通前端静态变更不启动 SQLite/MySQL 业务 runner，前端模块路径仍触发原业务验收。混入业务文件不会因同时有交付文件而被豁免。
 
-本分支修改了检查器与 career-platform.yml，所以本分支自身仍需要六份实施记录及原全部业务验收。五个模块当前仍是 501 骨架；本地 17 项 complete 失败如实保留，不能靠降低固定测试标准使发布通过。交付验证和业务完成分开记录。
+最初拆分 PR 修改了检查器与 career-platform.yml，因此该批改动需要六份实施记录及原全部业务验收。五个模块当前仍是 501 骨架；本地 17 项 complete 失败如实保留，不能靠降低固定测试标准使发布通过。交付验证和业务完成分开记录。
 
 2026-11-01 用户明确授权保留并说明此既有业务失败后合并拆分 PR、更新服务器。该授权不改变测试结果或固定规则。首次合并关闭发布与自动激活，服务器操作通过手动 `Split delivery maintenance` workflow 的严格 SSH 核验通道执行；当前 `audit` 只输出镜像/容器/端口/卷等选定元数据，不读取或替换真实 `.env` 内容，不输出展开的 Compose 或容器环境值。
 
@@ -65,3 +65,5 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 仅前端变更会跳过后端检查/镜像/发布/部署；仅后端变更同理。共享交付配置仍需要双端和完整网关联调，不能为加速删除必要验证。排查慢任务时先区分 cache restore、依赖安装、Docker build、镜像归档传输、联调和服务器拉取，不把总时长全部归因于缓存未命中。
 
 首次网关维护的镜像传输与日常构建缓存不同。SSH 大归档曾超时，维护任务改为 runner 用既有 ACR 凭据发布专用 `gateway-nginx-<imageID>` 基础设施标签，按 digest 校验后由服务器拉取；不改前后端 `latest`/SHA 标签，日常单端发布不执行该步骤。只读 audit 不传入 ACR 凭据。
+
+2026-11-01 最终安装与独立审计成功后，发布总开关和三项分端部署开关已开启。实际 digest、单端重建、保留后端与验收边界见[部署状态](deployment-status.md)；不能把启用开关理解为已经重新发布/部署 backend。
