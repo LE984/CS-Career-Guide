@@ -34,4 +34,4 @@ pin文件属于运行状态，不入Git。以后直接调用Compose必须显式�
 
 ## 验证
 
-python -m unittest discover -s ci -p 'test_*.py' -v。全为虚构SSH/Compose、临时文件；Windows跳过POSIX权限测试，WSL/Linux补验。同步健康、实际运行digest、浏览器和真实模型分别核验，本轮未操作服务器。
+python -m unittest discover -s ci -p 'test_*.py' -v。全为虚构SSH/Compose、临时文件；Windows跳过POSIX权限测试，WSL/Linux补验。同步健康、实际运行 digest、浏览器和真实模型分别核验；服务器操作的实际结果见[部署状态](deployment-status.md)。

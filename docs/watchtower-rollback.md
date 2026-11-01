@@ -1,6 +1,6 @@
 # Watchtower 与单服务回滚
 
-旧成对回滚说明自 2026-11-01 由[独立交付](split-delivery.md)替代。2026-10-26 观察到的 Actions/Watchtower 状态是历史，本轮未查询或操作服务器。
+旧成对回滚说明自 2026-11-01 由[独立交付](split-delivery.md)替代。2026-10-26 的 Actions/Watchtower 状态为历史；2026-11-01 的独立安装、审计和开关见[部署状态](deployment-status.md)。
 
 ## 更新入口协调
 

@@ -1,6 +1,16 @@
 # 演示部署验收状态与接手记录
 
-## 2026-10-26 最新发布与业务基线：82f1293
+## 2026-11-01 独立交付：已合并，首次服务器切换待完成
+
+此节为当日维护快照，不能用历史成对部署记录推断新网关已上线。PR #9 至 #12 已合入本 fork master；代码基线 `2d39c73b792821f082cdf82e31eb0396d8a3a2d3` 的 [Actions 41307802873](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307802873) 成功，覆盖双端检查、镜像及完整共享网关联调。原业务 17 项验收在 PR #9/#10 因五模块 501 骨架失败，用户明确接受保留该失败后合并；后续纯交付变更按路径跳过业务验收，不表示业务已经实现。
+
+[首次前端独立发布 41304757512](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41304757512) 成功，只发布 frontend，记录 `complete=true`、`components=[frontend]`、兼容证据为 component-contracts；后端未发布，单端完整联调明确 skipped。前端 digest 为 `sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f`。
+
+[安装 41307803698](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307803698) 达到旧 12 分钟上限而取消。[随后独立审计 41308721534](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41308721534) 成功：原 backend/frontend 仍 healthy、容器 ID 未变，gateway 未配置，80/48080 仍由旧前端承接，原命名卷保持，Watchtower 停止。四个发布/部署开关此时保持 false。不能报告新拓扑已部署；压缩归档与超时预算修复后的安装仍须单独核验。
+
+本轮没有重启后端、数据库迁移、真实模型调用或浏览器验收。构建缓存命中及耗时证据见[CI/CD](ci-cd.md#缓存与耗时定位)。
+
+## 2026-10-26 历史发布与业务基线：82f1293
 
 这是本次已完成的发布验收快照，不代表后续实时状态。制定需求准备文档时，以最新 `origin/master` 及对应实现为代码基线；下文较早提交仅保留为历史证据。
 

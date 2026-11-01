@@ -65,7 +65,7 @@ def main():
             gateway = json.loads(run(['docker', 'image', 'inspect', 'nginx:1.27-alpine']))[0]
             archive_path = parent / 'gateway.tar'
             run(['docker', 'save', '--output', str(archive_path), 'nginx:1.27-alpine'])
-            archive = archive_path.read_bytes()
+            archive = server_maintenance.pack_gateway_archive(archive_path.read_bytes())
             server_maintenance.install(str(env), {
                 'template': template, 'frontend_image': images['frontend'],
                 'topology_source': (root / 'ci/split_topology.py').read_text(),

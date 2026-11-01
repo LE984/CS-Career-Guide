@@ -1,6 +1,6 @@
 # 单仓库、前后端独立交付
 
-本仓库继续保留 `frontend/` 和 `backend/`。拆分的是构建、镜像、发布与激活边界，不调整页面、API、Token 鉴权或 legacy 面试实现。本文描述本分支的实现；截至 2026-11-01，服务器尚未安装该拓扑，本轮没有生产部署或数据库迁移。
+本仓库继续保留 `frontend/` 和 `backend/`。拆分的是构建、镜像、发布与激活边界，不调整页面、API、Token 鉴权或 legacy 面试实现。本文描述已合入 master 的实现；实际发布、服务器安装与自动部署开关见[部署状态](deployment-status.md)。前端拓扑切换保留现有后端，不执行数据库迁移。
 
 ## 构建与交付选择
 
@@ -43,15 +43,15 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 同源部署继续使用 `/api`。若前端部署到独立域名/CDN，构建时可提供完整 API URL（含 `/api`），并在 backend 的服务器配置显式设置 `CORS_ALLOWED_ORIGINS`、`CSRF_TRUSTED_ORIGINS`、`ALLOWED_HOSTS`。默认 `CORS_ALLOW_ALL_ORIGINS=False`；跨域与 Cookie/HTTPS 需单独验收，不能只因环境变量已接线就宣称可用。
 
-## 首次安装新拓扑（仅操作说明）
+## 首次安装新拓扑
 
-此步骤会改变流量入口，只能在后续获得服务器授权后执行。本轮未执行。
+此步骤会改变流量入口，需要服务器操作授权。2026-11-01 用户已授权首次切换；执行结果单独记录于部署状态，不据操作说明推断成功。
 
 1. 首次合并时保持 `SPLIT_DELIVERY_RELEASE_ENABLED` 缺省关闭，确保 master 也只 build-only。暂停现有 Actions 自动激活并确认无运行中任务；协调/停止旧 Watchtower。通过手动 `Split delivery maintenance` 的只读 audit 核对容器、镜像、端口和卷，保留现有 Compose、环境、容器身份及数据备份。
 2. 核对已通过 runner 验证的前后端 digest。新纯静态前端必须与独立网关同时启用；旧内置代理前端的直接端口部署不能只替换为新静态镜像。
 3. 逐项合并新的 `deploy/docker-compose.yml` 和 `deploy/nginx.conf`，保持原 Compose 项目名、卷名、服务器端口、自定义配置和已有卷属主；绝不直接覆盖真实 `.env` 或执行 `down -v`。宿主原有 80/48080 映射应移到 gateway，而不是发布 backend。
-4. 首次启动应显式拉取 backend、frontend、gateway，并启动这三项。gateway 配置必须可由 UID 10001 读取；backend 写入的 static/media 卷继续只读挂到 gateway。核验新入口的登录、SSE、资源及已有数据。
-5. 首次安装可在服务器 `.env` 中设置两端 digest；自动激活后生成的单端 pin 文件优先级更高。今后手工 Compose 应显式加载已存在的 `docker-compose.backend-image.json` 与 `docker-compose.frontend-image.json`，避免基础文件回到旧 tag。
+4. 对既有服务器使用下面的安装工具：保留现有 backend 容器和 digest，仅准备 frontend/gateway 镜像，并以 `--no-deps --no-build --pull never` 重建 frontend/gateway。不要为切换入口重启后端或执行迁移。gateway 配置须可由 UID 10001 读取；static/media 继续只读挂载。核验新入口；SSE 和已有数据等验收范围单独记录。
+5. 安装工具保留真实 `.env`，在基础 Compose 中固定现有 backend 和新 frontend digest，并生成两份单端 pin 文件；单端 pin 文件优先级更高。今后手工 Compose 应显式加载已存在的 `docker-compose.backend-image.json` 与 `docker-compose.frontend-image.json`，避免基础文件回到旧 tag。
 6. 安装脚本 `ci/sync_runtime_env.py` 和 `ci/deploy_component.py` 到可信的同一工具目录；自动 SSH 会传送当前同步脚本，不上传 Compose。部署目录归部署账号、不可组/其他用户写入，`.env`、生成的 pin 文件均为 600 且无软/硬链接。
 7. 已协调旧更新入口、准备好切换与回退后，才显式开启 `SPLIT_DELIVERY_RELEASE_ENABLED=true`，发布首个拆分版本。完成网关安装与业务检查后，才按需启用 `DEPLOY_ENV_SYNC_ENABLED=true` 和 `DEPLOY_FRONTEND_ENABLED=true` / `DEPLOY_BACKEND_ENABLED=true`。新增开关默认关闭，不能因旧总开关已开启就自动切换服务器。
 
@@ -63,7 +63,7 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 安装成功后使用同一单组件激活函数再重建一次 frontend，确认 backend/gateway ID 与 `.env` inode/大小/mtime 均不变，并验证 SPA、401、static 和不存在的 media 返回 404。不创建业务账号、不调用真实模型。失败时恢复原 Compose、前端 digest 与原端口；不删除数据库或用户卷，Watchtower 保持停止。单组件工具安装在本次 `.split-backup-<时间>/tools/ci/`，实际相对路径记录于 install Artifact；该目录是受保护的运维备份，不清理。
 
-服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，导出归档并经已核验 SSH stdin 传送；服务器校验归档 SHA-256、加载后 image ID 与 linux/amd64 平台，再只从 ACR pull frontend。网关随后 `--pull never` 启动，不要求服务器直连 Docker Hub。归档只含公开 Nginx，不上传服务器配置或凭据。
+服务器访问 Docker Hub 超时时，首次维护由 runner 拉取同一 `nginx:1.27-alpine`，导出 gzip 压缩归档并经已核验 SSH stdin 传送；服务器校验压缩归档 SHA-256，限量解压后校验加载的 image ID 与 linux/amd64 平台，再只从 ACR pull frontend。网关随后 `--pull never` 启动，不要求服务器直连 Docker Hub。归档只含公开 Nginx，不上传服务器配置或凭据。
 
 各组件 publisher 的 `published-<组件>-<run-id>` Artifact 内含 `published-images.json`：检查 `complete=true`、`components`、`compatibility` 证据范围、完整源码 commit 和 `images.<组件>.reference`。不同组件可来自不同已完成发布，不要求同一个源码提交；仍须核对目标 API/schema 兼容。
 
@@ -105,3 +105,5 @@ config/pull 失败保留原 `.env` 和 pin，删除候选文件；激活/健康�
 修复网关临时目录后的 `a1ea092` 已在 push 运行 41301386969 与 PR 运行 41301390611 通过两端代码测试、各自实际构建/无发布归档验证、实际 Dockerignore scratch 导出探针，以及完整 gateway/Django/SQLite 联调。合成上游的 headers/query、static/media、无缓冲 SSE、两端强制 IP 变更也通过。
 
 上述运行的总结果仍为 failure：SQLite/MySQL 的原完整业务验收因现有 501 骨架失败，release-summary 正确报告业务门禁失败，两个 publisher/deploy 均 skipped。不能将交付检查通过写成整个 CI 通过或已发布/已部署。其后的公司查询默认构建参数保持 /company-api 与服务器拓扑校验补丁，需以最终 head 的 Actions 再确认，不能沿用此处提交证据。
+
+首次维护任务使用 30 分钟预算，SSH 子进程最多 20 分钟；runner 仅输出不含连接信息的阶段码。2026-11-01 未压缩传输曾达到旧的 12 分钟上限而取消；独立 audit 确认原应用容器和旧入口未变，不能将该次任务记为安装成功。
