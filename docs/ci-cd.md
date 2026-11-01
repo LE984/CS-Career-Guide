@@ -55,3 +55,11 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 单端协议测试不证明和任意线上旧版本兼容；破坏合同的改动需兼容窗口与指定组合联调。镜像发布不证明服务器部署，容器健康不证明真实模型/浏览器验收。Watchtower 若另外启用仍可能因 latest 更新自动激活，回滚前协调入口。
 
 常见问题：UTF-16 源改路径后转换失败时检查 backend/requirements.txt；旧 Dockerfile 根路径必须移除；gateway 缺失/前端仍有端口或共享卷时新同步拒绝；只设置旧总同步开关不会触发新分端部署；完整业务 501 失败应作为业务未完成处理，不能改成通过。
+
+## 缓存与耗时定位
+
+当前已启用 `setup-python` 的 pip 下载缓存、`setup-node` 的 npm 下载缓存，以及前后端各自的 BuildKit GHA 层缓存。pip/npm 缓存不会保留安装后的虚拟环境或 node_modules，新的 runner 仍会安装依赖和执行测试；镜像缓存命中也仍需导出、上传归档及运行容器检查。publisher 复用已验证的镜像归档，不重新构建。
+
+2026-11-01 成功运行 [41307140743](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41307140743) 的 backend pip 日志明确显示 Cache hit / Cache restored，后端 Docker 多个依赖与应用层为 CACHED。该运行前端/后端镜像构建步骤约 17/22 秒；后端完整测试依赖安装约 90 秒，共享联调步骤约 153 秒。整个运行约 7 分钟，主要受后端检查到镜像再到共享联调的依赖链影响；这些数据是单次运行快照，不是后续时延承诺。
+
+仅前端变更会跳过后端检查/镜像/发布/部署；仅后端变更同理。共享交付配置仍需要双端和完整网关联调，不能为加速删除必要验证。排查慢任务时先区分 cache restore、依赖安装、Docker build、镜像归档传输、联调和服务器拉取，不把总时长全部归因于缓存未命中。

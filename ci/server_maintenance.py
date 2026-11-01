@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import gzip
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,14 @@ STAGE = 'start'
 def stage(value):
     global STAGE
     STAGE = value
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print(json.dumps({'maintenance_stage': value}), file=sys.stderr, flush=True)
+
+
+def pack_gateway_archive(archive):
+    if len(archive) > 150 * 1024 * 1024:
+        raise ValueError('Gateway archive exceeds the transfer limit')
+    return gzip.compress(archive, compresslevel=1, mtime=0)
 
 
 class MaintenanceFailure(RuntimeError):
@@ -36,6 +45,12 @@ def import_gateway(payload):
             or hashlib.sha256(archive).hexdigest() != payload['gateway_archive_sha256']
             or not re.fullmatch(r'sha256:[0-9a-f]{64}', expected_id)):
         raise ValueError('Gateway archive integrity check failed')
+    if archive.startswith(b'\x1f\x8b'):
+        import io
+        with gzip.GzipFile(fileobj=io.BytesIO(archive)) as compressed:
+            archive = compressed.read(150 * 1024 * 1024 + 1)
+        if len(archive) > 150 * 1024 * 1024:
+            raise ValueError('Expanded gateway archive exceeds the import limit')
     loaded = subprocess.run(['docker', 'load'], input=archive, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, timeout=180)
     if loaded.returncode:
@@ -358,10 +373,11 @@ def remote(action, frontend_image=''):
         stage('runner-gateway-image')
         run(['docker', 'pull', '--platform', 'linux/amd64', 'nginx:1.27-alpine'])
         gateway = run(['docker', 'image', 'inspect', 'nginx:1.27-alpine'], json_output=True)[0]
+        stage('runner-gateway-export')
         with tempfile.TemporaryDirectory(prefix='gateway-export-') as archive_dir:
             archive_path = Path(archive_dir) / 'gateway.tar'
             run(['docker', 'save', '--output', str(archive_path), 'nginx:1.27-alpine'])
-            archive = archive_path.read_bytes()
+            archive = pack_gateway_archive(archive_path.read_bytes())
         payload = json.dumps({
             'frontend_image': frontend_image,
             'topology_source': (root / 'ci/split_topology.py').read_text(),

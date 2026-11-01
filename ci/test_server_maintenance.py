@@ -28,6 +28,19 @@ class ServerMaintenanceTests(unittest.TestCase):
             server_maintenance.import_gateway(payload)
         load.assert_not_called()
 
+    def test_compressed_gateway_transport_loads_original_archive(self):
+        archive = b'synthetic-unit-test-archive' * 500
+        packed = server_maintenance.pack_gateway_archive(archive)
+        self.assertLess(len(packed), len(archive))
+        payload = {'gateway_archive_b64': base64.b64encode(packed).decode(),
+                   'gateway_archive_sha256': hashlib.sha256(packed).hexdigest(),
+                   'gateway_image_id': 'sha256:' + 'a' * 64}
+        image = {'Id': payload['gateway_image_id'], 'Os': 'linux', 'Architecture': 'amd64'}
+        with patch('server_maintenance.subprocess.run', return_value=subprocess.CompletedProcess([], 0, b'', b'')) as load, \
+                patch('server_maintenance.run', return_value=[image]):
+            server_maintenance.import_gateway(payload)
+        self.assertEqual(load.call_args.kwargs['input'], archive)
+
     def test_audit_emits_only_selected_metadata_and_never_environment_values(self):
         config = {'name': 'fixture', 'services': {
             'backend': {'environment': {'SECRET_KEY': 'synthetic-hidden-value'}},

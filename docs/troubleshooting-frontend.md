@@ -18,4 +18,4 @@ frontend和gateway均监听容器内8080，但只有gateway发布WEB_PORT（默�
 
 仅前端镜像回滚/更新使用单组件digest脚本；不要重建backend或gateway。若修改gateway端口/配置，那是网关维护，仅在明确授权后对gateway使用--no-deps重建。排查不要输出Config.Env、真实.env、登录凭据或未脱敏日志。
 
-验证/login、注册登录、无Token业务API401、静态/媒体、SSE与另一组件ID；容器健康、浏览器和真实模型分别记录。本轮未执行服务器或浏览器验收。
+验证/login、注册登录、无Token业务API401、静态/媒体、SSE与另一组件ID；容器健康、浏览器和真实模型分别记录。服务器只读 HTTP 核验与浏览器验收分别记录，见[部署状态](deployment-status.md)。

@@ -184,3 +184,20 @@ CI 在 PR 使用 base SHA，在 push 使用 before SHA；不能用 HEAD^ 代替 
   "evidence": "ci/test_server_cutover.py; ci/test_split_topology.py; Actions 41304123356; docs/split-delivery.md"
 }
 ```
+
+
+### 2026-11-01 首次维护传输与超时修复
+
+交付工具变更保留本模块现有业务状态；不将构建或服务器审计作为业务完成证据。
+
+```acceptance-record
+{
+  "commit": "e301070 + dirty",
+  "command": "wsl -d Ubuntu-22.04 --cd /mnt/e/CS-Career-Guide-split-delivery -- python3 -m unittest discover -s ci -p 'test_*.py' -q; original complete suite: Actions 41305627720",
+  "result": "failed",
+  "environment": "2026-11-01；WSL 离线隔离测试；既有完整业务验收为 Actions SQLite/MySQL",
+  "scope": "压缩网关归档、限量解压及旧归档兼容；87 项交付测试通过。维护 workflow 超时变更仍触发原完整业务门禁，五模块 501 骨架失败保留，不修改业务代码或固定验收。",
+  "limitations": "本记录的交付单元测试不代表业务完成。线上首次切换尚未成功；独立审计确认旧容器健康且未变。无真实模型、数据库迁移或浏览器验收。",
+  "evidence": "ci/test_server_maintenance.py; ci/test_server_cutover.py; Actions 41308721534; docs/deployment-status.md"
+}
+```
