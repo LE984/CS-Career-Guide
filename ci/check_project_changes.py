@@ -7,6 +7,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / 'ci/project_modules.json').read_text(encoding='utf-8'))
+# Only this orchestration file is delivery configuration. Changes to acceptance
+# workflows, ownership maps, checkers or fixed tests still require full business acceptance.
+DELIVERY_WORKFLOWS = {'.github/workflows/ci-cd.yml'}
+BACKEND_BUILD_FILES = {'backend/Dockerfile', 'backend/.dockerignore',
+                       'backend/requirements.txt', 'backend/requirements-runtime.txt'}
 
 
 def git(*args):
@@ -18,7 +23,8 @@ def evaluate(changed, bootstrap=False, config=None):
     changed = set(changed)
     modules = {key for key, value in config['modules'].items()
                if any(any(path.startswith(prefix) for prefix in value['paths']) for path in changed)}
-    shared = any(any(path.startswith(prefix) for prefix in config['shared_paths']) for path in changed)
+    shared = any(any(path.startswith(prefix) for prefix in config['shared_paths'])
+                 for path in changed - DELIVERY_WORKFLOWS)
     # New backend files outside a known member area cannot escape ownership.
     shared = shared or any(path.startswith('backend/career_platform/') and
         not any(any(path.startswith(prefix) for prefix in value['paths']) for value in config['modules'].values())
@@ -29,7 +35,13 @@ def evaluate(changed, bootstrap=False, config=None):
         needed.update(f"docs/implementation/{value['doc']}" for value in config['modules'].values())
     # Merely changing a module state/flag never exempts implementation files.
     missing = sorted(needed - changed)
+    # Frontend delivery needs no Python/database runner. Frontend business paths
+    # in the ownership map still select their existing backend acceptance suites.
+    acceptance_required = (shared or bool(modules) or bootstrap or
+                           any(path.startswith('backend/') and path not in BACKEND_BUILD_FILES
+                               for path in changed))
     return {'bootstrap': bootstrap, 'changed_modules': sorted(modules), 'shared_changed': shared,
+            'acceptance_required': acceptance_required,
             'required_documents': sorted(needed), 'missing_documents': missing,
             'complete_tests': [] if bootstrap else sorted(config['modules'] if shared else modules),
             'integration_test': shared and not bootstrap}

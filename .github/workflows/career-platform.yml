@@ -9,6 +9,8 @@ permissions:
 jobs:
   documents:
     name: Platform documentation
+    outputs:
+      acceptance: ${{ steps.selection.outputs.acceptance }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +20,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Validate ownership, records and negative gate cases
+        id: selection
         env:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
@@ -34,6 +37,13 @@ jobs:
             base="$(git merge-base HEAD origin/master)"
           fi
           python ci/check_project_changes.py --base "$base" --head HEAD --output output/platform-selection.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          report = json.loads(Path('output/platform-selection.json').read_text())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('acceptance=' + str(report['acceptance_required']).lower() + '\n')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,6 +54,7 @@ jobs:
   acceptance:
     name: Platform acceptance (${{ matrix.database }})
     needs: documents
+    if: needs.documents.outputs.acceptance == 'true'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false

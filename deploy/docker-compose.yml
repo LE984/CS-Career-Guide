@@ -14,7 +14,7 @@ x-application-sandbox: &application-sandbox
 services:
   backend:
     <<: *application-sandbox
-    image: ${ACR_REGISTRY:?Set ACR_REGISTRY in deploy/.env}/${ACR_NAMESPACE:?Set ACR_NAMESPACE in deploy/.env}/cs-career-guide-backend:${BACKEND_TAG:-latest}
+    image: ${BACKEND_IMAGE:-${ACR_REGISTRY:?Set ACR_REGISTRY in deploy/.env}/${ACR_NAMESPACE:?Set ACR_NAMESPACE in deploy/.env}/cs-career-guide-backend:${BACKEND_TAG:-latest}}
     container_name: cs-career-guide-backend
     restart: unless-stopped
     cpus: ${BACKEND_CPUS:-0.50}
@@ -29,6 +29,9 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in deploy/.env}
       DEBUG: ${DEBUG:-False}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CORS_ALLOW_ALL_ORIGINS: ${CORS_ALLOW_ALL_ORIGINS:-False}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-cs_career_guide.settings_sqlite}
       DATABASE_NAME: ${DATABASE_NAME:-cs_career_guide}
       DATABASE_USER: ${DATABASE_USER:-cs_career_guide}
@@ -65,7 +68,7 @@ services:
 
   frontend:
     <<: *application-sandbox
-    image: ${ACR_REGISTRY:?Set ACR_REGISTRY in deploy/.env}/${ACR_NAMESPACE:?Set ACR_NAMESPACE in deploy/.env}/cs-career-guide-frontend:${FRONTEND_TAG:-latest}
+    image: ${FRONTEND_IMAGE:-${ACR_REGISTRY:?Set ACR_REGISTRY in deploy/.env}/${ACR_NAMESPACE:?Set ACR_NAMESPACE in deploy/.env}/cs-career-guide-frontend:${FRONTEND_TAG:-latest}}
     container_name: cs-career-guide-frontend
     restart: unless-stopped
     cpus: ${FRONTEND_CPUS:-0.25}
@@ -77,13 +80,38 @@ services:
       - /var/cache/nginx:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     labels:
       com.centurylinklabs.watchtower.enable: "true"
+    networks: [app-net]
+
+  # Stable same-origin boundary, independent of the frontend release artifact.
+  gateway:
+    <<: *application-sandbox
+    image: nginx:1.27-alpine
+    container_name: cs-career-guide-gateway
+    restart: unless-stopped
+    cpus: "0.25"
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 64
+    # Avoid image entrypoint config rewrites on a read-only filesystem.
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777
     ports:
       - "${WEB_PORT:-127.0.0.1:48080}:8080"
     volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - backend-static:/var/www/backend-static:ro
       - media:/var/www/media:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
     networks: [app-net]
 
   watchtower:

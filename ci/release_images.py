@@ -59,10 +59,12 @@ def export_image(directory, component, commit):
     print(f'Exported verified {component} image and identity metadata.', flush=True)
 
 
-def load_verified_images(directory, commit):
+def load_verified_images(directory, commit, components=COMPONENTS):
     verified = {}
     # Reject either archive's metadata before loading or tagging anything.
-    for component in COMPONENTS:
+    if not components or len(set(components)) != len(components) or set(components) - set(COMPONENTS):
+        raise ValueError('Select supported release components.')
+    for component in components:
         metadata = json.loads((directory / f'{component}-image.json').read_text(encoding='utf-8'))
         if (metadata.get('component') != component or metadata.get('commit') != commit
                 or metadata.get('source_image') != source_image(component, commit)
@@ -90,27 +92,31 @@ def write_release(output, summary, release):
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(release, indent=2) + '\n', encoding='utf-8')
     title = 'Published verified images' if release['complete'] else 'Partial or failed image publication'
-    lines = [f'## {title}', '', f"Commit: `{release['commit']}`", '']
+    lines = [f'## {title}', '', f"Commit: `{release['commit']}`",
+             f"Compatibility evidence: `{release['compatibility']}`", '']
     for component, image in release['images'].items():
         if image.get('reference'):
             lines.append(f"- {component}: `{image['reference']}`")
-    lines += ['', 'Use both recorded digest references for rollback. Tags can be overwritten.',
+    lines += ['', 'Roll back only the selected component using its recorded digest. Tags can be overwritten.',
               'A partial publication must not be treated as a completed release.', '']
     with summary.open('a', encoding='utf-8') as stream:
         stream.write('\n'.join(lines))
 
 
-def publish_images(directory, registry, namespace, commit, extra_tag, output, summary):
+def publish_images(directory, registry, namespace, commit, extra_tag, output, summary, components=COMPONENTS,
+                   compatibility='not-recorded'):
+    if compatibility not in ('not-recorded', 'component-contracts', 'candidate-integration'):
+        raise ValueError('Unsupported compatibility evidence scope.')
     repositories = coordinates(registry, namespace, commit, extra_tag)
-    verified = load_verified_images(directory, commit)
-    release = {'commit': commit, 'complete': False, 'images': {
+    verified = load_verified_images(directory, commit, components)
+    release = {'commit': commit, 'components': list(components), 'compatibility': compatibility,
+               'complete': False, 'images': {
         component: {'repository': repositories[component], 'image_id': metadata['image_id'], 'tags': []}
         for component, metadata in verified.items()
     }}
     version_tags = list(dict.fromkeys([f'sha-{commit[:7]}'] + ([extra_tag] if extra_tag and extra_tag != 'latest' else [])))
     try:
-        # Publish both versioned images before advancing either rolling latest tag.
-        # Separate registry updates are not an atomic two-image deployment.
+        # Advance rolling tags only for the explicitly selected components.
         for tag in [*version_tags, 'latest']:
             for component, metadata in verified.items():
                 reference = f'{repositories[component]}:{tag}'
@@ -137,11 +143,15 @@ def main():
     verify = commands.add_parser('verify')
     verify.add_argument('--commit', required=True)
     verify.add_argument('--directory', type=Path, required=True)
+    verify.add_argument('--component', choices=COMPONENTS, action='append')
     for name in ('check-config', 'publish'):
         command = commands.add_parser(name)
         command.add_argument('--commit', required=True)
         command.add_argument('--extra-tag', default='')
         if name == 'publish':
+            command.add_argument('--compatibility', choices=('not-recorded', 'component-contracts', 'candidate-integration'),
+                                 default='not-recorded')
+            command.add_argument('--component', choices=COMPONENTS, action='append')
             command.add_argument('--directory', type=Path, required=True)
             command.add_argument('--output', type=Path, required=True)
             command.add_argument('--summary', type=Path, required=True)
@@ -150,8 +160,8 @@ def main():
         export_image(args.directory, args.component, args.commit)
         return
     if args.command == 'verify':
-        load_verified_images(args.directory, args.commit)
-        print('Both release archives match the validated commit, image IDs and linux/amd64 platform.')
+        load_verified_images(args.directory, args.commit, args.component or COMPONENTS)
+        print('Selected archives match the validated commit, image IDs and linux/amd64 platform.')
         return
     registry = os.getenv('ACR_REGISTRY', '')
     namespace = os.getenv('ACR_NAMESPACE', '')
@@ -160,7 +170,7 @@ def main():
         print('Registry coordinate configuration is valid.')
     else:
         publish_images(args.directory, registry, namespace, args.commit, args.extra_tag,
-                       args.output, args.summary)
+                       args.output, args.summary, args.component or COMPONENTS, args.compatibility)
 
 
 if __name__ == '__main__':

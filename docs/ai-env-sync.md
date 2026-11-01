@@ -1,74 +1,37 @@
-# 发布后同步 AI 配置
+# 单组件激活与后端 AI 配置同步
 
-镜像发布成功后，通过 SSH 更新服务器已有 `.env` 中的 AI 配置，再拉取服务器 Compose 所选镜像并重建 `backend`、`frontend`。默认关闭；设置 Actions Variable `DEPLOY_ENV_SYNC_ENABLED=true` 后，只有本 fork 的 master 成功发布才执行。PR 和其他分支不接触服务器凭据。
+本分支将原成对容器重建拆成 deploy-backend / deploy-frontend；服务器安装独立网关是前提。2026-10-26 的旧总开关/成对重建属于历史，不代表新分端部署已经启用。完整安装和回滚见[独立交付](split-delivery.md)。
 
-> 2026-10-26：`DEPLOY_ENV_SYNC_ENABLED=true` 已启用；部署账号已成功拉取私有镜像，服务器补齐职业报告、ASR、TTS 的 8 个 environment 映射。[Actions 40279477861](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/40279477861) 已完成真实配置同步、容器重建和健康等待。旧 Watchtower 已停止，改由 Actions 管理应用更新。运行时模型字段已全部非空，两个文本模型及面试 SSE/TTS 通过少量真实请求；其余验收见 [当前状态](deployment-status.md)。
+## 门禁与版本
 
-## 配置归属与安全边界
+必须同时满足对应 publisher 成功、本 fork/master、非 PR、DEPLOY_ENV_SYNC_ENABLED=true、对应 DEPLOY_BACKEND_ENABLED=true 或 DEPLOY_FRONTEND_ENABLED=true。两个新分端开关缺省关闭，防止旧服务器因原总开关仍开启而切入新拓扑。回滚时关闭目标分端开关，等已运行 Job 退出；旧自动入口仍在时也关闭总开关。
 
-GitHub 管理 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`、`CAREER_REPORT_MODEL`、`ASR_API_KEY`、`ASR_WSS_URL`、`ASR_MODEL`、`ENABLE_TTS`、`TTS_API_KEY`、`TTS_WSS_URL`、`TTS_MODEL`、`TTS_VOICE`。
+DEPLOY_COMPONENT 指定 backend/frontend；DEPLOY_IMAGE 只能是该组件的完整 repository@sha256 digest，来自本次完成的发布记录。脚本不再按 latest 猜测本次部署版本。主流程仅用基础 Compose 加目标组件 pin override，不会加载另一组件 override，也不会重建另一服务/网关/数据库。
 
-这些字段在服务器已有的值将被 GitHub 非空值更新。GitHub 空值跳过，不删除服务器值；前三个 LLM 字段必须完整。白名单之外的行保留，包括数据库、`SECRET_KEY`、域名、端口、资源限制、镜像 tag/digest、ACR 和自定义设置。如某个 AI 字段也要由服务器独立维护，应从同步白名单中移除，不能由两端同时管理。
+## 凭据与配置归属
 
-严格核验主机密钥的 SSH 传输中，API Key 只走加密 stdin，不进入参数、镜像、Artifact、日志或 `$GITHUB_ENV`。临时 SSH 凭据权限 600，用完删除。服务器候选 `.env` 权限 600，通过校验和镜像拉取后原子替换；文件锁避免两个 CI 同时写入。
+SSH Secrets 仍为 DEPLOY_SSH_HOST、DEPLOY_SSH_PORT（空默认22）、DEPLOY_SSH_USER、DEPLOY_ENV_PATH、DEPLOY_SSH_KEY、DEPLOY_SSH_KNOWN_HOSTS。严格主机密钥核验；不使用运行时 ssh-keyscan 建立信任。私钥临时权限600，传送完成后清理。
 
-目标必须是部署用户拥有的现存普通 `.env` 文件，权限 600，无符号链接和硬链接；父目录归部署用户且不可由其他用户写入。不支持多行 dotenv 值、重复受管字段或模糊语法，遇到时拒绝修改。发送值含换行、单引号、反斜杠或控制字符也会拒绝，避免配置注入。
+仅 backend Job 接收 LLM_API_KEY、ASR_API_KEY、TTS_API_KEY Secrets，以及 Variables：LLM_BASE_URL、LLM_MODEL、CAREER_REPORT_MODEL、ASR_WSS_URL、ASR_MODEL、ENABLE_TTS、TTS_WSS_URL、TTS_MODEL、TTS_VOICE。前三个 LLM 配置必填；白名单非空值覆盖、空可选值保留。其余环境行保持，包括 SECRET_KEY、数据库、端口、项目名和自定义配置。
 
-GitHub 仓库及可修改发布 workflow 的人员将纳入服务器信任边界。使用专用部署账号；known_hosts 必须经可信渠道核验，不能每次 CI 直接信任 ssh-keyscan 的结果。拥有 Docker socket 权限的账号实际上具有很高的宿主机权限，不代表完全隔离。
+frontend Job 只接收 SSH 字段、组件名与公开 digest，不注入任何模型字段；服务器 .env 不合并、不替换。手工 deploy_component.py 对任一组件都不改 AI/.env。VITE_* 仅在前端镜像构建生效，不由此脚本修改。
 
-## GitHub 配置
+## 服务器前提
 
-模型使用已有 Secrets：`LLM_API_KEY`、`ASR_API_KEY`、`TTS_API_KEY`。模型名、URL 和开关继续使用同名 Variables。
+Linux Python 3、Docker、支持 JSON config / --wait / --pull never 的 Compose v2。部署账号能访问私有 ACR；脚本使用其默认 Docker CLI 凭据，DOCKER_CONFIG_DIR 只负责 Watchtower 挂载，不自动影响 CLI。
 
-2026-10-23 已保存的十个 Variables：
+现存 .env 须为绝对路径、600、部署账号拥有、普通文件、无软/硬链接；父目录由该账号拥有，不可组/其他人写入。基础 docker-compose.yml 不可为软链接，必须已安装新 gateway、去掉 frontend 的 ports/volumes/depends_on。脚本不上传、不覆盖服务器 Compose 或 nginx.conf，不迁移卷。
 
-| Variable | 已选配置／填写规则 |
-| --- | --- |
-| `LLM_MODEL` | `qwen3.8-flash` |
-| `CAREER_REPORT_MODEL` | `qwen3.7-plus` |
-| `LLM_BASE_URL` | 业务空间的 HTTPS OpenAI 兼容地址，结尾 `/compatible-mode/v1` |
-| `ASR_MODEL` | `fun-asr-realtime`；协议适配与真实/浏览器验收分别见状态记录 |
-| `ASR_WSS_URL` | 同一业务空间的 WSS 地址，结尾 `/api-ws/v1/inference` |
-| `TTS_MODEL` | `cosyvoice-v3-flash` |
-| `TTS_WSS_URL` | 对应业务空间的 WSS 地址，结尾同上 |
-| `TTS_VOICE` | `longanyang` |
-| `ENABLE_TTS` | `True`，后端运行时开关 |
-| `VITE_ENABLE_TTS` | `True`，前端构建时开关 |
+后端合并不接受多行/重复受管键/模糊 dotenv 或含控制字符、单引号、反斜杠的值。SSH stdin 传密钥，绝不进入 argv、Artifact、镜像或日志。Compose/SSH 原始诊断隐藏；请在服务器私下排查。
 
-模型与地址已在本会话选定并保存，未执行真实模型成功验证。具体业务空间地址从 Actions 查看，此处不固化到代码或示例。
+## 事务与失败边界
 
-服务器连接信息全部使用 repository Secrets：
+在 `.env.ai-sync.lock` 下生成600候选文件；校验 Compose AI映射、拓扑及目标 digest，再只 pull 目标服务。检测环境/pin并发变化，才原子替换 backend 候选 .env（frontend不替换），并保存 docker-compose.<组件>-image.json。随后只对该组件执行 up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 180。
 
-| Secret | 内容 |
-| --- | --- |
-| `DEPLOY_SSH_HOST` | 服务器主机名或 IPv4，不带协议 |
-| `DEPLOY_SSH_PORT` | 端口，空值默认 22 |
-| `DEPLOY_SSH_USER` | 专用部署用户名 |
-| `DEPLOY_ENV_PATH` | `.env` 的绝对路径，如 `/srv/cs-career-guide/.env` |
-| `DEPLOY_SSH_KEY` | 专用、可非交互使用的 SSH 私钥完整内容 |
-| `DEPLOY_SSH_KNOWN_HOSTS` | 已核验的 OpenSSH known_hosts 内容；非 22 端口应匹配 `[主机]:端口` |
+config/pull失败保持原环境与pin，所有候选均清理。激活/健康失败保留新配置与pin并使Actions失败，不自动恢复旧容器/数据库。backend入口仍可能migrate；单端镜像回滚不等于schema恢复。独立重建可能短暂中断，gateway在DNS缓存窗口后恢复，不保证零停机。
 
-最后设置 Variable `DEPLOY_ENV_SYNC_ENABLED=true`。只改配置不会触发发布，需后续 master 发布或在 master 手动运行 workflow。
+pin文件属于运行状态，不入Git。以后直接调用Compose必须显式加载已存在的pin override；旧paired digest override或只改.env中的tag不能覆盖更高优先级pin。回滚推荐使用同一脚本和锁，见[独立交付](split-delivery.md#单服务部署与-digest-回滚)。
 
-## 服务器前提与生效流程
+## 验证
 
-- Linux 已有 Python 3、Docker、支持 JSON config 和 `up --wait` 的 Compose v2；部署用户可非交互运行 Docker，并须先以该用户完成 ACR 登录。2026-10-26 已以 `csdeploy` 完成私有镜像拉取验证。
-- `.env` 同目录有 `docker-compose.yml`。脚本不覆盖服务器 Compose。启用前先逐项合并仓库 `deploy/docker-compose.yml` 的 AI environment 映射，保留服务器定制设置。
-- 脚本只加载基础 `docker-compose.yml`，拉取其中选定的镜像；仓库基础文件通过 `BACKEND_TAG`、`FRONTEND_TAG` 选择版本。不会修改这些字段，但也不会自动使用本次发布的成对 digest，成功同步不等于部署了本次发布的版本。
-- **脚本不会加载 `docker-compose.digest.yml`。** 通过该 override 固定 digest 的部署或回滚期间，必须关闭 `DEPLOY_ENV_SYNC_ENABLED`，否则之后的自动重建可能按基础 Compose 切回其他版本。若自行在基础 Compose 的 image 中固定 digest，则以该基础文件为准。
-- 脚本使用部署账号默认的 Docker CLI 凭据配置。`.env` 中的 `DOCKER_CONFIG_DIR` 用于 Watchtower 挂载，不会自动变成 CLI 的 `DOCKER_CONFIG`；管理员能拉取镜像，也不代表 `csdeploy` 能拉取。
-- `VITE_ENABLE_TTS` 作为公开构建参数传给前端构建，不写服务器 `.env`，也不包含任何 Key；变更需重建并发布前端。
-
-先生成候选 `.env`，运行 `docker compose config --format json`，核验 backend 中每个受管值与输入一致；缺字段或服务器 Shell 冲突时停止。校验结果、SSH 和 Compose 原始输出不打印，避免泄露密钥。随后拉取 backend/frontend，这些步骤失败时原 `.env` 不变。
-
-然后原子替换 `.env`，执行 `up -d --no-deps --force-recreate --wait --wait-timeout 180 backend frontend`，等待健康检查。不会启动依赖服务、删除卷或管理 Watchtower。重建有短暂中断，镜像现有入口可能执行数据库迁移。若重建或健康检查失败，Actions 报错并保留新 `.env`，不自动回滚文件、容器或数据库；需在服务器私下诊断，不能输出含密钥的 config。
-
-服务器旧 Watchtower 已于 2026-10-26 停止，当前使用 Actions 自动重建。恢复旧 Watchtower 前必须先关闭同步开关并确认没有运行中的同步任务，避免两个控制器同时重建；仓库 profile 默认关闭不会自动停止旧容器。
-
-同步和健康检查通过只证明配置传递与容器状态，不能替代真实模型、语音效果、浏览器验收。Fun-ASR 的 `sentence` 结果解析与失败处理已在 [PR #2](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/2) 补齐；离线协议、真实模型和浏览器验收仍分别记录。
-
-## 离线检查
-
-`python -m unittest discover -s ci -p 'test_*.py' -v`
-
-测试使用虚构凭据和模拟 SSH/Compose，不联网、不启动 Docker。Linux 额外验证权限、原子替换和失败保留；Windows 跳过 fcntl 相关测试。
+python -m unittest discover -s ci -p 'test_*.py' -v。全为虚构SSH/Compose、临时文件；Windows跳过POSIX权限测试，WSL/Linux补验。同步健康、实际运行digest、浏览器和真实模型分别核验，本轮未操作服务器。

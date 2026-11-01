@@ -71,3 +71,20 @@
   "evidence": "output/full-expected-failure.json; output/scaffold-resumed.json; local changes on codex/team-scaffold"
 }
 ```
+
+
+### 2026-11-01 交付拆分与原业务门禁
+
+仅细化交付配置选择，不修改本模块业务或固定验收用例。交付编排和真实网关联调独立验证；验收规则变更仍触发原完整业务门禁。本模块仍是未完成骨架，不将交付验证作为业务完成证据。
+
+```acceptance-record
+{
+  "commit": "15828fa + dirty",
+  "command": "python ci/project_acceptance.py --stage complete --module all --output output/split-delivery/business-complete.json",
+  "result": "failed",
+  "environment": "Windows; isolated SQLite; 2026-11-01",
+  "scope": "Independent delivery refactor changed gate selection; original fixed complete suite retained. 17 business tests: 14 failures and 3 errors from 501/FeatureNotImplemented. Scaffold: 7 passed.",
+  "limitations": "Five business modules remain unimplemented. No MySQL runner, image publication, server deployment, real model or browser acceptance in this local run.",
+  "evidence": "output/split-delivery/business-complete.json; output/split-delivery/scaffold.json; ci/test_project_changes.py; docs/split-delivery.md"
+}
+```

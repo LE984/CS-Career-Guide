@@ -1,5 +1,7 @@
 """Validate the running demo's host-facing permissions without reading its environment."""
 
+from pathlib import Path
+
 
 def verify_sandbox(service, state):
     host = state['host']
@@ -29,14 +31,22 @@ def verify_sandbox(service, state):
 
     destinations = {
         'backend': {'/data', '/data/staticfiles', '/data/media', '/tmp'},
-        'frontend': {'/var/www/backend-static', '/var/www/media', '/tmp', '/var/cache/nginx'},
+        'frontend': {'/tmp', '/var/cache/nginx'},
+        'gateway': {'/etc/nginx/nginx.conf', '/var/www/backend-static', '/var/www/media', '/tmp'},
     }[service]
     for mount in state.get('mounts', []):
-        require(mount.get('Type') in ('volume', 'tmpfs'), 'application host bind mounts are forbidden')
+        if service == 'gateway' and mount.get('Destination') == '/etc/nginx/nginx.conf':
+            require(mount.get('Type') == 'bind' and mount.get('RW') is False,
+                    'gateway config must be a read-only bind mount')
+            require(Path(mount.get('Source', '')).resolve() ==
+                    (Path(__file__).resolve().parents[1] / 'deploy/nginx.conf').resolve(),
+                    'gateway may bind only the reviewed config file')
+        else:
+            require(mount.get('Type') in ('volume', 'tmpfs'), 'application host bind mounts are forbidden')
         require(mount.get('Destination') in destinations, 'unexpected writable or mounted path')
-        if service == 'frontend' and mount.get('Type') == 'volume':
-            require(mount.get('RW') is False, 'frontend data volumes must be read-only')
+        if service == 'gateway' and mount.get('Type') == 'volume':
+            require(mount.get('RW') is False, 'gateway data volumes must be read-only')
     for bindings in (host.get('PortBindings') or {}).values():
-        require(service == 'frontend', 'backend ports must not be published')
+        require(service == 'gateway', 'only the gateway may publish ports')
         for binding in bindings or []:
             require(binding.get('HostIp') == '127.0.0.1', 'CI publishes ports only on loopback')

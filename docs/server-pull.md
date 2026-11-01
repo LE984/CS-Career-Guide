@@ -1,8 +1,10 @@
 # 服务器拉取部署
 
+> 2026-11-01 本分支交付拆分：以[单仓库独立交付](split-delivery.md)为当前操作入口；本轮未修改服务器。历史发布/部署证据不代表新拓扑已安装。
+
 > 2026-10-26：已验证 `csdeploy` 的私有 ACR 拉取，补齐服务器 AI 映射并通过 Actions 同步与重建应用；旧 Watchtower 已停止。服务器定制的 80 和 48080 端口已写入实际基础 Compose，避免同步只加载基础文件时丢失 80 端口。操作前已备份 SQLite、环境文件、Compose 和容器身份；实时业务验收见 [当前状态](deployment-status.md)。下文 2026-10-23 的账号创建记录是历史背景。
 
-当前仓库以保护宿主机优先：默认仅绑定回环地址、限制资源与日志、只启动前后端，Watchtower 需要单独启用。新前端监听 `8080`，不能把新 Compose 与旧 `c1d7b6a` 前端镜像混用；执行部署前确认镜像与配置兼容，见 [宿主机保护边界](host-protection.md)。本次仅更新操作手册。
+当前仓库以保护宿主机优先：默认仅绑定回环地址、限制资源与日志、启动前后端与独立 gateway，Watchtower 需要单独启用。新前端监听 `8080`，不能把新 Compose 与旧 `c1d7b6a` 前端镜像混用；执行部署前确认镜像与配置兼容，见 [宿主机保护边界](host-protection.md)。本次仅更新操作手册。
 
 ## 专用部署账号与配置归属
 
@@ -17,9 +19,10 @@
 ## 部署拓扑
 
 ```text
-反向代理 / SSH 隧道 -> 宿主机 127.0.0.1:48080 -> frontend（Nginx :8080）
+反向代理 / SSH 隧道 -> 宿主机 127.0.0.1:48080 -> gateway（Nginx :8080）
                               |-- /api/ -> backend :8000
-                              `-- /static、/media -> 共享卷
+                              |-- /static、/media -> 共享卷
+                              `-- / -> frontend :8080
 
 backend -> sqlite-data:/data
 backend -> backend-static:/data/staticfiles
@@ -81,7 +84,7 @@ docker --config /etc/cs-career-guide/acr login --username=<ACR_USERNAME> crpi-gb
 cd deploy
 cp .env.example .env
 # 在服务器本地编辑 .env，不能提交。
-docker compose config
+docker compose config --quiet
 ```
 
 如果服务器使用 VPC 地址，请只修改 `.env` 中的 Registry 主机名。设置 `SECRET_KEY`，并让 `ALLOWED_HOSTS` 与演示地址一致；IP 访问只适合临时演示，不能宣称已具备公网生产条件。
@@ -90,8 +93,8 @@ docker compose config
 
 ```bash
 cd deploy
-docker --config /etc/cs-career-guide/acr compose pull backend frontend
-docker compose up -d --no-build
+docker --config /etc/cs-career-guide/acr compose pull backend frontend gateway
+docker compose up -d --no-build backend frontend gateway
 docker compose ps
 docker compose logs --tail=100 backend
 docker compose logs --tail=100 frontend
@@ -158,15 +161,9 @@ Compose 会把 `DATABASE_NAME`、`DATABASE_USER`、`DATABASE_PASSWORD`、`DATABA
 
 ## 更新与回滚
 
-默认手动更新；新增加的 Actions 自动同步也默认关闭。服务器已有旧 Watchtower，启用新的自动重建前须选择更新入口，避免并发重建。Watchtower 的 Docker socket 和 `csdeploy` 的 Docker 组权限都具有很高的宿主机权限，详见 [Watchtower 与回滚](watchtower-rollback.md)。以下命令中的 `deploy` 为示例目录，实际操作应使用部署项目路径；ACR 配置目录也须按部署账号的实际配置选择。手动拉取：
+日常只更新或回滚目标组件，使用[独立交付](split-delivery.md#单服务部署与-digest-回滚)中的 `deploy_component.py`，固定完整 digest，pull 单服务并以 `--no-deps --pull never` 重建。脚本生成单端 pin 文件；今后手工 Compose 必须加载已存在的对应 pin override，不能用不带 override 的基础命令覆盖版本。
 
-```bash
-cd deploy
-docker --config /etc/cs-career-guide/acr compose pull backend frontend
-docker compose up -d --no-build
-```
-
-精确回滚使用一次完整发布记录中的两份 digest，并加载 `docker-compose.digest.yml`；SHA tag 仅用于源码追踪，不保证不可变。恢复 latest 时必须先拉取并重建应用容器，再恢复 Watchtower，详见 [Watchtower 与回滚](watchtower-rollback.md)。
+首次安装新网关属于拓扑维护，不能与日常单端更新混为一谈。现有端口、项目名、命名卷和数据必须保留；仅有旧总同步开关不会启用新分端自动部署。Watchtower 与 Actions 不应并行管理同一组件。
 
 ## 当前限制
 

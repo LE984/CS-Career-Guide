@@ -32,6 +32,33 @@ class ProjectGateTests(unittest.TestCase):
     def test_docs_only_do_not_select_business_tests(self):
         self.assertEqual(evaluate(['docs/implementation/04-interview-rag.md'])['complete_tests'],[])
 
+    def test_delivery_workflow_does_not_claim_business_complete_or_require_database_runner(self):
+        r = evaluate(['.github/workflows/ci-cd.yml', 'deploy/nginx.conf',
+                      'frontend/Dockerfile', 'backend/Dockerfile'])
+        self.assertEqual(r['complete_tests'], [])
+        self.assertFalse(r['integration_test'])
+        self.assertFalse(r['acceptance_required'])
+
+    def test_delivery_paths_never_exempt_mixed_business_or_fixed_gate_changes(self):
+        for path in ('backend/career_platform/contracts.py', 'backend/career_platform/tests/test_scaffold.py',
+                     'ci/project_acceptance.py', 'ci/project_ci.py', 'ci/project_modules.json',
+                     'ci/check_project_changes.py', '.github/workflows/career-platform.yml',
+                     '.github/unknown-workflow.yml'):
+            with self.subTest(path=path):
+                r = evaluate(['.github/workflows/ci-cd.yml', path])
+                self.assertTrue(r['acceptance_required'])
+                self.assertEqual(len(r['complete_tests']), 5)
+                self.assertTrue(r['integration_test'])
+        for path in ('backend/career_platform/rag/service.py',
+                     'frontend/src/views/career-platform/Practice.vue'):
+            r = evaluate(['.github/workflows/ci-cd.yml', path])
+            self.assertEqual(r['complete_tests'], ['rag'])
+            self.assertTrue(r['acceptance_required'])
+
+    def test_frontend_static_changes_do_not_select_backend_database_acceptance(self):
+        self.assertFalse(evaluate(['frontend/src/styles.css'])['acceptance_required'])
+        self.assertTrue(evaluate(['backend/users/views.py'])['acceptance_required'])
+
     def test_record_requires_all_fields_and_real_result(self):
         record=dict(commit='d12128b + dirty',command='python ci/project_acceptance.py',result='passed',environment='sqlite',scope='offline',limitations='no live model',evidence='output/result.json')
         def block(value): return '```acceptance-record\n'+json.dumps(value)+'\n```'
