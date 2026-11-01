@@ -35,6 +35,7 @@
 
 | 文档 | 什么时候读 |
 | --- | --- |
+| [单仓库独立交付](docs/split-delivery.md) | 组件选择、网关拓扑、独立发布/激活与单服务 digest 回滚 |
 | [部署与运维总览](docs/deployment.md) | 理解整条发布链路与运维入口 |
 | [验收状态与接手记录](docs/deployment-status.md) | 核对带日期的证据、未完成事项；执行前刷新当前状态 |
 | [CI/CD 流水线](docs/ci-cd.md) | 分支触发规则、测试、构建、发布、失败排查 |
@@ -42,7 +43,7 @@
 | [Docker 镜像](docs/docker-images.md) | 镜像组成、运行依赖、构建参数 |
 | [服务器拉取部署](docs/server-pull.md) | 部署账号、服务器前提、存储与手动操作 |
 | [宿主机保护边界](docs/host-protection.md) | 权限、资源与尚未隔离验收的风险 |
-| [Watchtower 与回滚](docs/watchtower-rollback.md) | 更新入口协调、成对 digest 回滚、失败处理 |
+| [Watchtower 与回滚](docs/watchtower-rollback.md) | 更新入口协调、单服务 digest 回滚、失败处理 |
 | [前端部署排障](docs/troubleshooting-frontend.md) | 端口、Nginx 和访问异常 |
 
 ## 文档维护约定

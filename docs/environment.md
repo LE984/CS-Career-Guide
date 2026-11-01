@@ -1,5 +1,7 @@
 # 环境变量配置
 
+> 2026-11-01 本分支交付拆分：以[单仓库独立交付](split-delivery.md)为当前操作入口；本轮未修改服务器。历史发布/部署证据不代表新拓扑已安装。
+
 ## 配置文件与优先级
 
 后端复制 `backend/.env.example` 为 `backend/.env`，前端复制 `frontend/.env.example` 为 `frontend/.env`。也可以在服务器或容器中直接注入环境变量。后端的系统环境变量优先于 `.env`；前端沿用 Vite 的环境变量规则。
@@ -12,7 +14,7 @@
 | --- | --- | --- |
 | Actions Secrets | 三个模型 API Key、六个 SSH 连接字段 | 只在启用后的同步 Job 使用；SSH 字段不写应用 `.env` |
 | Actions Variables | 模型名、LLM/ASR/TTS URL、音色、`ENABLE_TTS` | AI 白名单合并到服务器 `.env`；非空值更新，空可选值保留旧值 |
-| 前端构建 Variable | `VITE_ENABLE_TTS` | Docker build-arg 写入静态资源，需重建前端；不能存密钥 |
+| 前端构建 Variable | `VITE_API_BASE_URL`、`VITE_COMPANY_API_BASE_URL`、`VITE_ENABLE_TTS` | Docker build-arg 写入静态资源，需重建前端；不能存密钥 |
 | 服务器 `.env` | `SECRET_KEY`、数据库、`COMPOSE_PROJECT_NAME`、域名、端口、路径、资源、镜像选择等 | 本地维护，自动同步不得覆盖 |
 
 白名单内的 AI 字段由 Actions 负责，不能同时期待保留服务器同名覆盖值。`ASR_API_KEY`/`TTS_API_KEY` 的留空复用规则属于 Django 设置；同步空值跳过时可能保留服务器旧 Key，如需清除必须另行处理。Compose 环境映射补齐后，候选配置校验才会通过；具体名单与启用顺序见同步文档。
@@ -139,3 +141,13 @@ npm run build
 ```
 
 配置测试无需真实数据库或 AI key；完整启动、迁移和业务验证还需要实际数据库、业务数据、模型和对应 API 凭据。
+
+## 独立交付配置
+
+- Actions `workflow_dispatch.component` 为 frontend/backend/all，默认 all；手动指定只影响当前构建/发布选择，不改变服务器开关。
+- `DEPLOY_ENV_SYNC_ENABLED` 是自动激活总开关；新 `DEPLOY_FRONTEND_ENABLED` / `DEPLOY_BACKEND_ENABLED` 默认关闭，必须精确为 `true` 才激活相应组件。回滚期间可独立关闭目标组件。
+- `DEPLOY_COMPONENT` 与 `DEPLOY_IMAGE` 由 workflow 写入同步进程环境；后者来自该组件完成发布的完整 digest，不是用户密钥，也不进入应用容器。
+- `BACKEND_IMAGE` / `FRONTEND_IMAGE` 是基础 Compose 的可选完整引用；空值回退到各自 `*_TAG`。自动激活生成的 `docker-compose.<组件>-image.json` 优先于基础配置；手工维护需明确加载 pin 文件。
+- Compose 已接入 `CORS_ALLOW_ALL_ORIGINS`、`CORS_ALLOWED_ORIGINS`、`CSRF_TRUSTED_ORIGINS`；跨域时仅允许所需的完整 origin，同源默认不变。前端构建 URL 必须包含 API 前缀；构建参数不能传密钥。
+
+操作、文件权限和失败保留见[独立交付](split-delivery.md)。

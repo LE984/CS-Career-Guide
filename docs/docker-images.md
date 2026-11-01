@@ -1,72 +1,32 @@
 # Docker 镜像
 
-> 2026-10-23：新增 TTS 构建参数、配置同步和面试重构随 `33cbc57` 通过 [build-only 镜像验证 39979362642](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/39979362642)，并整合进 master；该运行没有发布镜像。master 的后续发布以对应最新 Actions 为准。首次发布 digest 保留在 [历史记录](releases/2026-10-21-c1d7b6a.json)。本会话观察到服务器前后端健康，但未将运行 digest 与发布记录逐项对应。开发机未运行 Docker。
+当前分支的构建入口为 frontend/Dockerfile 与 backend/Dockerfile，构建上下文分别是 frontend/、backend/。仓库仍是一个 Git 仓库，ACR 仍为 cs-career-guide-frontend、cs-career-guide-backend 两个独立镜像仓库；不再成对构建或成对发布。历史发布证据见 deployment-status.md，新拓扑与操作见[独立交付](split-delivery.md)。
 
-前端镜像的 `/var/www/backend-static`、`/var/www/media` 与后端写入进程统一使用 UID/GID `10001:10001`，避免空共享卷由前端先初始化后，后端无法写入。Nginx 仍只读挂载这些卷；此镜像修改不会自动修正已有卷的属主，已有数据需另行评估。
+## 独立构建
 
-当前本地 `Dockerfile.frontend` 新增公开参数 `VITE_ENABLE_TTS`，workflow 从同名 Variable 传入，缺省 False。参数在构建时写入静态资源，不能用于传 Key；运行时只更新 `.env` 不会改变已构建页面。模型与 SSH Secrets 只在可选同步 Job 中使用，不进入镜像。
+以下命令只供 Actions runner 或以后明确授权的构建环境使用，本机本轮不执行 Docker：
 
-面试 legacy 重构随应用代码进入镜像，不新增服务、数据表或迁移；通过编译和离线测试不等于模型/语音已可用，详见 [重构说明](interview-refactor.md)。当前后端演示依赖仍未包含 `sentence-transformers`，本地向量模型未随此次改动启用。
-
-## 镜像地址
-
-```text
-crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend
-crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend
+```bash
+docker build -f frontend/Dockerfile -t cs-career-guide-frontend:local frontend
+docker build -f backend/Dockerfile -t cs-career-guide-backend:local backend
 ```
 
-标签规则：
+后端 Python 3.11 多阶段 wheel 构建，运行用户 UID/GID 10001；编译依赖与 MariaDB 客户端运行库维持原配置。backend/requirements-runtime.txt 未升级依赖，仍排除 torch/transformers/sentence-transformers 等重依赖；backend/requirements.txt 保持 UTF-16。根目录 requirements 只是 pip 转发入口，前端不会进入后端上下文。
 
-- `latest`：演示环境跟踪标签，Watchtower 默认关注它。
-- `sha-<7位提交>`：源码追踪标签，可能被覆盖；精确回滚使用发布记录中的 `repository@sha256:<digest>`。
-- 手动触发时可额外指定一个 tag。
+入口仍执行 collectstatic、migrate、Gunicorn；本轮不改变模型调用、数据库或 legacy 面试主链路。后端回滚仍需核对 schema；镜像端口/TCP 健康不能证明业务或模型成功。
 
-## 后端镜像
+前端 Node 24 编译、nginx:1.27-alpine 静态运行，UID/GID 10001、端口 8080、PID 位于 /tmp。只提供 dist、history fallback 和资源缓存；无 backend upstream、无共享后端卷。standalone Nginx 不依赖 backend DNS，单镜像冒烟不创建后端。
 
-- 使用多阶段 `python:3.11-slim-bookworm`。
-- builder 阶段安装编译工具和 `default-libmysqlclient-dev`，根据 `requirements-runtime.txt` 预构建 wheel。
-- runtime 阶段只安装 MariaDB 客户端运行库，复制后端源码，并以非 root 用户运行。
-- 启动时依次执行 `collectstatic`、`migrate`、Gunicorn；任一步失败就让容器退出，避免 Watchtower 认为不健康版本已发布。
-- 演示 Compose 默认 `GUNICORN_WORKERS=1`；独立运行镜像且未指定该值时，入口脚本仍使用 `min(2*CPU+1, 4)`。超时默认 300 秒。
-- 进程级健康检查只检查本机 8000 端口，不是业务健康接口。
+## 公开构建参数
 
-### 运行时依赖边界
+VITE_API_BASE_URL 默认 /api；VITE_COMPANY_API_BASE_URL 默认 /company-api，保持原 Docker 构建路径；VITE_ENABLE_TTS 默认 False。工作流从同名 Variables 显式传入，完整 API URL 需含 /api。VITE_* 会写入浏览器，不得传 Key/Token/密码；运行时改服务器 .env 不能改变已编译静态包。
 
-`requirements-runtime.txt` 有意排除：
+GLB 与 VAD ONNX/WASM/worklet 为公开运行资源，必须保留。根 `.dockerignore` 不再控制这两个上下文；各组件的 `.dockerignore` 排除 .env 及嵌套环境文件、私钥、依赖缓存、产物和本地运行数据。仅 .env.example 可保留；backend 的 SQLite、LanceDB、media/staticfiles 等不进入镜像。源码静态目录与迁移仍保留。
 
-- `torch`、`torchaudio`、`torchvision`
-- `sentence-transformers`
-- `transformers`
+## 网关与发布
 
-LanceDB、PyArrow、NumPy 仍保留。语义模型包缺失时应降级为空结果，不能阻止 Django 加载或登录、业务页面启动。`langgraph` 仍是启动必需依赖，CI 会安装完整测试依赖。
+独立 gateway 使用受审阅的 deploy/nginx.conf，继续承接同源 API、SSE、static/media；它属于部署配置，不嵌在前端镜像中、不由单端 publisher 推送。网关配置更新需明确拓扑维护，普通单端发布不重建它。
 
-## 前端镜像
+两端 cache scope 不变，使用 type=gha，provenance/sbom=false。各自测试后导出归档，publisher 验证完整 commit、image ID、linux/amd64 后发布同一镜像；不重新构建、不要求另一端归档。单端/共享验证策略、发布记录和 digest 回滚见[独立交付](split-delivery.md)。
 
-- 构建阶段使用 `node:24-bookworm-slim`。
-- 运行阶段使用 `nginx:1.27-alpine`。
-- 当前功能分支使用 UID/GID `10001:10001` 运行 Nginx，监听容器内 `8080`；PID 放在 `/tmp`，缓存目录由有限大小的 tmpfs 提供。旧发布 `c1d7b6a` 的前端仍监听 `80`，部署文件和镜像必须配套更新。
-- 保留 `frontend/public/models` 中的 GLB 和 VAD 资源，因为它们是运行时资源。
-- Nginx 提供 Vite 构建产物，支持 Vue history 路由回退，并把 `/api` 反向代理到后端。
-- `/company-api` 在未配置外部企业服务时返回 503。
-- 请求体上限为 20 MiB。流式聊天关闭代理缓冲并使用 300 秒超时。
-
-## 构建上下文与缓存
-
-根目录 `.dockerignore` 排除 Git 元数据、虚拟环境、运行时数据、文档、媒体、旧 LanceDB、Python 缓存和 Nginx 配置；前端 GLB 与 VAD 资源通过例外规则保留。
-
-GitHub Actions 使用 `type=gha` 分层缓存，前后端 scope 分别为：
-
-```text
-cs-career-guide-backend
-cs-career-guide-frontend
-```
-
-不要用 registry cache 作为 ACR 个人版的兜底；不支持的 cache manifest 会导致构建失败。
-
-## CI 验证
-
-本项目的 Docker build 和容器启动检查在 GitHub Actions 的 PR/build-only 流程执行，不在开发机运行 Docker。后端检查容器启动、静态文件收集、SQLite 迁移和 Gunicorn 健康状态；前端检查 Nginx 启动、首页、history 路由、API 代理路由、企业服务 503 响应以及 GLB/VAD 资源。
-
-这些 build-only 检查不登录 ACR、不推送镜像，也不能替代真实服务器验证。
-
-Compose 的非 root、只读根目录、无额外 capability、CPU/内存/进程数及日志上限，还会在真实联调启动后通过 Docker inspect 核对。检查不读取容器环境变量，详见 [宿主机保护边界](host-protection.md)。
+截至 2026-11-01，本地只验证离线测试与生产前端编译；Docker、网关联调结果必须来自当前提交 Actions，未部署服务器。

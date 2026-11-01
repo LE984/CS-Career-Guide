@@ -1,0 +1,61 @@
+import contextlib
+import io
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import server_maintenance
+
+
+class ServerMaintenanceTests(unittest.TestCase):
+    def test_audit_emits_only_selected_metadata_and_never_environment_values(self):
+        config = {'name': 'fixture', 'services': {
+            'backend': {'environment': {'SECRET_KEY': 'synthetic-hidden-value'}},
+            'frontend': {'environment': {}}}}
+        container = {'Id': 'container-id', 'Image': 'image-id', 'Name': '/fixture',
+                     'State': {'Status': 'running'}, 'HostConfig': {'PortBindings': {}},
+                     'Config': {'Image': 'fixture:old', 'Env': ['SECRET_KEY=synthetic-hidden-value'],
+                                'Labels': {'com.docker.compose.project': 'fixture'}}, 'Mounts': []}
+
+        def run(command, **kwargs):
+            if command[:3] == ['docker', 'image', 'inspect']:
+                return [{'RepoDigests': ['example.invalid/demo/image@sha256:abc']}]
+            if command[:2] == ['docker', 'inspect']:
+                return [container]
+            if 'ps' in command:
+                return 'container-id'
+            return 'fixture-version'
+
+        output = io.StringIO()
+        with patch('server_maintenance.existing_deployment', return_value=(Path('/fixture/.env'), ['compose'], config)), \
+                patch('server_maintenance.run', side_effect=run), contextlib.redirect_stdout(output):
+            server_maintenance.inventory('/fixture/.env')
+        self.assertNotIn('synthetic-hidden-value', output.getvalue())
+        report = json.loads(output.getvalue())
+        self.assertFalse(report['env_file_read_or_replaced'])
+        self.assertEqual(report['services']['backend']['environment_keys'], ['SECRET_KEY'])
+        self.assertFalse(report['services']['gateway']['configured'])
+
+    def test_command_failures_hide_raw_diagnostics(self):
+        result = subprocess.CompletedProcess([], 1, b'', b'synthetic-hidden-value')
+        with patch('server_maintenance.subprocess.run', return_value=result):
+            with self.assertRaises(RuntimeError) as error:
+                server_maintenance.run(['fixture'])
+        self.assertNotIn('synthetic-hidden-value', str(error.exception))
+
+    @unittest.skipUnless(hasattr(__import__('os'), 'geteuid'), 'POSIX deployment permissions')
+    def test_audit_refuses_public_env_before_invoking_compose(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / '.env'
+            path.write_text('SECRET_KEY=synthetic-hidden-value')
+            path.chmod(0o644)
+            with patch('server_maintenance.run') as run, self.assertRaises(ValueError):
+                server_maintenance.existing_deployment(str(path))
+            run.assert_not_called()
+
+
+if __name__ == '__main__':
+    unittest.main()

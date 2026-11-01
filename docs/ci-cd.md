@@ -1,129 +1,57 @@
 # CI/CD 流水线
 
-## 五人实施门禁（2026-10-28 新增）
+本分支自 2026-11-01 拆为组件交付；当前 Actions 与服务器状态须分别确认，不能沿用历史绿色结果。完整边界见[单仓库独立交付](split-delivery.md)。
 
-主workflow通过可复用 `career-platform.yml` 调用 Platform gates。文档检查按Git基线差异运行 `ci/check_project_changes.py`，使用基线中的模块归属表防止PR自行删除映射逃避验收。成员代码需要对应实施文档，公共契约/固定测试/迁移/CI需要六份；文档须更新包含commit、command、result、environment、scope、limitations、evidence的 `acceptance-record` JSON块，仅改空白不通过。
+## 触发与选择
 
-首次基线没有归属表时识别bootstrap，只要求骨架通过，并实际验证五个complete均因501/FeatureNotImplemented失败；不会标记业务完成。后续由diff选择对应模块complete，公共改动运行全部模块及集成。SQLite/MySQL两个runner都执行真实迁移和读写；本机不跑Docker。测试依赖仅Django/DRF/Pillow/mysqlclient，不读取真实.env或调用模型。
+push 覆盖所有分支，PR 目标为本 fork master。主题分支和 PR 仅 build-only；只有 `vacontinuejatotired/CS-Career-Guide` 的 master push/手动事件且 `SPLIT_DELIVERY_RELEASE_ENABLED=true` 时能发布。新发布开关默认关闭，首次合并保持 build-only，先协调旧自动更新和服务器拓扑，再显式开启。手动 `component=frontend/backend/all`，默认 all，可附加合法 `extra_tag`。
 
-文档检查状态 `Platform documentation`，自定义检查 `Platform acceptance (sqlite)` 和 `Platform acceptance (mysql)`；在UI中嵌套于Platform gates，保护规则设置前须查实际check-run名称，不猜字符串。主发布job依赖Platform gates，门禁失败不能发布新镜像。原登录/API/面试/ASR/配置/双镜像冒烟等回归继续保留，前端运行全部 `tests/*.test.mjs`。
+`changes` 用完整 Git diff（含删除和跨目录移动）调用 `ci/component_changes.py`：仅 frontend/ 选前端，仅 backend/ 选后端，README.md/docs 不选镜像，共享/未知路径选两端。新主题分支与 origin/master 共同祖先比较，初始 master 选择全树；不只看最后一个提交。
 
-保护规则仅在骨架PR合入且最新检查通过后设置：master必须PR、最新基线、至少1审核、CODEOWNER、必要检查、禁止强推/删除。CODEOWNERS已声明集成人；这份文件本身不代表GitHub保护已启用。管理员不能自审自己的PR，须其他账号参与。当前业务模块未实现，不能把骨架CI绿色写成MVP完成或真实模型验收。
-
-发布后可选的 AI 配置同步与自动重建步骤见 [AI 环境同步](ai-env-sync.md)。该步骤默认关闭，需配置专用 SSH Secrets 并显式启用。
-
-> 2026-10-23：新增同步 Job、面试测试及 TTS 构建参数已随 `33cbc57` 通过 [build-only Actions 39979362642](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/39979362642)，并整合进主分支 master。个人开发分支统一为 codex/personal；master 的实际发布结果以对应最新运行记录为准。服务器账号已配置，AI 自动同步仍关闭。完整状态见 [接手记录](deployment-status.md)。
-
-## 触发规则
-
-| 事件 | 目标分支 | 测试 | 构建镜像 | 推送 ACR |
-| --- | --- | --- | --- | --- |
-| PR 到 `master` | 任意分支 | 是 | 有代码变更时，仅构建不推送 | 否 |
-| push 到 `master`，有代码变更 | `master` | 是 | 是 | 是 |
-| push 到 `master`，只有 README/docs | `master` | 是 | 否 | 否 |
-| push 到其他分支 | 任意 ref | 是 | 有代码变更时，仅构建不推送 | 否 |
-| `workflow_dispatch` 手动触发 | 任意选择的分支 | 是 | 是 | 仅 `master` |
-
-纯文档判定只匹配 `README.md` 和 `docs/`。`.github/workflows/**`、`deploy/**`、Dockerfile 和 Nginx 配置都属于代码或部署配置，会触发镜像构建。
-
-## Job 结构
+## Job 依赖
 
 ```text
-frontend-test --> frontend-image (归档) --|
-backend-test ---------------------------+--> backend-image + 真实联调 (归档)
-全部测试与镜像验证 ----------------------> publish (仅 fork/master)
-publish 成功 + 显式启用 -----------------> sync-runtime-env（SSH / 合并 AI 配置 / 拉取 / 重建 / 等待健康）
-验证、发布与同步结果 --------------------> release-summary
+changes -> frontend-test -> frontend-image -> publish-frontend -> deploy-frontend
+        -> backend-test  -> backend-image  -> publish-backend  -> deploy-backend
+        -> delivery-checks --------------------^                 ^
+        -> platform-gates ---------------------^                 |
+两端均选中 -> integration（两个候选归档、真实网关/持久化、合成 SSE/IP）--^
+全部结果 -> release-summary（always；严格区分 required、skipped 与 failure）
 ```
 
-- **backend-test**：安装完整测试依赖，运行鉴权、配置、部署运行时、面试策略/接口、烟测脚本及发布脚本回归，并执行隔离 Django check。脚本测试使用合成数据和模拟 Docker/模型，不访问 Registry、服务器或真实 AI。
-- **frontend-test**：使用 Node 24，执行 `npm ci`、鉴权/配置/API/面试契约测试、Vite 构建，并检查 `dist/index.html`、GLB 和 VAD ONNX。面试基准覆盖四种风格的 12 组旧版请求。
-- **backend-image / frontend-image**：所有触发路径均使用 `push: false`、`load: true`，执行单镜像冒烟；master 也执行真实联调、SQLite 持久化和归档身份检查。验证 Job 不读取 Registry Secrets、不登录或推送 ACR。
-- **publish**：只在 `vacontinuejatotired/CS-Career-Guide` 的 master 发布事件运行，等待前后端测试及两个镜像 Job 成功。下载本次运行的两份归档，核对完整提交 SHA、镜像 ID 和平台；直接推送已验证的同一份镜像，不重新构建。
-- **sync-runtime-env**：仅在本 fork/master、非 PR、publish 成功且 Variable `DEPLOY_ENV_SYNC_ENABLED` 精确为 `true` 时运行。该 Job 才读取模型与 SSH Secrets；传输、合并及失败规则见 [AI 同步](ai-env-sync.md)。跨 ref 使用独立服务器并发组且不取消正在运行的同步，并在服务器加文件锁。
-- **release-summary**：分别报告镜像发布与同步；同步启用但未成功时摘要失败，不能把“镜像发布成功、服务器激活失败”当作完整成功。
+- frontend-test：Node 24、npm ci、全部 tests/*.test.mjs、Vite 构建与 GLB/VAD 资源检查。
+- backend-test：Python 3.11、backend/requirements.txt 的 UTF-16 临时转码、原鉴权、配置、面试/ASR、迁移隔离回归与 Django check。
+- delivery-checks：无应用/模型依赖的 ci 单元测试；runner 解析默认/updates/MySQL/digest Compose，验证端口、用户、只读挂载、资源与 CORS 接线。
+- 各 image：自身目录上下文，多阶段构建，push=false/load=true；单镜像冒烟、导出和再次加载身份验证。前端冒烟不提供后端/DNS。后端 image 不等待前端。
+- integration：仅两端同时选中时要求成功；下载两份已测试归档，无 ACR Secrets。`demo_smoke.py` 验证真实 gateway/frontend/Django、注册登录/401、static、资料、SQLite 持久化及独立重建；`gateway_smoke.py` 用合成上游验证头/query、media、SSE 首事件及两端换 IP。仅 runner 可启动 Docker。
+- publish-frontend/backend：只依赖自身测试/image、delivery-checks、业务门禁及所需 integration，不等待另一 publisher。只下载对应归档，确认 commit、image ID、平台后推送同一镜像，不重新构建。共享所需 integration 被跳过/失败时不得发布。
+- deploy-frontend/backend：仅对应 publisher 成功、fork/master、非 PR、总开关与对应分端开关同时为 true 时执行。输入是该次发布 digest；前端不接收模型字段。细节见[AI 同步](ai-env-sync.md)。
+- release-summary：对已选组件要求 test/image 与预期发布/部署结果正确；未选组件要求全部 skipped。单端完整容器联调明确记为 SKIPPED，不能报告已通过。
 
-## 真实联调与持久化校验
+## 业务门禁
 
-所有镜像验证路径均在 Actions runner 执行 `ci/demo_smoke.py`，不在开发机运行 Docker：
+Platform documentation 继续以 PR base / push before 的归属表为准检查模块文档和 acceptance-record。交付编排 ci-cd.yml 仅在前后端既有测试 Job 与基线保持一致时被区分；修改测试命令、跳过条件、continue-on-error 或删除测试仍进入原完整业务门禁。业务代码、公共契约、固定测试/验收规则和未知 workflow 仍按原规则选择 complete。普通前端静态变更不启动 SQLite/MySQL 业务 runner，前端模块路径仍触发原业务验收。混入业务文件不会因同时有交付文件而被豁免。
 
-1. 通过短期 Artifact 传递已通过前端冒烟的镜像和身份元数据，后端复用当前 Job 已加载的镜像，不重新构建、不拉取 ACR。
-2. 使用 `deploy/docker-compose.yml` 加 `ci/docker-compose.smoke.yml`，指定唯一 `ci-demo-<run-id>-<attempt>` 项目，只启动真实 Django 和 Nginx。Watchtower 和 MySQL 均不启动。
-3. 使用 `--env-file /dev/null`、虚构密钥和全新命名卷；只监听 runner 的 `127.0.0.1:18080`，关闭嵌入下载和 TTS，不调用 AI 接口。
-4. 从 Nginx 入口检查 Vue 路由、后端收集的静态文件、未授权/无效 Token 的 401，以及注册、登录、资料读写。
-5. 删除并重新创建后端容器，确认容器 ID 变化；使用原 Token 和原密码重新验证相同用户 ID、资料标记，确认 SQLite 卷持久化。
-6. 成功或失败均采集容器日志并清理本次项目的容器、网络和卷；日志不输出测试密码或 Token。通过后导出后端镜像，并真实加载核对两份待发布归档的身份。
+本分支修改了检查器与 career-platform.yml，所以本分支自身仍需要六份实施记录及原全部业务验收。五个模块当前仍是 501 骨架；本地 17 项 complete 失败如实保留，不能靠降低固定测试标准使发布通过。交付验证和业务完成分开记录。
 
-当前功能分支还会检查默认 Compose 不包含 Watchtower，`updates` profile 才启用它；真实应用容器须以非 root 用户、只读根目录、无额外 capability 运行，并具有 CPU、内存、进程数和日志上限。Docker inspect 检查明确排除 `Config.Env`；配置与实际容器不一致时 CI 失败。详见 [宿主机保护边界](host-protection.md)。
+2026-11-01 用户明确授权保留并说明此既有业务失败后合并拆分 PR、更新服务器。该授权不改变测试结果或固定规则。首次合并关闭发布与自动激活，服务器操作通过手动 `Split delivery maintenance` workflow 的严格 SSH 核验通道执行；当前 `audit` 只输出镜像/容器/端口/卷等选定元数据，不读取或替换真实 `.env` 内容，不输出展开的 Compose 或容器环境值。
 
-新增检查是否通过，以对应提交的 Actions 结果为准；本地脚本单元测试不能替代容器验证。
+## 发布与记录
 
-## 变量与 Secrets
+ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取（Variables 优先）；ALIYUN_ACR_USERNAME/ALIYUN_ACR_PASSWORD 用于登录。构建/联调不读取注册表凭据。镜像缓存 scope 仍按两端分别设置，关闭 provenance/SBOM 保留现有 ACR 兼容。
 
-以下两项支持 Repository Variables 或同名 Secrets，Variables 优先；已有 Secrets 无需移动或重填：
+`ci/release_images.py verify/publish --component frontend` 或 backend 只需要对应归档；不指定组件的旧 CLI 保持双组件兼容。可重复 --component，但空/未知/重复选择会拒绝。每组件先推 sha-<7位SHA> 和可选版本标签，再推 latest；核对每次 manifest digest 一致。
 
-```text
-ACR_REGISTRY=crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com
-ACR_NAMESPACE=tencent-ubutun22
-```
+`published-frontend-<run-id>` / `published-backend-<run-id>` 各自保存 `published-images.json`，含 components、compatibility（component-contracts / candidate-integration / not-recorded）、完整 commit、image ID、标签、digest/reference 与 complete。complete=false 是部分失败，不可部署；latest/SHA tag 可改写，精确恢复用 digest。两个 publisher 相互独立，不承诺两端发布原子性。
 
-Actions Secrets：
+归档保留 1 天，普通日志 7 天，发布记录 30 天；不上传真实环境/凭据。一个 ref 的 push 发布不取消旧运行，PR 可取消旧运行；服务器激活共用独立 concurrency group 和远端文件锁。Actions 并发组不替代手工回滚协调。
 
-```text
-ALIYUN_ACR_USERNAME
-ALIYUN_ACR_PASSWORD
-```
+`check_build_context.py` 在 runner 用 scratch COPY 导出实际上下文，核对虚构的 .env、私钥、SQLite/media/LanceDB 或 node_modules 探针未进入上下文；正常源码与样例仍存在。该脚本拒绝在非 Actions 环境运行，本地只测其拒绝/泄漏判定。
 
-仅 publisher 通过 `${{ vars.ACR_REGISTRY || secrets.ACR_REGISTRY }}` 及对应 namespace 表达式读取镜像坐标。配置缺失或格式非法时，在登录前失败。`ACR_REGISTRY` 必须是不带 `https://` 和路径的主机名；`ACR_NAMESPACE` 只能使用小写字母、数字和连字符。
+## 验收与失败排查
 
-新增的模型 Secrets 为 `LLM_API_KEY`、`ASR_API_KEY`、`TTS_API_KEY`；六个服务器连接 Secrets 为 `DEPLOY_SSH_HOST`、`DEPLOY_SSH_PORT`、`DEPLOY_SSH_USER`、`DEPLOY_ENV_PATH`、`DEPLOY_SSH_KEY`、`DEPLOY_SSH_KNOWN_HOSTS`。它们已保存，但不提供给测试或镜像构建。完整 Variables 表见 [AI 同步配置](ai-env-sync.md#github-配置)。Secret 列表仅证明名称存在，无法读取或验证已保存的值。
+本地离线运行 `python -m unittest discover -s ci -p 'test_*.py' -v`；Windows 的 POSIX 测试跳过，须在 Linux/WSL 或 runner 运行。前端与后端原测试命令见 development.md。Docker 构建、进程和网络结果仅以对应 commit 的 Actions 为准。
 
-`VITE_ENABLE_TTS` 是公开变量：通过前端 Docker build-arg 传入并写入静态资源。更改它必须重新构建前端；不能在该参数或其他 `VITE_*` 中放密钥。仅修改 Secrets/Variables 不会触发 workflow，也不会改变已运行容器。
+单端协议测试不证明和任意线上旧版本兼容；破坏合同的改动需兼容窗口与指定组合联调。镜像发布不证明服务器部署，容器健康不证明真实模型/浏览器验收。Watchtower 若另外启用仍可能因 latest 更新自动激活，回滚前协调入口。
 
-## 发布顺序与回滚记录
-
-`ci/release_images.py` 先加载归档并核对镜像 ID，然后先推送两个镜像的 `sha-<7位提交>` 和可选版本标签，最后更新两个 `latest`。每次推送都解析并校验 manifest digest；版本标签与 latest 的 digest 必须一致。
-
-发布摘要及 `published-images-<run-id>` Artifact 中的 `published-images.json` 记录完整源码提交、镜像 ID、已推送标签和成对的 `repository@sha256:<digest>` 引用。`complete: true` 才代表全部推送完成；失败时尽可能保留 `complete: false` 的部分发布记录。回滚使用已完成发布的两份 digest 引用，详见 [Watchtower 与回滚](watchtower-rollback.md)。
-
-两个仓库的更新不是原子操作，后半段失败仍可能留下部分标签更新；不会自动回退 Registry 或服务器。演示环境需人工检查部分发布记录，不能据此宣称零中断或原子部署。
-
-## 权限、并发与日志
-
-- 权限限制为 `contents: read`、`packages: write`。
-- 同一个 ref 使用同一并发组；PR 可以取消旧运行，push 和手动发布不取消。
-- CI 禁止回显 Secrets，禁止上传 `.env` 或 Docker 登录配置。两份镜像归档和身份元数据保留 1 天；测试与容器日志保留 7 天；不含凭据的发布记录保留 30 天。
-- 镜像构建使用 `type=gha` 缓存，并关闭 provenance/SBOM，避免个人版 ACR 拒绝不支持的 manifest 附件。
-- 手动触发可以附加一个合法 tag；标准标签仍是 `latest` 和 `sha-<7位SHA>`。
-
-## 功能分支验证与边界
-
-日常使用长期个人分支 `codex/personal`，向本 fork 的 master 提 PR。只在 `vacontinuejatotired/CS-Career-Guide` 开发，不创建上游 PR。保留并分离已有 dirty 文件，按职责提交和推送，详见 [Git 规范](git-workflow.md)。
-
-```bash
-# 确认分支与工作区，完成适用检查和显式分组提交后执行：
-git push -u origin codex/personal
-gh run list --repo vacontinuejatotired/CS-Career-Guide --branch codex/personal --workflow ci-cd.yml
-```
-
-检查结果时确认：
-
-1. 后端和前端测试 Job 都通过。
-2. build-only 镜像可以启动，且没有执行 ACR 登录或推送。
-3. 纯文档改动不会触发镜像 Job。
-4. 失败时可以下载测试日志，日志中没有凭据。
-
-单镜像冒烟不能替代真实联调与持久化步骤。功能分支的 publisher 必须跳过；即使全部验证通过，也不等于实际 ACR 认证、推送、Watchtower 更新、真实 MySQL、服务器部署或浏览器交互测试通过。
-
-## 常见失败
-
-| 现象 | 检查项 |
-| --- | --- |
-| `requirements.txt` 编码失败 | 确认原文件仍是 UTF-16 BOM；CI 只转换临时副本为 UTF-8 |
-| `mysqlclient` 编译失败 | 检查 `default-libmysqlclient-dev` 和 `pkg-config` |
-| ACR 登录失败 | 使用 Registry 访问凭证，不是阿里云账号登录密码 |
-| `unknown manifest class` | 确认 `provenance: false` 和 `sbom: false` |
-| 镜像坐标配置缺失 | 检查同名 Repository Variables 或 Secrets；仅存在于 Secrets 也可使用 |
-| 同步 Job 跳过 | 检查 master、publish 结果及 `DEPLOY_ENV_SYNC_ENABLED` 是否精确为 `true`；默认关闭 |
-| 镜像发布成功但同步失败 | 分别检查 SSH 主机密钥、目录/文件权限、AI 映射、部署用户 ACR 权限和容器健康；不要输出 Secret 或原始 config |
-| TTS 开关改了页面没变化 | 前端变量在构建时生效，需发布包含新 build-arg 的镜像 |
+常见问题：UTF-16 源改路径后转换失败时检查 backend/requirements.txt；旧 Dockerfile 根路径必须移除；gateway 缺失/前端仍有端口或共享卷时新同步拒绝；只设置旧总同步开关不会触发新分端部署；完整业务 501 失败应作为业务未完成处理，不能改成通过。

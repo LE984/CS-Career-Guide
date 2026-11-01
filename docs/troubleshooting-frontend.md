@@ -1,39 +1,21 @@
-# 前端容器健康，但浏览器拒绝连接
+# 前端与网关排障
 
-## 80 与 8080 的区别
+本分支将入口从frontend移至gateway；首次安装说明见[独立交付](split-delivery.md)。新frontend是纯静态镜像，独立启动不要求backend在线。历史服务器端口配置不能直接套在新静态前端上。
 
-新版前端镜像使用非 root 用户，Nginx 在容器内监听 `8080`。仓库默认映射为 `127.0.0.1:48080:8080`，适合通过反向代理或 SSH 隧道访问。
+## 端口和健康
 
-已经使用宿主机 80 端口的部署，可以保留宿主机端口，但容器目标必须改为 8080。例如原来的覆盖文件：
+frontend和gateway均监听容器内8080，但只有gateway发布WEB_PORT（默认127.0.0.1:48080）。已有宿主80/48080映射应在经授权的拓扑维护时移到gateway，不发布backend。容器健康只验证内部端口，不证明宿主映射、API、数据库或AI。
 
-```yaml
-services:
-  frontend:
-    ports: !override ["80:80", "48080:80"]
-```
+## 定位
 
-升级镜像后，应与新的监听端口配套：
+- 页面可达、API404：确认浏览器访问gateway，而不是直接暴露的frontend。检查VITE_API_BASE_URL构建值及gateway的/api路由。
+- 首次切换连接失败：检查gateway实际PortBindings、nginx.conf只读挂载权限和容器8080监听；不要因此开放backend端口。
+- 单端重建后短暂502：网关Docker DNS缓存有效5s；超过重试窗口仍失败则检查同一网络、service alias与gateway日志，不靠重新发布另一组件恢复。
+- 缺static/media：检查backend收集/写入目录、原命名卷和gateway只读挂载；frontend不承担这些文件。不要创建空卷代替原用户数据。
+- SSE整段返回：检查gateway聊天精确路由的proxy_buffering off、proxy_cache off和300s超时，以及外层反代；合成runner测试不证明真实模型速度。
+- company-api503：仍表示独立企业服务未配置，不等同于Django整体故障。
+- 页面没更新：确认frontend运行digest、index.html no-store以及assets版本；VITE_*只能重建生效。
 
-```yaml
-services:
-  frontend:
-    ports: !override ["80:8080", "48080:8080"]
-```
+仅前端镜像回滚/更新使用单组件digest脚本；不要重建backend或gateway。若修改gateway端口/配置，那是网关维护，仅在明确授权后对gateway使用--no-deps重建。排查不要输出Config.Env、真实.env、登录凭据或未脱敏日志。
 
-这里保留的是已有部署的访问方式，不是建议把默认回环地址改成公网绑定。基础 Compose 与覆盖文件的容器目标端口都应一致。
-
-## 为什么健康检查没有报错
-
-镜像健康检查直接访问容器内 `http://127.0.0.1:8080/`。如果宿主机仍将请求转到容器的 80，健康检查可以通过，浏览器访问却会连接失败或被重置。Watchtower 更新镜像会沿用已有端口映射，不会自动同步 Git 仓库里的 Compose 文件。
-
-## 检查与修复范围
-
-先检查前端日志、容器内部监听端口与 Docker 的 `PortBindings`，不要因浏览器拒绝连接就修改 API 地址或开放后端端口。不要输出容器环境变量或服务器 `.env`。
-
-确认映射错误并获授权后，备份实际使用的 Compose 文件，仅修改前端目标端口。需要让修改生效时，可仅重建前端：
-
-```bash
-docker compose up -d --no-deps --no-build --pull never --force-recreate frontend
-```
-
-修复后验证宿主机端口、`/login`、静态资源及未登录 API 的 401 响应，并检查后端容器没有被重建。接口返回 401 说明代理链路可达，不代表已经完成登录后的业务或真实模型验收。
+验证/login、注册登录、无Token业务API401、静态/媒体、SSE与另一组件ID；容器健康、浏览器和真实模型分别记录。本轮未执行服务器或浏览器验收。

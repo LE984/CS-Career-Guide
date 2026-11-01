@@ -1,5 +1,7 @@
 # 开发指南
 
+> 2026-11-01 本分支交付拆分：以[单仓库独立交付](split-delivery.md)为当前操作入口；本轮未修改服务器。历史发布/部署证据不代表新拓扑已安装。
+
 先读根目录 [agent.md](../agent.md) 选择任务文档。主分支为 master，日常使用 codex/personal；分支和 PR 规则见 [Git 规范](git-workflow.md)。
 
 ## 代码定位
@@ -29,7 +31,7 @@
 
 前端开发代理目标由 DEV_* 配置；VITE_* 会进入浏览器。独立企业查询服务不由 Django 自动提供，默认生产 Nginx 对 company-api 返回 503；不要把前后端启动等同于全部功能可用。
 
-requirements.txt 是现有 UTF-16 文件，CI 会转换临时副本；不要顺手整文件转码或升级依赖。镜像使用 requirements-runtime.txt，缺少本地 Embedding 的可选重依赖是当前演示方案的一部分。
+backend/requirements.txt 保留现有 UTF-16 编码，CI 会转换临时副本；根 requirements.txt 为 pip 转发入口，不要顺手转码或升级依赖。镜像使用 backend/requirements-runtime.txt，缺少本地 Embedding 的可选重依赖是当前演示方案的一部分。
 
 ## 选择与改动相关的验证
 

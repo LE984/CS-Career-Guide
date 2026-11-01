@@ -7,18 +7,46 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / 'ci/project_modules.json').read_text(encoding='utf-8'))
+# Only this orchestration file is delivery configuration. Changes to acceptance
+# workflows, ownership maps, checkers or fixed tests still require full business acceptance.
+DELIVERY_WORKFLOWS = {'.github/workflows/ci-cd.yml'}
+BACKEND_BUILD_FILES = {'backend/Dockerfile', 'backend/.dockerignore',
+                       'backend/requirements.txt', 'backend/requirements-runtime.txt'}
 
 
 def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT, text=True, encoding='utf-8').strip()
 
 
-def evaluate(changed, bootstrap=False, config=None):
+def workflow_delivery_only(previous, current):
+    """Allow orchestration edits only while the established test jobs stay intact."""
+    import yaml
+
+    def protected(text):
+        jobs = yaml.safe_load(text).get('jobs', {})
+        result = {}
+        for component in ('backend', 'frontend'):
+            job = dict(jobs.get(component + '-test', {}))
+            # Component selection is delivery plumbing; any other guard, runner,
+            # setup, test command, environment or continue-on-error edit is protected.
+            if job.get('if') in (None, f"needs.changes.outputs.{component} == 'true'"):
+                job.pop('if', None)
+            if job.get('needs') == ['changes']:
+                job.pop('needs')
+            result[component] = job
+        return result
+
+    before, after = protected(previous), protected(current)
+    return all(before.values()) and before == after
+
+
+def evaluate(changed, bootstrap=False, config=None, delivery_workflows=()):
     config = CONFIG if config is None else config
     changed = set(changed)
     modules = {key for key, value in config['modules'].items()
                if any(any(path.startswith(prefix) for prefix in value['paths']) for path in changed)}
-    shared = any(any(path.startswith(prefix) for prefix in config['shared_paths']) for path in changed)
+    shared = any(any(path.startswith(prefix) for prefix in config['shared_paths'])
+                 for path in changed - set(delivery_workflows))
     # New backend files outside a known member area cannot escape ownership.
     shared = shared or any(path.startswith('backend/career_platform/') and
         not any(any(path.startswith(prefix) for prefix in value['paths']) for value in config['modules'].values())
@@ -29,7 +57,13 @@ def evaluate(changed, bootstrap=False, config=None):
         needed.update(f"docs/implementation/{value['doc']}" for value in config['modules'].values())
     # Merely changing a module state/flag never exempts implementation files.
     missing = sorted(needed - changed)
+    # Frontend delivery needs no Python/database runner. Frontend business paths
+    # in the ownership map still select their existing backend acceptance suites.
+    acceptance_required = (shared or bool(modules) or bootstrap or
+                           any(path.startswith('backend/') and path not in BACKEND_BUILD_FILES
+                               for path in changed))
     return {'bootstrap': bootstrap, 'changed_modules': sorted(modules), 'shared_changed': shared,
+            'acceptance_required': acceptance_required,
             'required_documents': sorted(needed), 'missing_documents': missing,
             'complete_tests': [] if bootstrap else sorted(config['modules'] if shared else modules),
             'integration_test': shared and not bootstrap}
@@ -69,7 +103,15 @@ def main():
     # Trust the base ownership map once installed. A PR cannot exempt itself by
     # deleting a path or downgrading an implementation flag in its own config.
     config=json.loads(git('show',f'{args.base}:ci/project_modules.json')) if exists else CONFIG
-    report = evaluate(changed, bootstrap=not exists,config=config)
+    delivery_workflows = set()
+    for path in set(changed) & DELIVERY_WORKFLOWS:
+        previous = subprocess.run(['git', 'show', f'{args.base}:{path}'], cwd=ROOT,
+                                  capture_output=True, text=True, encoding='utf-8')
+        current = subprocess.run(['git', 'show', f'{args.head}:{path}'], cwd=ROOT,
+                                 capture_output=True, text=True, encoding='utf-8')
+        if previous.returncode == current.returncode == 0 and workflow_delivery_only(previous.stdout, current.stdout):
+            delivery_workflows.add(path)
+    report = evaluate(changed, bootstrap=not exists,config=config,delivery_workflows=delivery_workflows)
     errors={}
     for path in report['required_documents']:
         if path in report['missing_documents']:

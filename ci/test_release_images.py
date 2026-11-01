@@ -135,6 +135,31 @@ class ReleaseImageTests(unittest.TestCase):
             with self.subTest(output=output), self.assertRaises(RuntimeError):
                 push_digest(output)
 
+    def test_single_component_publication_never_requires_or_tags_the_other(self):
+        for component in IDS:
+            with self.subTest(component=component), tempfile.TemporaryDirectory() as directory:
+                root, calls = Path(directory), []
+                self.artifacts(root)
+                other = 'frontend' if component == 'backend' else 'backend'
+                (root / f'{other}-image.json').unlink()
+                (root / f'{other}-image.tar').unlink()
+                with patch('release_images.docker', side_effect=self.fake_docker(calls)), patch('builtins.print'):
+                    publish_images(root, 'registry.example', 'demo', COMMIT, '',
+                                   root / 'release.json', root / 'summary.md', [component], 'component-contracts')
+                record = json.loads((root / 'release.json').read_text())
+                self.assertEqual(record['components'], [component])
+                self.assertEqual(record['compatibility'], 'component-contracts')
+                self.assertEqual(set(record['images']), {component})
+                self.assertTrue(record['complete'])
+                self.assertNotIn('cs-career-guide-' + other, str(calls))
+
+    def test_empty_unknown_or_duplicate_selection_fails_before_docker(self):
+        with tempfile.TemporaryDirectory() as directory, patch('release_images.docker') as docker:
+            for selection in ([], ['gateway'], ['frontend', 'frontend']):
+                with self.subTest(selection=selection), self.assertRaises(ValueError):
+                    load_verified_images(Path(directory), COMMIT, selection)
+            docker.assert_not_called()
+
 
 class WorkflowGateTests(unittest.TestCase):
     @classmethod
@@ -142,51 +167,77 @@ class WorkflowGateTests(unittest.TestCase):
         path = Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'ci-cd.yml'
         cls.workflow = yaml.safe_load(path.read_text(encoding='utf-8'))
 
-    def test_publisher_requires_both_quality_and_image_jobs(self):
-        publisher = self.workflow['jobs']['publish']
-        self.assertTrue({'backend-test', 'frontend-test', 'backend-image', 'frontend-image'}.issubset(publisher['needs']))
+    def test_each_publisher_requires_only_its_own_quality_and_image_artifact(self):
+        for component, other in (('frontend', 'backend'), ('backend', 'frontend')):
+            publisher = self.workflow['jobs']['publish-' + component]
+            self.assertTrue({component + '-test', component + '-image', 'integration',
+                             'delivery-checks', 'platform-gates'}.issubset(publisher['needs']))
+            self.assertNotIn(other + '-image', publisher['needs'])
+            self.assertNotIn('publish-' + other, publisher['needs'])
+            downloads = [s for s in publisher['steps'] if s.get('uses', '').startswith('actions/download-artifact@')]
+            self.assertEqual(len(downloads), 1)
+            self.assertTrue(downloads[0]['with']['name'].startswith(component + '-'))
+            self.assertIn('--component ' + component, str(publisher['steps']))
 
-    def test_publication_guard_rejects_feature_branches_prs_other_repositories_and_false_intent(self):
-        expression = self.workflow['jobs']['publish']['if']
-        cases = [
-            ('true', 'refs/heads/master', 'vacontinuejatotired/CS-Career-Guide', 'push', True),
-            ('true', 'refs/heads/master', 'vacontinuejatotired/CS-Career-Guide', 'workflow_dispatch', True),
-            ('true', 'refs/heads/feature', 'vacontinuejatotired/CS-Career-Guide', 'push', False),
-            ('true', 'refs/heads/master', 'vacontinuejatotired/CS-Career-Guide', 'pull_request', False),
-            ('true', 'refs/heads/master', 'other/CS-Career-Guide', 'push', False),
-            ('false', 'refs/heads/master', 'vacontinuejatotired/CS-Career-Guide', 'push', False),
-        ]
-        for intent, ref, repository, event, expected in cases:
-            translated = expression
-            for key, value in {'needs.changes.outputs.publish': intent, 'github.ref': ref,
-                               'github.repository': repository, 'github.event_name': event}.items():
-                translated = translated.replace(key, repr(value))
-            translated = translated.replace('&&', 'and').replace('||', 'or')
-            with self.subTest(ref=ref, repository=repository, event=event, intent=intent):
-                self.assertEqual(eval(translated, {'__builtins__': {}}, {}), expected)
+    def allowed(self, component='frontend', *, selected=True, both=False, integration='skipped',
+                ref='refs/heads/master', repository='vacontinuejatotired/CS-Career-Guide',
+                event='push', intent='true', quality='success', platform='success', cancelled=False):
+        expression = self.workflow['jobs']['publish-' + component]['if']
+        values = {'needs.changes.outputs.publish': intent, 'github.ref': ref,
+                  'github.repository': repository, 'github.event_name': event,
+                  'needs.changes.outputs.frontend': 'true' if selected and (component == 'frontend' or both) else 'false',
+                  'needs.changes.outputs.backend': 'true' if selected and (component == 'backend' or both) else 'false',
+                  'needs.delivery-checks.result': 'success', 'needs.platform-gates.result': platform,
+                  'needs.' + component + '-test.result': quality,
+                  'needs.' + component + '-image.result': 'success',
+                  'needs.integration.result': integration}
+        for key in sorted(values, key=len, reverse=True):
+            expression = expression.replace(key, repr(values[key]))
+        expression = expression.replace('always()', 'True').replace('!cancelled()', str(not cancelled))
+        return eval(expression.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}, {})
 
-    def test_image_jobs_always_load_and_test_without_registry_credentials(self):
-        for name in ('backend-image', 'frontend-image'):
-            job = self.workflow['jobs'][name]
-            builds = [step for step in job['steps'] if step.get('uses', '').startswith('docker/build-push-action@')]
+    def test_independent_publication_and_fail_closed_shared_integration(self):
+        for component in ('frontend', 'backend'):
+            self.assertTrue(self.allowed(component))
+            self.assertTrue(self.allowed(component, both=True, integration='success'))
+            for arguments in ({'both': True}, {'both': True, 'integration': 'failure'},
+                              {'selected': False}, {'quality': 'failure'}, {'quality': 'skipped'},
+                              {'platform': 'failure'}, {'platform': 'skipped'},
+                              {'ref': 'refs/heads/feature'}, {'repository': 'other/CS-Career-Guide'},
+                              {'event': 'pull_request'}, {'intent': 'false'}, {'cancelled': True}):
+                with self.subTest(component=component, arguments=arguments):
+                    self.assertFalse(self.allowed(component, **arguments))
+
+    def test_image_jobs_build_their_own_context_without_registry_credentials(self):
+        for component in ('backend', 'frontend'):
+            job = self.workflow['jobs'][component + '-image']
+            self.assertEqual(job['needs'], ['changes', component + '-test'])
+            builds = [s for s in job['steps'] if s.get('uses', '').startswith('docker/build-push-action@')]
             self.assertEqual(len(builds), 1)
+            self.assertEqual(builds[0]['with']['context'], './' + component)
+            self.assertEqual(builds[0]['with']['file'], './' + component + '/Dockerfile')
             self.assertIs(builds[0]['with']['push'], False)
             self.assertIs(builds[0]['with']['load'], True)
             self.assertNotIn('secrets.', json.dumps(job))
-            for step in job['steps']:
-                if step.get('name') in ('Smoke test validated image', 'Test real demo integration and SQLite persistence'):
-                    self.assertNotIn('if', step)
-            self.assertTrue(any('Smoke test validated image' == step.get('name') for step in job['steps']))
-        backend = self.workflow['jobs']['backend-image']
-        self.assertTrue(any(step.get('name') == 'Test real demo integration and SQLite persistence' for step in backend['steps']))
+            self.assertTrue(any(s.get('name') == 'Smoke test validated image' for s in job['steps']))
+        frontend_smoke = next(s['run'] for s in self.workflow['jobs']['frontend-image']['steps']
+                              if s.get('name') == 'Smoke test validated image')
+        self.assertNotIn('--network-alias backend', frontend_smoke)
+        self.assertEqual(frontend_smoke.count('docker run'), 1)
+        integration = self.workflow['jobs']['integration']
+        self.assertIn("outputs.backend == 'true'", integration['if'])
+        self.assertIn("outputs.frontend == 'true'", integration['if'])
+        self.assertIn('ci/gateway_smoke.py', str(integration['steps']))
+        build_args = next(s['with']['build-args'] for s in self.workflow['jobs']['frontend-image']['steps']
+                          if s.get('uses', '').startswith('docker/build-push-action@'))
+        self.assertIn("VITE_COMPANY_API_BASE_URL=${{ vars.VITE_COMPANY_API_BASE_URL || '/company-api' }}", build_args)
 
-    def test_secrets_fallback_is_confined_to_publisher_and_artifacts_are_consumed(self):
-        publisher = self.workflow['jobs']['publish']
-        for name in ('ACR_REGISTRY', 'ACR_NAMESPACE'):
-            self.assertEqual(publisher['env'][name], '${{ vars.' + name + ' || secrets.' + name + ' }}')
-        downloads = [step for step in publisher['steps'] if step.get('uses', '').startswith('actions/download-artifact@')]
-        self.assertEqual(len(downloads), 2)
-        self.assertFalse(any(step.get('uses', '').startswith('docker/build-push-action@') for step in publisher['steps']))
+    def test_registry_secrets_and_rebuilds_are_confined(self):
+        for component in ('backend', 'frontend'):
+            publisher = self.workflow['jobs']['publish-' + component]
+            for name in ('ACR_REGISTRY', 'ACR_NAMESPACE'):
+                self.assertEqual(publisher['env'][name], '${{ vars.' + name + ' || secrets.' + name + ' }}')
+            self.assertFalse(any(s.get('uses', '').startswith('docker/build-push-action@') for s in publisher['steps']))
 
 
 if __name__ == '__main__':

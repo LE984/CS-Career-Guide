@@ -35,7 +35,7 @@ COPY --from=builder /wheels /wheels
 RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* \
     && rm -rf /wheels
 
-COPY backend /app
+COPY . /app
 RUN mkdir -p /app/staticfiles /app/media /data/staticfiles /data/media /data/lancedb \
     && chmod +x /app/docker-entrypoint.sh \
     && chown -R appuser:appgroup /app/staticfiles /app/media /data

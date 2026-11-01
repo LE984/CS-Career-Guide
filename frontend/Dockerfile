@@ -1,25 +1,29 @@
 FROM node:24-bookworm-slim AS builder
 
 WORKDIR /build/frontend
-COPY frontend/package.json frontend/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
-COPY frontend ./
+COPY . ./
+ARG VITE_API_BASE_URL=/api
+ARG VITE_COMPANY_API_BASE_URL=/company-api
 ARG VITE_ENABLE_TTS=False
-ENV VITE_ENABLE_TTS=${VITE_ENABLE_TTS}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_COMPANY_API_BASE_URL=${VITE_COMPANY_API_BASE_URL} \
+    VITE_ENABLE_TTS=${VITE_ENABLE_TTS}
 RUN npm run build
 
 FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /build/frontend/dist /usr/share/nginx/html
-RUN mkdir -p /var/cache/nginx /var/www/backend-static /var/www/media \
+RUN mkdir -p /var/cache/nginx \
     && sed -i \
         -e '/^user /d' \
         -e 's#^[[:space:]]*pid[[:space:]][^;]*;#pid /tmp/nginx.pid;#' \
         -e 's/worker_processes[[:space:]]*auto;/worker_processes 1;/' \
         /etc/nginx/nginx.conf \
     && grep -Eq '^pid[[:space:]]+/tmp/nginx.pid;' /etc/nginx/nginx.conf \
-    && chown -R 10001:10001 /var/cache/nginx /var/www/backend-static /var/www/media
+    && chown -R 10001:10001 /var/cache/nginx
 
 USER 10001:10001
 EXPOSE 8080
