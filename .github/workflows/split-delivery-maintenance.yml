@@ -1,0 +1,39 @@
+name: Split delivery maintenance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cs-career-guide-server-env
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Read-only deployment inventory
+    if: github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Inspect only public runtime metadata over verified SSH
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_ENV_PATH: ${{ secrets.DEPLOY_ENV_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: python3 ci/server_maintenance.py --action audit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: split-deployment-audit-${{ github.run_id }}
+          path: output/server-maintenance/audit.json
+          retention-days: 7

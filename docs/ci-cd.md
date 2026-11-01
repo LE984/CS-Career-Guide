@@ -4,7 +4,7 @@
 
 ## 触发与选择
 
-push 覆盖所有分支，PR 目标为本 fork master。主题分支和 PR 仅 build-only；只有 `vacontinuejatotired/CS-Career-Guide` 的 master push/手动事件能发布。手动 `component=frontend/backend/all`，默认 all，可附加合法 `extra_tag`。
+push 覆盖所有分支，PR 目标为本 fork master。主题分支和 PR 仅 build-only；只有 `vacontinuejatotired/CS-Career-Guide` 的 master push/手动事件且 `SPLIT_DELIVERY_RELEASE_ENABLED=true` 时能发布。新发布开关默认关闭，首次合并保持 build-only，先协调旧自动更新和服务器拓扑，再显式开启。手动 `component=frontend/backend/all`，默认 all，可附加合法 `extra_tag`。
 
 `changes` 用完整 Git diff（含删除和跨目录移动）调用 `ci/component_changes.py`：仅 frontend/ 选前端，仅 backend/ 选后端，README.md/docs 不选镜像，共享/未知路径选两端。新主题分支与 origin/master 共同祖先比较，初始 master 选择全树；不只看最后一个提交。
 
@@ -33,6 +33,8 @@ changes -> frontend-test -> frontend-image -> publish-frontend -> deploy-fronten
 Platform documentation 继续以 PR base / push before 的归属表为准检查模块文档和 acceptance-record。交付编排 ci-cd.yml 仅在前后端既有测试 Job 与基线保持一致时被区分；修改测试命令、跳过条件、continue-on-error 或删除测试仍进入原完整业务门禁。业务代码、公共契约、固定测试/验收规则和未知 workflow 仍按原规则选择 complete。普通前端静态变更不启动 SQLite/MySQL 业务 runner，前端模块路径仍触发原业务验收。混入业务文件不会因同时有交付文件而被豁免。
 
 本分支修改了检查器与 career-platform.yml，所以本分支自身仍需要六份实施记录及原全部业务验收。五个模块当前仍是 501 骨架；本地 17 项 complete 失败如实保留，不能靠降低固定测试标准使发布通过。交付验证和业务完成分开记录。
+
+2026-11-01 用户明确授权保留并说明此既有业务失败后合并拆分 PR、更新服务器。该授权不改变测试结果或固定规则。首次合并关闭发布与自动激活，服务器操作通过手动 `Split delivery maintenance` workflow 的严格 SSH 核验通道执行；当前 `audit` 只输出镜像/容器/端口/卷等选定元数据，不读取或替换真实 `.env` 内容，不输出展开的 Compose 或容器环境值。
 
 ## 发布与记录
 

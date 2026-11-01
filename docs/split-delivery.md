@@ -47,13 +47,13 @@ Actions 在正式镜像构建前，使用 scratch COPY 导出实际上下文，�
 
 此步骤会改变流量入口，只能在后续获得服务器授权后执行。本轮未执行。
 
-1. 暂停现有 Actions 自动激活并确认无运行中任务；协调/停止旧 Watchtower。保留现有 Compose、环境、容器身份及数据备份。
+1. 首次合并时保持 `SPLIT_DELIVERY_RELEASE_ENABLED` 缺省关闭，确保 master 也只 build-only。暂停现有 Actions 自动激活并确认无运行中任务；协调/停止旧 Watchtower。通过手动 `Split delivery maintenance` 的只读 audit 核对容器、镜像、端口和卷，保留现有 Compose、环境、容器身份及数据备份。
 2. 核对已通过 runner 验证的前后端 digest。新纯静态前端必须与独立网关同时启用；旧内置代理前端的直接端口部署不能只替换为新静态镜像。
 3. 逐项合并新的 `deploy/docker-compose.yml` 和 `deploy/nginx.conf`，保持原 Compose 项目名、卷名、服务器端口、自定义配置和已有卷属主；绝不直接覆盖真实 `.env` 或执行 `down -v`。宿主原有 80/48080 映射应移到 gateway，而不是发布 backend。
 4. 首次启动应显式拉取 backend、frontend、gateway，并启动这三项。gateway 配置必须可由 UID 10001 读取；backend 写入的 static/media 卷继续只读挂到 gateway。核验新入口的登录、SSE、资源及已有数据。
 5. 首次安装可在服务器 `.env` 中设置两端 digest；自动激活后生成的单端 pin 文件优先级更高。今后手工 Compose 应显式加载已存在的 `docker-compose.backend-image.json` 与 `docker-compose.frontend-image.json`，避免基础文件回到旧 tag。
 6. 安装脚本 `ci/sync_runtime_env.py` 和 `ci/deploy_component.py` 到可信的同一工具目录；自动 SSH 会传送当前同步脚本，不上传 Compose。部署目录归部署账号、不可组/其他用户写入，`.env`、生成的 pin 文件均为 600 且无软/硬链接。
-7. 确认部署账号能拉 ACR 后，才按需启用 `DEPLOY_ENV_SYNC_ENABLED=true` 和 `DEPLOY_FRONTEND_ENABLED=true` / `DEPLOY_BACKEND_ENABLED=true`。两个新增分端开关默认关闭，不能因旧总开关已开启就自动切换服务器。
+7. 已协调旧更新入口、准备好切换与回退后，才显式开启 `SPLIT_DELIVERY_RELEASE_ENABLED=true`，发布首个拆分版本。完成网关安装与业务检查后，才按需启用 `DEPLOY_ENV_SYNC_ENABLED=true` 和 `DEPLOY_FRONTEND_ENABLED=true` / `DEPLOY_BACKEND_ENABLED=true`。新增开关默认关闭，不能因旧总开关已开启就自动切换服务器。
 
 网关只由明确的拓扑维护操作更新；普通前端/后端发布与回滚不重建网关。现有 `docker-compose.digest.yml` 仍保留为显式同时指定两端的维护入口，但日常单端回滚使用下面的脚本。
 
