@@ -33,7 +33,7 @@
           <span class="text-stone-700">正在生成报告，请稍候...</span>
         </div>
       </div>
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700">{{ error }}</div>
+      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-700" role="alert"><p>{{ error }}</p><router-link to="/career-evaluation" class="inline-block mt-3 underline underline-offset-4">返回选择职业方向</router-link></div>
 
       <template v-else>
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -208,6 +208,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { aiAPI } from '@/api'
+import { hasIntroduction, selectedCareerName } from '@/features/career-paths/evaluation.js'
+import { normalizeIntroduction } from '@/features/career-paths/self-introduction.js'
 
 const loading = ref(true)
 const error = ref('')
@@ -218,7 +220,9 @@ const cacheHit = ref(false)
 function getUserProfileFromLocalStorage() {
   const raw = localStorage.getItem('selfIntroduction')
   if (!raw) return null
-  const data = JSON.parse(raw)
+  const parsed = JSON.parse(raw)
+  if (!hasIntroduction(parsed)) return null
+  const data = normalizeIntroduction(parsed)
   return {
     major: data.major || '',
     education: '本科',
@@ -234,19 +238,7 @@ function getUserProfileFromLocalStorage() {
 
 function getTargetJobFromLocalStorage() {
   const selected = localStorage.getItem('selectedCareers')
-  if (selected) {
-    const careers = JSON.parse(selected)
-    if (Array.isArray(careers) && careers.length > 0) return careers[0]
-  }
-
-  const rec = localStorage.getItem('careerRecommendations')
-  if (rec) {
-    const recommendations = JSON.parse(rec)
-    if (Array.isArray(recommendations) && recommendations.length > 0) {
-      return recommendations[0].career
-    }
-  }
-  return ''
+  return selected ? selectedCareerName(JSON.parse(selected)) : ''
 }
 
 function generateCacheKey(userProfile, targetJob) {
@@ -304,7 +296,7 @@ onMounted(async () => {
     targetJob.value = getTargetJobFromLocalStorage()
 
     if (!userProfile || !targetJob.value) {
-      error.value = '缺少用户资料或目标职业，请先完成第一阶段测评。'
+      error.value = !userProfile ? '请先完善自我介绍，再选择目标岗位生成报告。' : '请先选择一个目标岗位，再生成职业规划报告。'
       loading.value = false
       return
     }

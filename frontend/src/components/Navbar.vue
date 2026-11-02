@@ -14,7 +14,7 @@
             <span class="site-username">{{ user?.username || '我的账号' }}</span>
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5"/></svg>
           </summary>
-          <div class="site-user-panel"><router-link to="/users">个人中心</router-link><router-link to="/career-paths/employment/self-introduction">填写个人背景</router-link><button type="button" @click="logout">退出登录</button></div>
+          <div class="site-user-panel"><router-link to="/users">个人中心</router-link><router-link to="/career-paths/employment/self-introduction">填写自我介绍</router-link><button type="button" @click="logout">退出登录</button></div>
         </details>
       </div>
     </nav>
@@ -33,15 +33,18 @@ const userMenu = ref(null)
 const isLoggedIn = computed(() => !isPublicPath(route.path) && !!getToken())
 const navigation = [
   { path: '/career-paths', label: '职业路径' },
-  { path: '/career-evaluation', label: '背景与规划' },
+  { path: '/career-paths/employment/self-introduction', label: '自我介绍' },
+  { path: '/career-evaluation', label: '规划报告' },
   { path: '/company-reviews', label: '企业与职位' },
   { path: '/resume', label: '简历' },
   { path: '/interview', label: 'AI 面试' },
-    { path: '/career-platform/catalog', label: '课程功能' },
+  { path: '/career-platform/catalog', label: '课程功能' },
 ]
-const isNavActive = item => item.path === '/career-evaluation'
-  ? ['/career-evaluation', '/career-plan'].includes(route.path) || route.path.endsWith('/self-introduction')
-  : route.path.startsWith(item.path) && !route.path.endsWith('/self-introduction')
+const isNavActive = item => {
+  if (route.name === 'SelfIntroduction') return item.path === '/career-paths/employment/self-introduction'
+  if (item.path === '/career-evaluation') return ['/career-evaluation', '/career-plan'].includes(route.path)
+  return route.path === item.path || route.path.startsWith(`${item.path}/`)
+}
 const updateUserFromLocalStorage = () => {
   try { user.value = JSON.parse(localStorage.getItem('user') || 'null') }
   catch { user.value = null }
