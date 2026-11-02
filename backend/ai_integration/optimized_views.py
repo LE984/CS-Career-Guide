@@ -10,22 +10,25 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from django.http import JsonResponse
 from django.core.cache import cache
+from django.conf import settings
+from cs_career_guide.ai_config import get_llm_kwargs
 from ai_integration.models import AIUsageRecord, CareerRecommendationRecord, SeniorAdvice
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 import logging
 
 from ai_integration.langgraph.graphs.graph import create_chat_workflow
 from .serializers import SeniorAdviceSerializer
+from .senior_advice_views import senior_advice_list
 from ai_integration.arag_integration import get_career_search
 from ai_integration.arag_agent import get_arag_agent
 
 logger = logging.getLogger(__name__)
 
 # 全局线程池
-_thread_pool = ThreadPoolExecutor(max_workers=3)
+_thread_pool = ThreadPoolExecutor(max_workers=settings.SEARCH_MAX_WORKERS)
 
 # 内存缓存
 _memory_cache = {}
@@ -83,17 +86,9 @@ def _simple_llm_recommendation(self_introduction: str) -> dict:
     try:
         from langchain_openai import ChatOpenAI
         from langchain_core.prompts import ChatPromptTemplate
-        import os
-        
-        # 确保环境变量被加载 - 使用绝对路径
-        from dotenv import load_dotenv
-        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-        logger.info(f"Loading .env from: {env_path}")
-        load_dotenv(env_path)
-        
         # 获取环境变量
-        api_key = os.getenv('api_key')
-        base_url = os.getenv('base_url')
+        api_key = settings.LLM_API_KEY
+        base_url = settings.LLM_BASE_URL
         
         logger.info(f"API Key available: {bool(api_key)}")
         logger.info(f"Base URL: {base_url}")
@@ -103,11 +98,8 @@ def _simple_llm_recommendation(self_introduction: str) -> dict:
         
         # 创建LLM实例
         llm = ChatOpenAI(
-            model='qwen-turbo-2025-07-15',
             temperature=0.7,
-            api_key=api_key,
-            base_url=base_url,
-            timeout=60
+            **get_llm_kwargs(),
         )
         
         # 构建提示词（注意：JSON中的大括号需要转义为{{和}}）
@@ -214,8 +206,8 @@ def _generate_llm_recommendation(self_introduction: str, user=None) -> dict:
         chat_workflow = create_chat_workflow()
         
         # 检查环境变量
-        api_key = os.getenv('api_key')
-        base_url = os.getenv('base_url')
+        api_key = settings.LLM_API_KEY
+        base_url = settings.LLM_BASE_URL
         logger.warning(f"API Key: {'Set' if api_key else 'Not set'}")
         logger.warning(f"Base URL: {base_url}")
         
@@ -454,7 +446,7 @@ def _save_recommendation_record(self_introduction: str, recommendations: list,
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def optimized_career_recommendation(request):
     """
     优化后的职业推荐API接口 - 直接调用LLM生成推荐
@@ -637,7 +629,7 @@ def optimized_career_recommendation(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def read_career_chunk(request, record_id):
     """
     Chunk Read API - 根据ID读取完整的职业推荐记录
@@ -681,7 +673,7 @@ def read_career_chunk(request, record_id):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def read_career_chunks_batch(request):
     """
     批量Chunk Read API - 根据多个ID读取完整的职业推荐记录
@@ -736,7 +728,7 @@ def read_career_chunks_batch(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def arag_career_recommendation(request):
     """
     A-RAG职业推荐API - 使用A-RAG代理进行职业推荐
@@ -855,7 +847,7 @@ def arag_career_recommendation(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def health_check(request):
     """
     健康检查端点
@@ -879,77 +871,9 @@ def health_check(request):
         }, status=500)
 
 
-@api_view(['GET', 'POST'])
-@authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
-def senior_advice_list(request):
-    """
-    学长学姐建议列表API
-    
-    GET: 获取已审核的建议列表
-    POST: 提交新的建议（需要认证）
-    """
-    if request.method == 'GET':
-        try:
-            from .serializers import SeniorAdviceSerializer
-            # 获取已审核的建议
-            advices = SeniorAdvice.objects.filter(is_approved=True).order_by('-created_at')
-            serializer = SeniorAdviceSerializer(advices, many=True)
-            
-            return JsonResponse({
-                "success": True,
-                "results": serializer.data,
-                "count": advices.count()
-            })
-        except Exception as e:
-            logger.error(f"Error getting senior advice list: {str(e)}")
-            return JsonResponse({
-                "success": False,
-                "error": str(e)
-            }, status=500)
-    
-    elif request.method == 'POST':
-        try:
-            from .serializers import SeniorAdviceSerializer
-            
-            # 检查用户是否认证
-            if not request.user.is_authenticated:
-                return JsonResponse({
-                    "success": False,
-                    "error": "Authentication required"
-                }, status=401)
-            
-            # 解析请求数据
-            data = json.loads(request.body)
-            
-            # 创建序列化器实例
-            serializer = SeniorAdviceSerializer(data=data)
-            if serializer.is_valid():
-                # 关联当前用户
-                advice = serializer.save(user=request.user, is_approved=False)  # 默认待审核
-                
-                return JsonResponse({
-                    "success": True,
-                    "message": "建议提交成功，等待审核",
-                    "data": serializer.data
-                }, status=201)
-            else:
-                return JsonResponse({
-                    "success": False,
-                    "message": "提交失败",
-                    "errors": serializer.errors
-                }, status=400)
-        except Exception as e:
-            logger.error(f"Error submitting senior advice: {str(e)}")
-            return JsonResponse({
-                "success": False,
-                "error": str(e)
-            }, status=500)
-
-
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def approve_senior_advice(request, advice_id):
     """
     审核学长学姐建议API
@@ -988,7 +912,7 @@ def approve_senior_advice(request, advice_id):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def voice_to_resume(request):
     """
     语音生成简历API
@@ -1023,13 +947,8 @@ def voice_to_resume(request):
         from langchain_core.output_parsers import JsonOutputParser
         
         # 配置大模型
-        api_key = os.getenv('api_key')
-        base_url = os.getenv('base_url')
-        
         llm = ChatOpenAI(
-            model="qwen-turbo-2025-07-15",
-            api_key=api_key,
-            base_url=base_url
+            **get_llm_kwargs(),
         )
         
         # 创建提示模板

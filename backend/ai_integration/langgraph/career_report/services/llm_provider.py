@@ -1,24 +1,15 @@
 ﻿import json
-import os
 import re
 from typing import Any, Dict
 
 from langchain_openai import ChatOpenAI
-
-DEFAULT_MODEL = os.getenv("career_report_model", "qwen-turbo-2025-07-15")
+from cs_career_guide.ai_config import get_llm_kwargs
 
 
 def get_llm(temperature: float = 0.4) -> ChatOpenAI:
-    api_key = os.getenv("api_key")
-    base_url = os.getenv("base_url")
-    if not api_key or not base_url:
-        raise ValueError("Missing api_key/base_url in environment variables")
     return ChatOpenAI(
-        model=DEFAULT_MODEL,
         temperature=temperature,
-        api_key=api_key,
-        base_url=base_url,
-        timeout=90,
+        **get_llm_kwargs("CAREER_REPORT_MODEL"),
     )
 
 

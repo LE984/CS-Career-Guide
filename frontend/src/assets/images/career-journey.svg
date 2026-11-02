@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="440" viewBox="0 0 560 440" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">从探索到对话的职业旅程</title>
+  <desc id="description">暖白色简历文档与灰绿色对话框，由一条轻盈的弧线路径相连，背景是浅灰绿色拱形。</desc>
+
+  <path d="M236 320V176a104 104 0 0 1 208 0v144Z" fill="#EDF0E7" />
+
+  <g stroke="#86937D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M62 307h29c36 0 43 65 134 65h156c37 0 67-30 67-67v-66" />
+    <circle cx="62" cy="307" r="9" fill="#FAF9F6" />
+    <circle cx="62" cy="307" r="2.5" fill="#86937D" stroke="none" />
+    <circle cx="350" cy="372" r="5" fill="#FAF9F6" />
+  </g>
+
+  <g transform="rotate(-7 222 235)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M140 119h128l38 38v180a10 10 0 0 1-10 10H140a10 10 0 0 1-10-10V129a10 10 0 0 1 10-10Z" fill="#FAF9F6" stroke="#697560" stroke-width="1.6" />
+    <path d="M268 119v29a9 9 0 0 0 9 9h29" fill="#E4E9DC" stroke="#697560" stroke-width="1.6" />
+
+    <circle cx="169" cy="170" r="19" fill="#E7EBDD" />
+    <circle cx="169" cy="165" r="5" stroke="#7A876E" stroke-width="1.5" />
+    <path d="M159 180a10 10 0 0 1 20 0" stroke="#7A876E" stroke-width="1.5" />
+    <path d="M202 166h38" stroke="#697560" stroke-width="2" />
+    <path d="M202 179h54" stroke="#B2BAA9" stroke-width="1.5" />
+    <path d="M153 209h130" stroke="#D4DACE" stroke-width="1.2" />
+
+    <g stroke-width="1.5">
+      <circle cx="157" cy="232" r="3" fill="#C1CDAF" />
+      <path d="M173 232h94" stroke="#8D9882" />
+      <path d="M173 245h69" stroke="#C1C8B8" />
+      <circle cx="157" cy="270" r="3" fill="#C1CDAF" />
+      <path d="M173 270h83" stroke="#8D9882" />
+      <path d="M173 283h101" stroke="#C1C8B8" />
+    </g>
+
+    <rect x="152" y="307" width="44" height="17" rx="5" fill="#E4E9DC" />
+    <path d="m162 315 3 3 6-6m7 3h9" stroke="#829173" stroke-width="1.5" />
+    <path d="M209 316h43" stroke="#BAC3B0" stroke-width="1.5" />
+  </g>
+
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M332 82h134a15 15 0 0 1 15 15v52a15 15 0 0 1-15 15h-83l-29 22v-22h-22a15 15 0 0 1-15-15V97a15 15 0 0 1 15-15Z" fill="#DFE6D5" stroke="#7B896F" stroke-width="1.6" />
+    <path d="M340 110h89m-89 16h112m-112 16h58" stroke="#8C9A7D" stroke-width="1.5" />
+
+    <path d="M391 193h82a12 12 0 0 1 12 12v24a12 12 0 0 1-12 12h-12v17l-23-17h-47a12 12 0 0 1-12-12v-24a12 12 0 0 1 12-12Z" fill="#FAF9F6" stroke="#8E9B82" stroke-width="1.5" />
+    <g fill="#8E9B82">
+      <circle cx="416" cy="217" r="2.5" />
+      <circle cx="432" cy="217" r="2.5" />
+      <circle cx="448" cy="217" r="2.5" />
+    </g>
+  </g>
+</svg>

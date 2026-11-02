@@ -1,0 +1,178 @@
+.hiring-page { color: var(--career-text); background: var(--career-bg); }
+.hiring-page .hiring-main { padding-block: 44px 64px; }
+.hiring-page .hiring-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+.hiring-page .eyebrow { font-size: 11px; letter-spacing: .08em; color: var(--career-muted); margin-bottom: 9px; }
+.hiring-page h1 { font-size: clamp(28px, 3vw, 38px); line-height: 1.4; }
+.hiring-page h2 { font-size: 22px; line-height: 1.5; }
+.hiring-page .page-lead { font-size: 14px; color: var(--career-muted); margin-top: 12px; line-height: 1.85; }
+.hiring-page :is(.primary-button, .outline-button) { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border-radius: 8px; font-size: 13px; line-height: 1.5; flex-shrink: 0; text-decoration: none; }
+.hiring-page .primary-button { background: #333f32; color: #fff; border: 1px solid #333f32; }
+.hiring-page .primary-button:hover { background: #202b20; }
+.hiring-page .outline-button { background: white; border: 1px solid #d4dacb; color: #43543a; }
+.hiring-page .outline-button:hover { background: #f0f3e9; }
+.hiring-page button:disabled { opacity: .55; cursor: not-allowed; }
+.hiring-page .text-button { color: #43543a; text-decoration: underline; text-underline-offset: 4px; min-height: 40px; }
+.hiring-page .hiring-tabs { display: flex; gap: 25px; border-bottom: 1px solid var(--career-border); margin-bottom: 30px; overflow-x: auto; }
+.hiring-page .hiring-tabs button { position: relative; min-height: 52px; padding: 12px 1px; font-size: 14px; color: var(--career-muted); white-space: nowrap; }
+.hiring-page .hiring-tabs button[aria-selected='true'] { color: #333f32; font-weight: 600; }
+.hiring-page .hiring-tabs button[aria-selected='true']::after { content: ''; position: absolute; bottom: 0; height: 2px; left: 0; right: 0; background: #526349; }
+.hiring-page .hiring-tabs button:focus-visible { outline-offset: -3px; }
+.hiring-page .hiring-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.hiring-page .hiring-layout.with-sidebar { grid-template-columns: minmax(0, 1fr) 288px; }
+.hiring-page .hiring-panel { min-width: 0; }
+.hiring-page .list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.hiring-page .list-toolbar p { color: var(--career-muted); font-size: 12px; margin-top: 6px; }
+.hiring-page .search-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.hiring-page .search-field { flex: 1; min-width: 180px; display: flex; align-items: center; gap: 10px; border: 1px solid #cfd6c6; border-radius: 9px; background: white; padding-inline: 12px; }
+.hiring-page .search-field:focus-within { outline: 2px solid #687c53; outline-offset: 2px; }
+.hiring-page .search-field > svg { color: #7a8471; width: 18px; height: 18px; }
+.hiring-page .search-field input { width: 100%; min-width: 0; min-height: 46px; background: transparent; outline: none; font-size: 14px; }
+.hiring-page .icon-button { min-width: 30px; min-height: 40px; display: grid; place-items: center; color: #6e716a; }
+.hiring-page .sort-field { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--career-muted); }
+.hiring-page .sort-field select { min-height: 46px; background: white; border: 1px solid #d4dacb; border-radius: 8px; padding-inline: 12px; color: var(--career-text); }
+.hiring-page .results-panel { scroll-margin-top: 120px; outline-offset: 6px; }
+.hiring-page .result-count { color: var(--career-muted); font-size: 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+.hiring-page :is(.job-list, .advice-list) { display: grid; gap: 16px; }
+.hiring-page :is(.job-card, .advice-card, .ranking-card) { background: white; border: 1px solid var(--career-border); border-radius: 16px; padding: 24px; min-width: 0; }
+.hiring-page .job-card:hover { border-color: #b9c4ad; }
+.hiring-page :is(.job-top, .advice-top) { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.hiring-page :is(.job-top, .advice-top) > div { min-width: 0; }
+.hiring-page :is(.job-top, .advice-top) h3 { font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
+.hiring-page :is(.company-name, .advice-top p) { font-size: 13px; color: var(--career-muted); margin-top: 5px; overflow-wrap: anywhere; }
+.hiring-page .salary { color: #435b36; font-size: 19px; font-weight: 600; line-height: 1.5; flex-shrink: 0; max-width: 48%; overflow-wrap: anywhere; text-align: right; }
+.hiring-page .job-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 14px; }
+.hiring-page .job-tags span { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #626c59; background: #f1f3ec; border-radius: 5px; padding: 4px 8px; max-width: 100%; overflow-wrap: anywhere; }
+.hiring-page .job-tags svg { width: 13px; height: 13px; }
+.hiring-page .job-description { color: var(--career-muted); font-size: 13px; line-height: 1.9; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.hiring-page .job-bottom { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-top: 1px solid #edf0e7; margin-top: 18px; padding-top: 14px; }
+.hiring-page .job-bottom > p { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #747a6e; font-size: 11px; }
+.hiring-page .job-bottom .primary-button { font-size: 12px; padding: 8px 13px; }
+.hiring-page .job-bottom svg { width: 16px; height: 16px; }
+.hiring-page .unavailable-link { font-size: 12px; color: var(--career-muted); flex-shrink: 0; }
+.hiring-page .loading-state { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 240px; color: var(--career-muted); font-size: 14px; }
+.hiring-page .loading-dot { width: 10px; height: 10px; background: #a4b48f; border-radius: 50%; }
+.hiring-page .feedback { border: 1px solid var(--career-border); border-radius: 16px; padding: 32px; background: white; }
+.hiring-page .feedback h3 { font-size: 18px; margin-bottom: 8px; }
+.hiring-page .feedback p { font-size: 13px; line-height: 1.8; color: var(--career-muted); }
+.hiring-page .empty-state { text-align: center; }
+.hiring-page .empty-state > svg { width: 30px; height: 30px; color: #8c9c7c; margin: 0 auto 14px; }
+.hiring-page .empty-state .outline-button { margin-top: 20px; }
+.hiring-page .error-state { display: flex; align-items: flex-start; gap: 14px; background: #fffaf4; border-color: #e5d4bd; }
+.hiring-page .error-state > svg { margin-top: 3px; color: #956331; }
+.hiring-page .feedback-actions { display: flex; gap: 16px; align-items: center; margin-top: 16px; }
+.hiring-page .hiring-sidebar { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.hiring-page .sidebar-panel { padding: 22px; border: 1px solid var(--career-border); border-radius: 16px; background: #f1f3ec; }
+.hiring-page .sidebar-heading { display: flex; gap: 9px; align-items: center; }
+.hiring-page .sidebar-heading h2 { font-size: 16px; }
+.hiring-page .sidebar-heading svg { color: #6b7e57; }
+.hiring-page :is(.sidebar-lead, .sidebar-status, .sidebar-error, .region-panel > p, .sidebar-tip) { color: var(--career-muted); font-size: 12px; line-height: 1.85; margin-top: 10px; }
+.hiring-page .sidebar-error { color: #865c32; }
+.hiring-page .fair-list { margin-top: 20px; }
+.hiring-page .fair-list li { padding-block: 14px; border-top: 1px solid #dfe4d6; }
+.hiring-page .fair-school { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.hiring-page .fair-list :is(a,p) { color: #626e58; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.hiring-page .fair-list a { display: flex; align-items: flex-start; gap: 8px; }
+.hiring-page .fair-list a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.hiring-page .fair-list svg { width: 14px; height: 14px; margin-top: 4px; }
+.hiring-page .region-panel { background: white; }
+.hiring-page .region-panel .outline-button { margin-top: 16px; font-size: 12px; }
+.hiring-page .sidebar-tip { padding-inline: 12px; margin: 0; }
+.hiring-page .ranking-note { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #e0e6d8; border-radius: 10px; padding: 15px 18px; background: #f0f3e9; color: #66715a; font-size: 12px; line-height: 1.8; margin-bottom: 18px; }
+.hiring-page .ranking-table { border: 1px solid var(--career-border); background: white; border-radius: 16px; overflow: hidden; }
+.hiring-page table { width: 100%; table-layout: fixed; text-align: left; font-size: 13px; border-collapse: collapse; }
+.hiring-page th { padding: 16px; color: #727b68; background: #f5f6f0; font-weight: 500; font-size: 12px; }
+.hiring-page th:first-child { width: 72px; }
+.hiring-page th:nth-child(2) { width: 28%; }
+.hiring-page th:nth-child(3) { width: 15%; }
+.hiring-page th:nth-child(4) { width: 17%; }
+.hiring-page td { padding: 20px 16px; border-top: 1px solid #e9ece3; vertical-align: top; overflow-wrap: anywhere; }
+.hiring-page td h3 { font-size: 14px; margin-bottom: 6px; }
+.hiring-page td p { color: var(--career-muted); font-size: 12px; line-height: 1.8; }
+.hiring-page .rank-number { width: 34px; height: 34px; display: inline-grid; place-items: center; background: #eef2e7; color: #526349; border-radius: 9px; font-size: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.hiring-page .rank-number.black { background: #f1eee8; color: #786747; }
+.hiring-page .rank-salary { color: #46563c; }
+.hiring-page .rank-reason { font-size: 12px; color: #6e716a; line-height: 1.8; }
+.hiring-page .ranking-cards { display: none; }
+.hiring-page .advice-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hiring-page .rating { display: inline-flex; gap: 5px; align-items: center; font-size: 20px; color: #586b46; white-space: nowrap; }
+.hiring-page .rating small { font-size: 12px; color: var(--career-muted); }
+.hiring-page .rating svg { width: 16px; height: 16px; }
+.hiring-page .advice-byline { display: flex; flex-wrap: wrap; gap: 7px 16px; color: var(--career-muted); font-size: 11px; margin-block: 14px; }
+.hiring-page .advice-details summary { list-style: none; cursor: pointer; font-size: 13px; line-height: 1.85; }
+.hiring-page summary::-webkit-details-marker { display: none; }
+.hiring-page .advice-excerpt { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: var(--career-muted); white-space: pre-line; overflow-wrap: anywhere; }
+.hiring-page .detail-toggle { display: flex; align-items: center; gap: 5px; color: #526349; margin-top: 10px; font-size: 12px; min-height: 32px; }
+.hiring-page .detail-toggle svg { width: 15px; height: 15px; }
+.hiring-page .when-open, .hiring-page .advice-details[open] .when-closed, .hiring-page .advice-details[open] .advice-excerpt { display: none; }
+.hiring-page .advice-details[open] .when-open { display: inline; }
+.hiring-page .advice-details[open] .detail-toggle svg { transform: rotate(180deg); }
+.hiring-page .full-advice { color: var(--career-muted); white-space: pre-line; font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; margin-top: 12px; }
+.hiring-page .advice-points { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px; border-top: 1px solid #e9ece3; margin-top: 16px; padding-top: 16px; }
+.hiring-page .advice-points h4 { font-size: 12px; color: #526349; }
+.hiring-page .advice-points ul { font-size: 12px; color: var(--career-muted); list-style: disc; padding-left: 16px; margin-top: 6px; overflow-wrap: anywhere; }
+.hiring-page .safety-heading { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+.hiring-page .section-icon { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; background: #eaf0df; color: #62764f; flex-shrink: 0; }
+.hiring-page .section-icon svg { width: 25px; height: 25px; }
+.hiring-page .safety-heading p { color: var(--career-muted); font-size: 13px; margin-top: 6px; }
+.hiring-page .safety-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.hiring-page .safety-topic { border: 1px solid var(--career-border); background: white; border-radius: 16px; }
+.hiring-page .safety-topic summary { list-style: none; display: flex; align-items: flex-start; gap: 12px; padding: 22px; cursor: pointer; }
+.hiring-page .safety-topic summary > span { flex: 1; min-width: 0; }
+.hiring-page .safety-topic summary > svg { color: #738663; margin-top: 4px; }
+.hiring-page .safety-topic strong { display: block; font-size: 15px; }
+.hiring-page .safety-topic small { display: block; font-size: 12px; color: var(--career-muted); margin-top: 8px; line-height: 1.8; }
+.hiring-page .safety-topic[open] summary > svg:last-child { transform: rotate(180deg); }
+.hiring-page .safety-topic ul { padding: 0 24px 24px 40px; list-style: disc; font-size: 13px; color: var(--career-muted); line-height: 1.9; }
+.hiring-page .safety-topic li + li { margin-top: 8px; }
+.hiring-page .safety-checklist { background: #eff3e8; border-radius: 16px; padding: 26px; margin-top: 26px; }
+.hiring-page .safety-checklist h3, .hiring-page .safety-sources h3 { font-size: 17px; margin-bottom: 20px; }
+.hiring-page .safety-checklist ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.hiring-page .safety-checklist strong { font-size: 14px; }
+.hiring-page .safety-checklist p { font-size: 12px; color: var(--career-muted); margin-top: 6px; line-height: 1.8; }
+.hiring-page .safety-sources { margin-top: 30px; }
+.hiring-page .safety-sources a { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 16px; border-top: 1px solid var(--career-border); font-size: 13px; }
+.hiring-page .safety-sources a:hover { color: #526349; }
+.hiring-page .safety-sources small { display: block; color: var(--career-muted); font-size: 11px; margin-top: 5px; }
+@media(max-width:1000px) { .hiring-page .hiring-layout.with-sidebar { grid-template-columns: minmax(0, 1fr); } .hiring-page .hiring-sidebar { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; } .hiring-page .sidebar-panel:first-child { grid-row: span 2; } }
+@media(max-width:760px) {
+  .hiring-page .hiring-main { width: calc(100% - 32px); padding-block: 28px 40px; }
+  .hiring-page .hiring-heading { display: block; margin-bottom: 20px; }
+  .hiring-page .hiring-heading > .outline-button { margin-top: 16px; font-size: 12px; }
+  .hiring-page .page-lead { font-size: 13px; line-height: 1.8; margin-top: 9px; }
+  .hiring-page .hiring-tabs { gap: 22px; margin-bottom: 22px; }
+  .hiring-page .hiring-tabs button { font-size: 13px; }
+  .hiring-page h2 { font-size: 20px; }
+  .hiring-page .list-toolbar { flex-wrap: wrap; gap: 14px; margin-bottom: 16px; }
+  .hiring-page .search-field { min-width: 0; }
+  .hiring-page .search-field input { font-size: 16px; }
+  .hiring-page .search-submit { padding-inline: 12px; }
+  .hiring-page .sort-field { width: 100%; }
+  .hiring-page .sort-field select { flex: 1; }
+  .hiring-page :is(.job-card, .advice-card, .ranking-card) { padding: 18px; }
+  .hiring-page .job-top { display: block; }
+  .hiring-page .job-top h3 { font-size: 17px; }
+  .hiring-page .salary { display: block; max-width: 100%; text-align: left; margin-top: 8px; font-size: 18px; }
+  .hiring-page .job-description { font-size: 12px; }
+  .hiring-page .job-bottom { gap: 12px; }
+  .hiring-page .hiring-sidebar { display: flex; }
+  .hiring-page .sidebar-panel { padding: 20px; }
+  .hiring-page .ranking-table { display: none; }
+  .hiring-page .ranking-cards { display: grid; gap: 14px; }
+  .hiring-page .rank-card-top { display: flex; align-items: flex-start; gap: 12px; }
+  .hiring-page .rank-card-top h3 { font-size: 16px; }
+  .hiring-page .rank-card-top p { margin-top: 5px; font-size: 12px; color: var(--career-muted); overflow-wrap: anywhere; }
+  .hiring-page .rank-card-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 16px; font-size: 12px; color: var(--career-muted); }
+  .hiring-page .rank-card-meta span { display: inline-flex; gap: 5px; align-items: center; }
+  .hiring-page .rank-card-meta svg { width: 14px; height: 14px; }
+  .hiring-page .rank-card-meta strong { font-weight: 500; color: #526349; }
+  .hiring-page .rank-card-reason { border-top: 1px solid var(--career-border); padding-top: 14px; font-size: 12px; line-height: 1.9; color: var(--career-muted); overflow-wrap: anywhere; }
+  .hiring-page .advice-list, .hiring-page .safety-topics, .hiring-page .safety-checklist ol { grid-template-columns: minmax(0,1fr); }
+  .hiring-page .safety-heading { gap: 12px; align-items: flex-start; }
+  .hiring-page .safety-heading p { font-size: 12px; }
+  .hiring-page .section-icon { width: 42px; height: 42px; }
+  .hiring-page .safety-topic summary { padding: 18px; gap: 10px; }
+  .hiring-page .safety-topic strong { font-size: 14px; }
+  .hiring-page .safety-topic ul { padding-inline: 34px 18px; }
+  .hiring-page .safety-checklist { padding: 22px; }
+  .hiring-page .feedback { padding: 24px 18px; }
+}

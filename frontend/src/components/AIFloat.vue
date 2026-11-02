@@ -188,6 +188,8 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { apiUrl, AVATAR_MODEL_URL } from '@/config'
+import { apiFetch } from '@/api'
 
 const isOpen = ref(false)
 const inputMessage = ref('')
@@ -293,17 +295,16 @@ const sendMessage = async () => {
     }
     
     console.log('发送API请求:', {
-      url: '/api/ai/llm/chat/',
+      url: apiUrl('/ai/llm/chat/'),
       mode: mode,
       message: message.substring(0, 50) + '...',
       session_id: sessionId.value
     })
     
-    const response = await fetch('/api/ai/llm/chat/', {
+    const response = await apiFetch('/ai/llm/chat/', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(localStorage.getItem('token') ? { 'Authorization': `Token ${localStorage.getItem('token')}` } : {})
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
         message: message,
@@ -420,11 +421,10 @@ async function saveChatRecord() {
   if (userMsg?.type !== 'user' || aiMsg?.type !== 'ai') return
   
   try {
-    await fetch('/api/ai/llm/save-chat/', {
+    await apiFetch('/ai/llm/save-chat/', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...(localStorage.getItem('token') ? { 'Authorization': `Token ${localStorage.getItem('token')}` } : {})
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         session_id: sessionId.value,
@@ -523,7 +523,7 @@ function initScene() {
   scene.add(directionalLight)
   
   const loader = new GLTFLoader()
-  loader.load('/models/d51675667acfc8a42b8e40d4c3e9799a.glb', (gltf) => {
+  loader.load(AVATAR_MODEL_URL, (gltf) => {
     model = gltf.scene
     scene.add(model)
     

@@ -1,0 +1,187 @@
+# Backend demo deployment. Defaults to SQLite; MySQL is opt-in via profile.
+x-application-sandbox: &application-sandbox
+  init: true
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging: &bounded-logging
+    driver: local
+    options:
+      max-size: "5m"
+      max-file: "3"
+
+services:
+  backend:
+    <<: *application-sandbox
+    image: ${BACKEND_IMAGE:-${ACR_REGISTRY:?Set ACR_REGISTRY in deploy/.env}/${ACR_NAMESPACE:?Set ACR_NAMESPACE in deploy/.env}/cs-career-guide-backend:${BACKEND_TAG:-latest}}
+    container_name: cs-career-guide-backend
+    restart: unless-stopped
+    cpus: ${BACKEND_CPUS:-0.50}
+    mem_limit: ${BACKEND_MEMORY:-512m}
+    memswap_limit: ${BACKEND_MEMORY:-512m}
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in deploy/.env}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CORS_ALLOW_ALL_ORIGINS: ${CORS_ALLOW_ALL_ORIGINS:-False}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-cs_career_guide.settings_sqlite}
+      DATABASE_NAME: ${DATABASE_NAME:-cs_career_guide}
+      DATABASE_USER: ${DATABASE_USER:-cs_career_guide}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-}
+      DATABASE_HOST: ${DATABASE_HOST:-mysql}
+      DATABASE_PORT: ${DATABASE_PORT:-3306}
+      DB_PATH: ${DB_PATH:-/data/cs-career-guide.sqlite3}
+      STATIC_ROOT: ${STATIC_ROOT:-/data/staticfiles}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+      LANCEDB_PATH: ${LANCEDB_PATH:-/data/lancedb}
+      EMBEDDING_ENABLED: ${EMBEDDING_ENABLED:-False}
+      EMBEDDING_ALLOW_DOWNLOAD: ${EMBEDDING_ALLOW_DOWNLOAD:-False}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-1}
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-300}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      CAREER_REPORT_MODEL: ${CAREER_REPORT_MODEL:-}
+      ASR_API_KEY: ${ASR_API_KEY:-}
+      ASR_WSS_URL: ${ASR_WSS_URL:-}
+      ASR_MODEL: ${ASR_MODEL:-}
+      ENABLE_TTS: ${ENABLE_TTS:-False}
+      TTS_API_KEY: ${TTS_API_KEY:-}
+      TTS_WSS_URL: ${TTS_WSS_URL:-}
+      TTS_MODEL: ${TTS_MODEL:-}
+      TTS_VOICE: ${TTS_VOICE:-}
+    volumes:
+      - sqlite-data:/data
+      - backend-static:/data/staticfiles
+      - media:/data/media
+    networks: [app-net]
+
+  frontend:
+    <<: *application-sandbox
+    image: ${FRONTEND_IMAGE:-${ACR_REGISTRY:?Set ACR_REGISTRY in deploy/.env}/${ACR_NAMESPACE:?Set ACR_NAMESPACE in deploy/.env}/cs-career-guide-frontend:${FRONTEND_TAG:-latest}}
+    container_name: cs-career-guide-frontend
+    restart: unless-stopped
+    cpus: ${FRONTEND_CPUS:-0.25}
+    mem_limit: ${FRONTEND_MEMORY:-96m}
+    memswap_limit: ${FRONTEND_MEMORY:-96m}
+    pids_limit: 64
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+      - /var/cache/nginx:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    networks: [app-net]
+
+  # Stable same-origin boundary, independent of the frontend release artifact.
+  gateway:
+    <<: *application-sandbox
+    image: nginx:1.27-alpine
+    container_name: cs-career-guide-gateway
+    restart: unless-stopped
+    cpus: "0.25"
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 64
+    # Avoid image entrypoint config rewrites on a read-only filesystem.
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,mode=1777
+    ports:
+      - "${WEB_PORT:-127.0.0.1:48080}:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - backend-static:/var/www/backend-static:ro
+      - media:/var/www/media:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [app-net]
+
+  watchtower:
+    # Docker socket access is host administration access. Opt in explicitly.
+    profiles: ["updates"]
+    image: containrrr/watchtower:1.7.1
+    container_name: cs-career-guide-watchtower
+    restart: unless-stopped
+    cpus: "0.25"
+    mem_limit: 96m
+    memswap_limit: 96m
+    pids_limit: 64
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: *bounded-logging
+    command: --interval 30 --label-enable --cleanup
+    # Registry checks run inside Watchtower and require outbound networking.
+    network_mode: bridge
+    environment:
+      DOCKER_CONFIG: /config
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_CONFIG_DIR:-/etc/cs-career-guide/acr}:/config:ro
+
+  mysql:
+    profiles: ["mysql"]
+    image: mysql:8.0.43
+    container_name: cs-career-guide-mysql
+    restart: unless-stopped
+    cpus: ${MYSQL_CPUS:-0.50}
+    mem_limit: ${MYSQL_MEMORY:-512m}
+    memswap_limit: ${MYSQL_MEMORY:-512m}
+    pids_limit: 128
+    security_opt: ["no-new-privileges:true"]
+    logging: *bounded-logging
+    environment:
+      MYSQL_DATABASE: ${DATABASE_NAME:-cs_career_guide}
+      MYSQL_USER: ${DATABASE_USER:-cs_career_guide}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
+      TZ: Asia/Shanghai
+    # Compose interpolates service environment even when a profile is inactive,
+    # so validate opt-in credentials at container start instead.
+    command:
+      - sh
+      - -c
+      - >-
+        if [ -z "$$MYSQL_ROOT_PASSWORD" ] || [ -z "$$MYSQL_PASSWORD" ]; then
+          echo 'MYSQL_ROOT_PASSWORD and DATABASE_PASSWORD are required for --profile mysql' >&2;
+          exit 1;
+        fi;
+        exec docker-entrypoint.sh mysqld
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [app-net]
+
+volumes:
+  sqlite-data:
+  backend-static:
+  media:
+  mysql-data:
+
+networks:
+  app-net:
+    name: cs-career-guide-net
+    driver: bridge

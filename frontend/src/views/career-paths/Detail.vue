@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white relative">
+  <div class="minimal-page path-detail-page min-h-screen relative">
     <!-- Starry Background -->
     <div class="absolute inset-0 z-0">
       <canvas ref="starCanvas" class="w-full h-full"></canvas>

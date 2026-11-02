@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { userAPI } from '../api'
+import { createAuthGuard } from './guard.js'
 
 const routes = [
+  {path:'/career-platform/catalog',name:'PlatformCatalog',component:()=>import('../views/career-platform/Catalog.vue')},
+  {path:'/career-platform/resume',name:'PlatformResume',component:()=>import('../views/career-platform/Resume.vue')},
+  {path:'/career-platform/practice',name:'PlatformPractice',component:()=>import('../views/career-platform/Practice.vue')},
+  {path:'/career-platform/records',name:'PlatformRecords',component:()=>import('../views/career-platform/Records.vue')},
+  {path:'/career-platform/evaluation',name:'PlatformEvaluation',component:()=>import('../views/career-platform/Evaluation.vue')},
+
   {
     path: '/',
     name: 'Home',
@@ -78,17 +86,6 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  const publicPaths = ['/login', '/register']
-  const selfIntroductionPath = /^\/career-paths\/[^\/]+\/self-introduction$/
-  const careerPathDetailPath = /^\/career-paths\/[^\/]+$/  
-  
-  if (!token && !publicPaths.includes(to.path) && !selfIntroductionPath.test(to.path) && !careerPathDetailPath.test(to.path)) {
-    next('/login')
-  } else {
-    next()
-  }
-})
+router.beforeEach(createAuthGuard(() => userAPI.getProfile({ redirectOnUnauthorized: false })))
 
 export default router

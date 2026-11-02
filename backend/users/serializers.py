@@ -28,6 +28,10 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['date_joined', 'last_login']
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    def validate_gender(self, value):
+        # 兼容旧版前端的空字符串，不再把它作为独立性别值存储。
+        return None if value == '' else value
+
     class Meta:
         model = User
         fields = [

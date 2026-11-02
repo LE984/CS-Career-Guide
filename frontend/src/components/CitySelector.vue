@@ -65,6 +65,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { GEOCODING_URL } from '@/config'
 
 const props = defineProps({
   show: Boolean,
@@ -94,6 +95,10 @@ const locationError = ref('')
 const locationAttempted = ref(false)
 
 const getLocation = async () => {
+  if (!GEOCODING_URL) {
+    locationError.value = '未配置城市定位服务，请手动选择城市'
+    return
+  }
   if (!('geolocation' in navigator)) {
     locationError.value = '您的浏览器不支持地理定位'
     return
@@ -140,9 +145,10 @@ const getLocation = async () => {
 
 const reverseGeocode = async (latitude, longitude) => {
   try {
-    const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${latitude},${longitude}&key=YOUR_API_KEY&language=zh-CN`
-    )
+    const endpoint = new URL(GEOCODING_URL, window.location.origin)
+    endpoint.searchParams.set('q', `${latitude},${longitude}`)
+    endpoint.searchParams.set('language', 'zh-CN')
+    const response = await fetch(endpoint)
     const data = await response.json()
     
     if (data.results && data.results.length > 0) {

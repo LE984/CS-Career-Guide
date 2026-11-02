@@ -1,0 +1,7 @@
+# Explicit rollback override. Supply both repository@sha256:<digest> references.
+# Keep Watchtower stopped while using pinned images.
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Set the published backend repository@sha256 digest}
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set the published frontend repository@sha256 digest}

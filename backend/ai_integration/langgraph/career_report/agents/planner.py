@@ -1,5 +1,6 @@
 ﻿from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, TypedDict
+from django.conf import settings
 
 from langgraph.graph import END, StateGraph
 
@@ -31,7 +32,7 @@ def _run_agents_node(state: PlannerState) -> PlannerState:
     partials: Dict[str, Any] = {}
     errors: Dict[str, str] = {}
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=settings.CAREER_REPORT_MAX_WORKERS) as executor:
         future_map = {executor.submit(fn): key for key, fn in jobs.items()}
         for future in as_completed(future_map):
             key = future_map[future]

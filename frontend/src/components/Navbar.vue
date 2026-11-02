@@ -1,121 +1,236 @@
 <template>
-  <nav class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-2xl border-b border-slate-200/50 shadow-sm font-manrope antialiased h-16 flex items-center justify-between px-8 max-w-full">
-    <div class="flex items-center gap-10">
-      <router-link to="/" class="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">CS Career Guide</router-link>
-      <div class="hidden md:flex gap-8">
-        <router-link to="/career-paths" :class="getNavClass('/career-paths')">职业路径</router-link>
-        <router-link to="/career-paths/employment/self-introduction" :class="getNavClass('/career-paths/employment/self-introduction')">自我介绍</router-link>
-        <router-link to="/career-evaluation" :class="getNavClass('/career-evaluation')">规划报告</router-link>
-        <router-link to="/company-reviews" :class="getNavClass('/company-reviews')">企业榜单</router-link>
-        <router-link to="/resume" :class="getNavClass('/resume')">简历管理</router-link>
-        <router-link to="/interview" :class="getNavClass('/interview')">AI 面试</router-link> 
+  <header class="site-header">
+    <nav class="career-container site-nav" aria-label="主导航">
+      <CareerBrand />
+      <div class="site-nav-links">
+        <router-link v-for="item in navigation" :key="item.path" :to="item.path" class="site-nav-link" :class="{ 'is-active': isNavActive(item) }" :aria-current="isNavActive(item) ? 'page' : undefined">{{ item.label }}</router-link>
       </div>
-    </div>
-    <div class="flex items-center gap-4">
-
-      <div class="flex gap-2 ml-2">
-        <template v-if="!isLoggedIn">
-          <router-link to="/login" class="px-5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-all">登录</router-link>
-          <router-link to="/register" class="px-5 py-2 text-sm font-bold bg-secondary text-white rounded-2xl active:scale-95 transition-all shadow-md shadow-indigo-200">注册</router-link>
-        </template>
-        <template v-else>
-          <div class="dropdown dropdown-end">
-            <label tabindex="0" class="flex items-center gap-2 px-2 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-all">
-              <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-slate-200">
-                <img :src="user?.avatar || '/avatars/default/default.jpg'" class="w-full h-full object-cover" alt="User Avatar"/>
-              </div>
-            </label>
-            <div tabindex="0" class="dropdown-content mt-3 z-[1] shadow bg-white rounded-xl w-32 border border-slate-200 overflow-hidden flex flex-col right-0">
-              <router-link to="/users" class="hover:bg-slate-50 py-2 px-3 border-b border-slate-100 text-sm font-medium text-slate-700 flex justify-center items-center">个人中心</router-link>
-              <a @click="logout" class="hover:bg-slate-50 py-2 px-3 text-sm font-medium text-red-500 cursor-pointer flex justify-center items-center">登出</a>
-            </div>
-          </div>
-        </template>
+      <div class="site-account">
+        <template v-if="!isLoggedIn"><router-link to="/login" class="site-login">登录</router-link><router-link to="/register" class="career-button career-button-primary">创建账号</router-link></template>
+        <details v-else ref="userMenu" class="site-user-menu">
+          <summary class="site-user-trigger">
+            <img v-if="user?.avatar" :src="user.avatar" class="site-avatar" alt="" />
+            <span v-else class="site-avatar site-avatar-fallback">{{ (user?.username || '我').slice(0, 1) }}</span>
+            <span class="site-username">{{ user?.username || '我的账号' }}</span>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5"/></svg>
+          </summary>
+          <div class="site-user-panel"><router-link to="/users">个人中心</router-link><router-link to="/career-paths/employment/self-introduction">填写自我介绍</router-link><button type="button" @click="logout">退出登录</button></div>
+        </details>
       </div>
-    </div>
-  </nav>
+    </nav>
+  </header>
 </template>
-
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import api, { authAPI, userAPI } from '@/api'
-
+import { authAPI, userAPI } from '@/api'
+import { clearSession, getToken, isPublicPath } from '@/auth/session.js'
+import CareerBrand from './CareerBrand.vue'
 const router = useRouter()
 const route = useRoute()
 const user = ref(null)
-
-const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('token')
-})
-
-// 从 localStorage 更新用户数据
+const userMenu = ref(null)
+const isLoggedIn = computed(() => !isPublicPath(route.path) && !!getToken())
+const navigation = [
+  { path: '/career-paths', label: '职业路径' },
+  { path: '/career-paths/employment/self-introduction', label: '自我介绍' },
+  { path: '/career-evaluation', label: '规划报告' },
+  { path: '/company-reviews', label: '企业与职位' },
+  { path: '/resume', label: '简历' },
+  { path: '/interview', label: 'AI 面试' },
+  { path: '/career-platform/catalog', label: '课程功能' },
+]
+const isNavActive = item => {
+  if (route.name === 'SelfIntroduction') return item.path === '/career-paths/employment/self-introduction'
+  if (item.path === '/career-evaluation') return ['/career-evaluation', '/career-plan'].includes(route.path)
+  return route.path === item.path || route.path.startsWith(`${item.path}/`)
+}
 const updateUserFromLocalStorage = () => {
-  const userStr = localStorage.getItem('user')
-  const userData = userStr ? JSON.parse(userStr) : null
-  user.value = userData
+  try { user.value = JSON.parse(localStorage.getItem('user') || 'null') }
+  catch { user.value = null }
 }
-
-// 主动同步用户信息
 const syncUserProfile = async () => {
-  if (isLoggedIn.value) {
-    try {
-      const response = await userAPI.getProfile()
-      user.value = response
-      localStorage.setItem('user', JSON.stringify(response))
-    } catch (err) {
-      console.error('同步用户信息失败:', err)
-    }
-  }
+  if (!isLoggedIn.value) return
+  try {
+    const response = await userAPI.getProfile()
+    user.value = response
+    localStorage.setItem('user', JSON.stringify(response))
+  } catch (err) { console.error('同步用户信息失败:', err) }
 }
-
-// 监听路由变化，每次路由切换时同步用户信息
-import { watch } from 'vue'
 watch(() => route.path, () => {
-  if (isLoggedIn.value) {
-    syncUserProfile()
-  }
-})
-
-// 监听 localStorage 变化
-const handleStorageChange = (event) => {
-  if (event.key === 'user') {
-    updateUserFromLocalStorage()
-  }
-}
-
-onMounted(() => {
+  if (userMenu.value) userMenu.value.open = false
   updateUserFromLocalStorage()
-  // 监听 localStorage 变化
-  window.addEventListener('storage', handleStorageChange)
-  // 页面加载时主动同步一次
   syncUserProfile()
 })
-
-// 组件卸载时清理
-onUnmounted(() => {
-  window.removeEventListener('storage', handleStorageChange)
+const handleStorageChange = event => { if (event.key === 'user') updateUserFromLocalStorage() }
+onMounted(() => {
+  updateUserFromLocalStorage()
+  window.addEventListener('storage', handleStorageChange)
+  syncUserProfile()
 })
-
-const getNavClass = (path) => {
-  const isActive = route.path === path || (path === '/career-paths' && route.path.startsWith('/career-paths/') && !route.path.includes('/self-introduction'))
-  return {
-    'text-indigo-600 font-bold border-b-2 border-indigo-600 transition-colors py-1': isActive,
-    'text-slate-500 hover:text-indigo-600 font-medium transition-colors py-1': !isActive
-  }
-}
-
+onUnmounted(() => window.removeEventListener('storage', handleStorageChange))
 const logout = async () => {
-  try {
-    await authAPI.logout()
-  } catch (err) {
-    console.error('登出失败:', err)
-  } finally {
-    // 清除所有用户相关数据，包括自我介绍
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('selfIntroduction')
-    router.push('/login')
-  }
+  try { await authAPI.logout() }
+  catch (err) { console.error('登出失败:', err) }
+  finally { clearSession(); router.replace('/login') }
 }
 </script>
+<style scoped>
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: #fff;
+  border-bottom: 1px solid var(--career-border);
+}
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  min-height: var(--career-nav-height);
+}
+.site-nav-links {
+  display: flex;
+  align-self: stretch;
+  gap: 22px;
+}
+.site-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  font-size: 14px;
+  color: #586577;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.site-nav-link:hover,.site-nav-link.is-active {
+  color: var(--career-blue);
+}
+.site-nav-link.is-active {
+  font-weight: 600;
+}
+.site-nav-link.is-active::after {
+  content: '';
+  position: absolute;
+  height: 2px;
+  background: var(--career-blue);
+  bottom: -1px;
+  inset-inline: 0;
+}
+.site-account {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: none;
+}
+.site-account .career-button {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+.site-login {
+  font-size: 14px;
+  color: #475467;
+}
+.site-user-menu {
+  position: relative;
+}
+.site-user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 6px;
+  padding: 5px 0;
+}
+.site-user-trigger::-webkit-details-marker {
+  display: none;
+}
+.site-user-trigger>svg {
+  width: 14px;
+  height: 14px;
+  color: #667085;
+}
+.site-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #c6dbf5;
+}
+.site-avatar-fallback {
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--career-blue);
+  background: var(--career-blue-soft);
+}
+.site-username {
+  font-size: 13px;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.site-user-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 180px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--career-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px #1d293914;
+}
+.site-user-panel a,.site-user-panel button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 13px;
+  color: #475467;
+}
+.site-user-panel a:hover,.site-user-panel button:hover {
+  background: #f3f6fa;
+}
+.site-user-panel button {
+  margin-top: 4px;
+  border-top: 1px solid var(--career-border);
+  color: #b42318;
+}
+@media(max-width:1060px) {
+  .site-nav {
+    gap: 22px;
+  }
+  .site-nav-links {
+    gap: 15px;
+  }
+  .site-username {
+    display: none;
+  }
+}
+@media(max-width:760px) {
+  .site-nav {
+    flex-wrap: wrap;
+    gap: 0;
+    padding-top: 12px;
+  }
+  .site-account {
+    margin-left: auto;
+  }
+  .site-nav-links {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    gap: 22px;
+    margin-top: 8px;
+    height: 42px;
+  }
+}
+</style>

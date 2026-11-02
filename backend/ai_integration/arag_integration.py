@@ -11,11 +11,27 @@ from typing import List, Dict, Any, Optional
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
 
-import lancedb
-import pyarrow as pa
-import numpy as np
+try:
+    import lancedb
+    import pyarrow as pa
+    import numpy as np
+    VECTOR_IMPORT_ERROR = None
+except ImportError as exc:
+    lancedb = None
+    pa = None
+    np = None
+    VECTOR_IMPORT_ERROR = exc
+    import logging
+    logging.getLogger(__name__).warning(
+        'LanceDB/PyArrow/NumPy unavailable; semantic search will return empty results: %s', exc
+    )
+
 from django.conf import settings
 from django.core.cache import cache
+from cs_career_guide.vector_store import (
+    CAREER_TABLE_NAME, career_schema, career_record, open_career_table,
+    validate_embedding, validate_model_dimension,
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -32,27 +48,22 @@ class ARAGCareerSearch:
             db_path: LanceDB数据库路径
         """
         if db_path is None:
-            db_path = os.path.join(
-                os.path.dirname(__file__), 
-                "lancedb"
-            )
-        
+            db_path = str(settings.LANCEDB_PATH)
+
+        if lancedb is None:
+            raise ImportError(f'LanceDB dependencies are unavailable: {VECTOR_IMPORT_ERROR}')
+
         self.db_path = db_path
         self.db = lancedb.connect(db_path)
-        self.table_name = "career_recommendations"
-        
-        # 确保表存在
-        if self.table_name not in self.db.table_names():
-            self._create_table()
-        
-        self.table = self.db[self.table_name]
+        self.table_name = CAREER_TABLE_NAME
+        self.table = open_career_table(self.db, settings.EMBEDDING_DIMENSION)
         
         # 初始化缓存
         self._cache = {}
         self._cache_lock = threading.Lock()
         
         # 初始化线程池
-        self._executor = ThreadPoolExecutor(max_workers=3)
+        self._executor = ThreadPoolExecutor(max_workers=settings.SEARCH_MAX_WORKERS)
         
         # 模型缓存
         self._model = None
@@ -62,16 +73,7 @@ class ARAGCareerSearch:
     
     def _create_table(self):
         """创建LanceDB表"""
-        schema = pa.schema([
-            ("id", pa.string()),
-            ("user_id", pa.string()),
-            ("self_introduction", pa.string()),
-            ("introduction_preview", pa.string()),
-            ("recommendations", pa.string()),
-            ("analysis_result", pa.string()),
-            ("created_at", pa.string()),
-            ("embedding", pa.list_(pa.float32(), 384))  # 添加向量列用于语义搜索
-        ])
+        schema = career_schema(settings.EMBEDDING_DIMENSION)
         self.db.create_table(self.table_name, schema=schema)
         logger.info(f"Created LanceDB table: {self.table_name}")
     
@@ -240,55 +242,55 @@ class ARAGCareerSearch:
         """
         懒加载模型，提高性能
         """
+        if not settings.EMBEDDING_ENABLED:
+            return None
         with self._model_lock:
             if self._model is None:
                 try:
                     from sentence_transformers import SentenceTransformer
-                    import os
-                    
-                    # 尝试加载本地模型（支持多种缓存路径）
-                    model_name = 'bge-small-zh-v1.5'
-                    local_model_paths = [
-                        # HuggingFace Hub 默认缓存路径 (BAAI/bge-small-zh-v1.5)
-                        os.path.join(
-                            os.path.expanduser('~'),
-                            '.cache', 'huggingface', 'hub',
-                            f'models--BAAI--{model_name}'  # 注意：模型名不需要替换-为--
-                        ),
-                        # sentence_transformers 缓存路径
-                        os.path.join(
-                            os.path.expanduser('~'),
-                            '.cache', 'torch', 'sentence_transformers',
-                            f'BAAI_{model_name}'
-                        ),
-                        # 另一个常见缓存路径
-                        os.path.join(
-                            os.path.expanduser('~'),
-                            '.cache', 'huggingface', 'hub',
-                            f'models--sentence-transformers--{model_name}'
-                        ),
-                        # 直接使用模型名称（会自动下载）
-                        f'BAAI/{model_name}'
-                    ]
+                    model_id = settings.EMBEDDING_MODEL
+                    model_cache_name = f"models--{model_id.replace('/', '--')}"
+                    local_model_paths = []
+                    if settings.EMBEDDING_MODEL_PATH:
+                        local_model_paths.append(
+                            os.path.expandvars(os.path.expanduser(settings.EMBEDDING_MODEL_PATH))
+                        )
+                        if not os.path.isabs(local_model_paths[0]):
+                            local_model_paths[0] = str(settings.BASE_DIR / local_model_paths[0])
+                    local_model_paths.extend([
+                        str(settings.BASE_DIR.parent / "~" / ".cache" / "huggingface" / "hub" / model_cache_name),
+                        os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub", model_cache_name),
+                        os.path.join(os.path.expanduser("~"), ".cache", "torch", "sentence_transformers", model_id.replace("/", "_")),
+                    ])
                     
                     self._model = None
-                    for local_path in local_model_paths[:-1]:
+                    for local_path in local_model_paths:
                         if os.path.exists(local_path):
                             try:
-                                self._model = SentenceTransformer(local_path)
+                                self._model = SentenceTransformer(
+                                    local_path,
+                                    device=settings.EMBEDDING_DEVICE,
+                                    local_files_only=True,
+                                )
+                                validate_model_dimension(self._model, settings.EMBEDDING_DIMENSION)
                                 logger.info(f"Model loaded from local cache: {local_path}")
                                 break
                             except Exception as e:
                                 logger.warning(f"Failed to load from {local_path}: {str(e)}")
+                                self._model = None
                     
-                    # 如果本地路径都不行，尝试直接下载
+                    # 优先使用 Hub 缓存；仅在允许时联网下载。
                     if self._model is None:
                         try:
-                            # 使用 BAAI/ 前缀确保下载正确的模型
-                            self._model = SentenceTransformer(f'BAAI/{model_name}')
-                            logger.info(f"Model downloaded and loaded: BAAI/{model_name}")
+                            self._model = SentenceTransformer(
+                                model_id,
+                                device=settings.EMBEDDING_DEVICE,
+                                local_files_only=not settings.EMBEDDING_ALLOW_DOWNLOAD,
+                            )
+                            validate_model_dimension(self._model, settings.EMBEDDING_DIMENSION)
+                            logger.info(f"Embedding model loaded: {model_id}")
                         except Exception as e:
-                            logger.warning(f"Failed to download model: {str(e)}")
+                            logger.warning(f"Failed to load embedding model: {str(e)}")
                             self._model = None
                             
                 except ImportError:
@@ -332,7 +334,10 @@ class ARAGCareerSearch:
                 return []
             
             # 生成查询向量
-            query_embedding = model.encode([query], normalize_embeddings=True)[0]
+            query_embedding = np.asarray(validate_embedding(
+                model.encode([query], normalize_embeddings=True)[0],
+                settings.EMBEDDING_DIMENSION,
+            ))
             
             # 计算相似度
             scored_results = []
@@ -360,6 +365,7 @@ class ARAGCareerSearch:
                     [content], 
                     normalize_embeddings=True
                 )[0]
+                record_embedding = validate_embedding(record_embedding, settings.EMBEDDING_DIMENSION)
                 
                 # 计算余弦相似度
                 similarity = np.dot(query_embedding, record_embedding)
@@ -550,7 +556,7 @@ class ARAGCareerSearch:
         
         return results
     
-    def add_record(self, record_data: Dict[str, Any]):
+    def add_record(self, record_data: Dict[str, Any], *, upsert=False):
         """
         添加记录到LanceDB
         
@@ -558,7 +564,9 @@ class ARAGCareerSearch:
             record_data: 记录数据
         """
         try:
-            # 尝试生成embedding
+            # 没有可用模型时保留文本，embedding 为空，等待真实模型重算。
+            record_data = dict(record_data)
+            record_data["embedding"] = None
             try:
                 model = self._get_model()
                 if model:
@@ -566,21 +574,25 @@ class ARAGCareerSearch:
                         [record_data["self_introduction"]], 
                         normalize_embeddings=True
                     )[0].tolist()
-                    record_data["embedding"] = embedding
-                else:
-                    # 如果模型不可用，使用全零向量
-                    record_data["embedding"] = [0.0] * 384
+                    record_data["embedding"] = validate_embedding(embedding, settings.EMBEDDING_DIMENSION)
             except Exception as e:
                 logger.error(f"Error generating embedding: {str(e)}")
-                # 使用全零向量作为备选
-                record_data["embedding"] = [0.0] * 384
+                record_data["embedding"] = None
             
             # 添加记录
-            self.table.add([record_data])
+            rows = [career_record(record_data, settings.EMBEDDING_DIMENSION)]
+            # Explicit Arrow types are required when an entire batch has null vectors.
+            typed_rows = pa.Table.from_pylist(rows, schema=career_schema(settings.EMBEDDING_DIMENSION))
+            if upsert:
+                self.table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(typed_rows)
+            else:
+                self.table.add(typed_rows)
             logger.info(f"Added record {record_data['id']} to LanceDB")
+            return True
             
         except Exception as e:
             logger.error(f"Error adding record to LanceDB: {str(e)}")
+            return False
     
     def read_chunk(self, record_id: str) -> Dict[str, Any]:
         """

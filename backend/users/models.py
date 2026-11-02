@@ -2,9 +2,11 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
+    GENDER_CHOICES = [('男', '男'), ('女', '女')]
+
     # 基本信息
     name = models.CharField(max_length=100, null=True, blank=True, verbose_name='名字')
-    gender = models.CharField(max_length=10, null=True, blank=True, verbose_name='性别')
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, null=True, blank=True, verbose_name='性别')
     profile = models.TextField(null=True, blank=True, verbose_name='简介')
     avatar = models.ImageField(upload_to='avatars/%Y/%m/', null=True, blank=True, verbose_name='头像')
     address = models.CharField(max_length=200, null=True, blank=True, verbose_name='地址')
@@ -26,5 +28,11 @@ class User(AbstractUser):
     
     class Meta:
         db_table = 'users'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(gender__in=['男', '女']) | models.Q(gender__isnull=True),
+                name='users_gender_valid_or_null',
+            ),
+        ]
         verbose_name = '用户'
         verbose_name_plural = '用户'

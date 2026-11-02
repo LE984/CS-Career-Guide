@@ -13,14 +13,30 @@ from concurrent.futures import ThreadPoolExecutor
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from cs_career_guide.ai_config import get_llm_kwargs
+from ai_integration.interview.legacy import extract_section, extract_score  # Compatibility exports.
+from cs_career_guide.vector_store import CAREER_TABLE_NAME, open_career_table
 from ai_integration.models import AIConversation, AITag, CareerEvaluationRecord, CareerPlanReport, AIUsageRecord, CareerRecommendationRecord, AIChatPair, InterviewReviewRecord
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 import logging
-import lancedb
-import pyarrow as pa
+
+try:
+    import lancedb
+    import pyarrow as pa
+    VECTOR_IMPORT_ERROR = None
+except ImportError as exc:
+    lancedb = None
+    pa = None
+    VECTOR_IMPORT_ERROR = exc
+    logging.getLogger(__name__).warning(
+        'LanceDB/PyArrow unavailable; semantic vector storage is disabled: %s', exc
+    )
+
 import websockets
 
 # LangGraph integration
@@ -35,7 +51,7 @@ from ai_integration.arag_integration import get_career_search, ARAGCareerSearch
 logger = logging.getLogger(__name__)
 
 # 全局线程池
-_thread_pool = ThreadPoolExecutor(max_workers=3)
+_thread_pool = ThreadPoolExecutor(max_workers=settings.SEARCH_MAX_WORKERS)
 
 # 内存缓存
 _memory_cache = {}
@@ -82,48 +98,35 @@ def _set_cached_result(query: str, result):
 # LanceDB integration
 def init_lancedb():
     """初始化LanceDB数据库"""
+    if lancedb is None:
+        raise RuntimeError('LanceDB is not installed in this runtime')
     # 创建LanceDB数据库目录
-    db_path = os.path.join(os.path.dirname(__file__), "lancedb")
+    db_path = str(settings.LANCEDB_PATH)
     os.makedirs(db_path, exist_ok=True)
     
     # 连接到LanceDB
     db = lancedb.connect(db_path)
     
-    # 创建表（如果不存在）
-    table_name = "career_recommendations"
-    if table_name not in db.table_names():
-        # 定义表结构
-        schema = pa.schema([
-            ("id", pa.string()),
-            ("user_id", pa.string()),
-            ("self_introduction", pa.string()),
-            ("recommendations", pa.string()),
-            ("analysis_result", pa.string()),
-            ("created_at", pa.string())
-        ])
-        db.create_table(table_name, schema=schema)
+    open_career_table(db, settings.EMBEDDING_DIMENSION)
     
     return db
 
 def add_to_lancedb(record):
     """将职业推荐记录添加到LanceDB中"""
     try:
-        # 初始化LanceDB
-        db = init_lancedb()
-        table = db["career_recommendations"]
-        
         # 准备数据
         data = {
             "id": str(record.id),
             "user_id": str(record.user.id) if record.user else "",
             "self_introduction": record.self_introduction,
-            "recommendations": str(record.recommendations),
+            "introduction_preview": record.introduction_preview or "",
+            "recommendations": json.dumps(record.recommendations, ensure_ascii=False),
             "analysis_result": record.analysis_result or "",
             "created_at": record.created_at.isoformat()
         }
         
         # 添加数据到LanceDB
-        table.add([data])
+        get_career_search().add_record(data)
         logger.info(f"Successfully added career recommendation record {record.id} to LanceDB")
     except Exception as e:
         logger.error(f"Error adding career recommendation record to LanceDB: {str(e)}")
@@ -266,6 +269,7 @@ def llm_chat(request):
     
     try:
         # 解析请求数据
+        requested_tts = False
         if request.FILES:
             user_message = request.POST.get('message', '')
             mode = request.POST.get('mode', '')
@@ -280,6 +284,7 @@ def llm_chat(request):
             mode = data.get('mode', '')
             interview_style = data.get('interview_style', '')
             session_id = data.get('session_id', '')
+            requested_tts = data.get('enable_tts') is True
         
         logger.info(f"Received message: {user_message}, mode: {mode}, session_id: {session_id}")
         
@@ -332,30 +337,29 @@ def llm_chat(request):
         is_career_mode = actual_mode == 'career'
         is_normal_mode = actual_mode == 'normal'
 
-        # 构建包含上下文的提示词
-        context_prompt = ""
-        
-        # 职业规划模式下，先从数据库获取用户数据并注入提示词
-        if is_career_mode:
-            user_profile_prompt = build_user_profile_prompt(request)
-            if user_profile_prompt:
-                context_prompt = user_profile_prompt
-        
-        # 复盘模式下，使用专门的复盘提示词
-        if is_review_mode:
-            review_prompt = get_prompt('review')
-            if review_prompt:
-                context_prompt = review_prompt + "\n\n"
-        
-        if chat_history:
-            context_prompt += "对话历史：\n"
-            for msg in chat_history:
-                if msg['user']:
-                    context_prompt += f"用户：{msg['user']}\n"
-                if msg['ai']:  # ✅ 添加AI回复到提示词
-                    context_prompt += f"面试官：{msg['ai']}\n"
-        
-        enhanced_prompt = context_prompt + user_message
+        # Interview-specific behavior is selected through the application port.
+        # HTTP/SSE, conversation storage and TTS remain shared infrastructure.
+        interview_prompt = None
+        if is_interview_mode or is_review_mode:
+            from ai_integration.interview import get_interview_service
+            interview_prompt = get_interview_service().prepare_turn(
+                user_message, chat_history, interview_style, review=is_review_mode,
+            )
+            enhanced_prompt = interview_prompt.user
+        else:
+            context_prompt = ""
+            if is_career_mode:
+                user_profile_prompt = build_user_profile_prompt(request)
+                if user_profile_prompt:
+                    context_prompt = user_profile_prompt
+            if chat_history:
+                context_prompt += "对话历史：\n"
+                for msg in chat_history:
+                    if msg['user']:
+                        context_prompt += f"用户：{msg['user']}\n"
+                    if msg['ai']:
+                        context_prompt += f"面试官：{msg['ai']}\n"
+            enhanced_prompt = context_prompt + user_message
         mode_name = 'Career' if is_career_mode else ('Review' if is_review_mode else 'Interview' if is_interview_mode else 'Normal')
         logger.info(f"{mode_name} mode: using context-aware prompt")
         
@@ -367,28 +371,12 @@ def llm_chat(request):
             
             # 限制提示词长度
             max_prompt_length = 3000
-            if len(enhanced_prompt) > max_prompt_length:
+            if interview_prompt is None and len(enhanced_prompt) > max_prompt_length:
                 enhanced_prompt = enhanced_prompt[:max_prompt_length] + "..."
             
             def llm_chat_tts_work(llm, messages, mq, is_interview_mode_flag):
                 async def run_tts_tasks():
-                    # ==============================================
-                    # TTS 已强制禁用 - 防止产生费用
-                    # 如需启用，请将下面的 True 改为 False
-                    # ==============================================
-                    TTS_FORCE_DISABLED = False
-                    
-                    if TTS_FORCE_DISABLED:
-                        logger.info("TTS IS FORCE DISABLED - No audio will be generated")
-                        for chunk in llm.stream(messages):
-                            if hasattr(chunk, "content") and chunk.content:
-                                mq.put_nowait({'content': chunk.content})
-                        return
-                    
-                    # ==============================================
-                    # 以下代码已被禁用，不会执行
-                    # ==============================================
-                    enable_tts = os.getenv('ENABLE_TTS', 'false').lower() == 'true'
+                    enable_tts = settings.ENABLE_TTS and requested_tts
                     
                     if not is_interview_mode_flag or not enable_tts:
                         logger.info(f"TTS disabled - interview_mode={is_interview_mode_flag}, enable_tts={enable_tts}")
@@ -399,13 +387,15 @@ def llm_chat(request):
                     
                     logger.warning("WARNING: TTS IS ENABLED - This will incur costs!")
                     
-                    tts_api_key = os.getenv('api_key')
-                    wss_url = os.getenv('WSS_URL')
+                    tts_api_key = settings.TTS_API_KEY
+                    wss_url = settings.TTS_WSS_URL
              
                     headers = {"Authorization": f"Bearer {tts_api_key}"}
                     
                     try:
                     
+                        if not all((tts_api_key, wss_url, settings.TTS_MODEL, settings.TTS_VOICE)):
+                            raise ImproperlyConfigured("Configure TTS_API_KEY, TTS_WSS_URL, TTS_MODEL and TTS_VOICE")
                         llm_stream = llm.stream(messages)
 
                         
@@ -422,10 +412,10 @@ def llm_chat(request):
                                     "task_group": "audio",
                                     "task": "tts",
                                     "function": "SpeechSynthesizer",
-                                    "model": "cosyvoice-v3-flash",
+                                    "model": settings.TTS_MODEL,
                                     "parameters": {
                                         "text_type": "PlainText",
-                                        "voice": "longanyang",
+                                        "voice": settings.TTS_VOICE,
                                         "format": "mp3",
                                         "sample_rate": 22050,
                                         "volume": 50,
@@ -506,27 +496,15 @@ def llm_chat(request):
                 
                 from langchain_openai import ChatOpenAI
                 
-                api_key = os.getenv('api_key')
-                base_url = os.getenv('base_url')
-                
                 llm = ChatOpenAI(
-                    model="qwen-turbo-2025-07-15", 
                     temperature=0.7,
-                    api_key=api_key,
-                    base_url=base_url
+                    **get_llm_kwargs(),
                 )
                 
                 from ai_integration.langgraph.utils.prompt_manager import get_prompt
                 
-                if is_interview_mode:
-                    if interview_style == 'pressure':
-                        system_prompt = get_prompt('interview') + "\n\n风格：对面试人员使用及其压迫的提问方式，要求候选人在短时间内给出回答。"
-                    elif interview_style == 'technical':
-                        system_prompt = get_prompt('interview') + "\n\n风格：极致理性的硬核技术深挖，针对底层原理进行连环追问。"
-                    elif interview_style == 'behavioral':
-                        system_prompt = get_prompt('interview') + "\n\n风格：关注过往经历中的决策、冲突处理及团队协作等软技能。"
-                    else:
-                        system_prompt = get_prompt('interview') + "\n\n风格：语气友好亲切，侧重引导与交流，适合舒缓紧张感。"
+                if interview_prompt is not None:
+                    system_prompt = interview_prompt.system
                 elif is_career_mode:
                     system_prompt = get_prompt('career')
                 else:
@@ -616,7 +594,7 @@ def llm_chat(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def save_chat_record(request):
     """保存聊天记录的API接口"""
     if request.method != 'POST':
@@ -691,7 +669,7 @@ def save_chat_record(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def save_career_evaluation(request):
     """保存职业评测记录的API接口"""
     if request.method != 'POST':
@@ -749,7 +727,7 @@ def save_career_evaluation(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def career_recommendation(request):
     """职业推荐API接口 - 先从LanceDB检索匹配记录，再调用agent处理"""
     # 记录开始时间
@@ -1023,7 +1001,7 @@ def career_recommendation(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def career_plan_generation(request):
     """生成个性化职业规划API接口"""
     if request.method != 'POST':
@@ -1139,7 +1117,7 @@ JSON 数据结构要求如下：
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def save_career_recommendation(request):
     """保存职业推荐记录的API接口"""
     if request.method != 'POST':
@@ -1200,7 +1178,7 @@ def save_career_recommendation(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def save_career_plan(request):
     """保存职业生涯规划报告的API接口"""
     if request.method != 'POST':
@@ -1258,7 +1236,7 @@ def save_career_plan(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_user_ai_records(request):
     """获取用户的AI使用记录"""
     if request.method != 'GET':
@@ -1290,7 +1268,7 @@ def get_user_ai_records(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_chat_records(request):
     """获取用户的聊天记录"""
     if request.method != 'GET':
@@ -1346,7 +1324,7 @@ def get_chat_records(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_evaluation_records(request):
     """获取用户的职业评测记录"""
     if request.method != 'GET':
@@ -1378,7 +1356,7 @@ def get_evaluation_records(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_plan_reports(request):
     """获取用户的职业生涯规划报告"""
     if request.method != 'GET':
@@ -1410,7 +1388,7 @@ def get_plan_reports(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def add_tag_to_record(request):
     """为AI使用记录添加标签"""
     if request.method != 'POST':
@@ -1462,7 +1440,7 @@ def add_tag_to_record(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def delete_record(request):
     """删除AI使用记录"""
     if request.method != 'POST':
@@ -1510,7 +1488,7 @@ def delete_record(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_chat_history(request):
     """获取对话历史（短期记忆）"""
     if request.method != 'GET':
@@ -1559,7 +1537,7 @@ def get_chat_history(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_long_term_memory(request):
     """获取长期记忆"""
     if request.method != 'GET':
@@ -1584,7 +1562,7 @@ def get_long_term_memory(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def update_memory(request):
     """更新长期记忆"""
     if request.method != 'POST':
@@ -1612,7 +1590,7 @@ def update_memory(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def delete_memory(request):
     """删除长期记忆"""
     if request.method != 'POST':
@@ -1639,7 +1617,7 @@ def delete_memory(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_user_interview_reviews(request):
     """
     获取用户的面试复盘记录列表
@@ -1687,7 +1665,7 @@ def get_user_interview_reviews(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_interview_review_detail(request, session_id):
     """
     获取单个面试复盘记录的详细内容
@@ -1755,7 +1733,7 @@ def get_interview_review_detail(request, session_id):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def save_interview_review(request):
     """
     保存面试复盘记录到数据库
@@ -1799,14 +1777,9 @@ def save_interview_review(request):
         except AIConversation.DoesNotExist:
             logger.warning(f"[REVIEW] 未找到关联会话: {session_id}")
         
-        # 解析复盘内容，提取结构化数据（包含冒号）
-        strengths = extract_section(review_content, '回答的优点：', '需要改进的地方：')
-        weaknesses = extract_section(review_content, '需要改进的地方：', '具体改进建议：')
-        suggestions = extract_section(review_content, '具体改进建议：', '下次面试')
-        
-        # 尝试提取评分
-        overall_score = extract_score(review_content)
-        
+        from ai_integration.interview import get_interview_service
+        parsed_review = get_interview_service().parse_review(review_content)
+
         # 创建复盘记录
         review_record = InterviewReviewRecord.objects.create(
             user=user,
@@ -1814,10 +1787,10 @@ def save_interview_review(request):
             interview_style=interview_style,
             interview_duration=interview_duration,
             review_content=review_content,
-            strengths=strengths,
-            weaknesses=weaknesses,
-            suggestions=suggestions,
-            overall_score=overall_score,
+            strengths=parsed_review['strengths'],
+            weaknesses=parsed_review['weaknesses'],
+            suggestions=parsed_review['suggestions'],
+            overall_score=parsed_review['overall_score'],
             question_count=question_count,
             answer_count=answer_count
         )
@@ -1835,61 +1808,3 @@ def save_interview_review(request):
             "success": False,
             "error": str(e)
         }, status=500)
-
-
-def extract_section(content, start_marker, end_marker):
-    """
-    从复盘内容中提取指定部分
-    """
-    if not content:
-        return None
-    
-    start_idx = content.find(start_marker)
-    if start_idx == -1:
-        return None
-    
-    start_idx += len(start_marker)
-    end_idx = content.find(end_marker, start_idx)
-    
-    if end_idx == -1:
-        section = content[start_idx:].strip()
-    else:
-        section = content[start_idx:end_idx].strip()
-    
-    # 移除序号前缀
-    lines = section.split('\n')
-    cleaned_lines = []
-    for line in lines:
-        # 移除类似 "1." "2." "（1）" 这样的序号
-        cleaned = regex.sub(r'^\s*(\d+\.|（\d+）|\d+\s*、)\s*', '', line)
-        cleaned = cleaned.strip()
-        if cleaned and cleaned != '：' and cleaned != ':':
-            cleaned_lines.append(cleaned)
-    
-    return '\n'.join(cleaned_lines)
-
-
-def extract_score(content):
-    """
-    从复盘内容中提取综合评分
-    """
-    if not content:
-        return None
-    
-    # 匹配常见的评分格式
-    patterns = [
-        r'综合评分[：:]?\s*(\d+\.?\d*)',
-        r'得分[：:]?\s*(\d+\.?\d*)',
-        r'评分[：:]?\s*(\d+\.?\d*)',
-        r'(\d+\.?\d*)\s*分'
-    ]
-    
-    for pattern in patterns:
-        match = regex.search(pattern, content)
-        if match:
-            try:
-                return float(match.group(1))
-            except ValueError:
-                continue
-    
-    return None

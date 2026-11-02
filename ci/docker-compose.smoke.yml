@@ -1,0 +1,14 @@
+# Runner-only overrides. Start backend/frontend explicitly; never start Watchtower.
+services:
+  backend:
+    image: ${SMOKE_BACKEND_IMAGE:?Set the locally loaded backend image}
+    container_name: ${SMOKE_PROJECT:?Set a unique CI project}-backend
+  frontend:
+    image: ${SMOKE_FRONTEND_IMAGE:?Set the locally loaded frontend image}
+    container_name: ${SMOKE_PROJECT:?Set a unique CI project}-frontend
+  gateway:
+    container_name: ${SMOKE_PROJECT:?Set a unique CI project}-gateway
+
+networks:
+  app-net:
+    name: ${SMOKE_PROJECT:?Set a unique CI project}-net

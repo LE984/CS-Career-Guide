@@ -1,66 +1,36 @@
 import axios from 'axios'
+import { API_BASE_URL, COMPANY_API_BASE_URL, API_TIMEOUT, COMPANY_API_TIMEOUT, apiUrl } from '../config'
+import { createApiFetch, installAuthInterceptors } from './transport.js'
 
 const api = axios.create({
-  baseURL: '/api',
-  timeout: 120000,
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
 const dbApi = axios.create({
-  baseURL: 'http://localhost:3000/api',
-  timeout: 30000,
+  baseURL: COMPANY_API_BASE_URL,
+  timeout: COMPANY_API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
-api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Token ${token}`
-    }
-    return config
-  },
-  error => Promise.reject(error)
-)
+installAuthInterceptors(api)
+installAuthInterceptors(dbApi)
 
-api.interceptors.response.use(
-  response => response.data,
-  error => {
-    // 处理 401 错误：Token 过期或无效
-    if (error.response && error.response.status === 401) {
-      console.error('Token 已过期或无效，自动登出')
-      // 清除本地存储的用户数据
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      localStorage.removeItem('selfIntroduction')
-      localStorage.removeItem('careerAnalysis')
-      localStorage.removeItem('careerRecommendations')
-      // 跳转到登录页（避免无限循环）
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login'
-      }
-    }
-    return Promise.reject(error)
-  }
-)
-
-dbApi.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error)
-)
+export const apiFetch = createApiFetch(apiUrl)
 
 export const authAPI = {
-  login: (data) => api.post('/users/auth/login/', data),
-  register: (data) => api.post('/users/auth/register/', data),
+  login: (data) => api.post('/users/auth/login/', data, { publicAuth: true }),
+  register: (data) => api.post('/users/auth/register/', data, { publicAuth: true }),
   logout: () => api.post('/users/auth/logout/')
 }
 
 export const userAPI = {
-  getProfile: () => api.get('/users/profile/'),
+  getProfile: (config) => api.get('/users/profile/', config),
   updateProfile: (data) => api.put('/users/profile/', data),
   uploadAvatar: (formData) => api.post('/users/profile/', formData, {
     headers: {
@@ -69,22 +39,41 @@ export const userAPI = {
   })
 }
 
+// Shared by the editing workspace and personal center; paths match Django's routers.
+export const resumeAPI = {
+  get: (config) => api.get('/resumes/my/', config),
+  save: (data) => api.post('/resumes/my/', data),
+  uploadAvatar: (formData) => api.post('/resumes/upload_avatar/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteAvatar: () => api.delete('/resumes/delete_avatar/')
+}
+
+export const interviewAPI = {
+  listReviews: () => api.get('/ai/records/interview-reviews/'),
+  getReview: (sessionId) => api.get(`/ai/records/interview-reviews/${encodeURIComponent(sessionId)}/`),
+  saveReview: (data) => api.post('/ai/interview/save_review/', data),
+  transcribe: (formData) => api.post('/asr/speech-to-text/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 export const aiAPI = {
   chat: (message, mode, interview_style, session_id) => api.post('/ai/llm/chat/', { message, mode, interview_style, session_id }),
-  chatStream: (message, mode, interview_style, session_id) => {
-    return fetch('/api/ai/llm/chat/', {
+  chatStream: (message, mode, interview_style, session_id, options = {}) => {
+    return apiFetch('/ai/llm/chat/', {
       method: 'POST',
+      signal: options.signal,
       headers: {
-        'Content-Type': 'application/json',
-        ...(localStorage.getItem('token') ? { 'Authorization': `Token ${localStorage.getItem('token')}` } : {})
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ message, mode, interview_style, session_id })
+      body: JSON.stringify({ message, mode, interview_style, session_id, enable_tts: options.enableTts === true })
     })
   },
   getHistory: (sessionId) => api.get(`/ai/llm/chat/history/?session_id=${sessionId}`),
-  careerRecommendation: (self_introduction) => api.post('/ai/llm/career/recommendation/', { self_introduction }, { timeout: 120000 }),
-  careerPlanGeneration: (self_introduction, selected_careers) => api.post('/ai/llm/career/plan/', { self_introduction, selected_careers }, { timeout: 120000 }),
-  careerReport: (user_profile, target_job) => api.post('/career-report/', { user_profile, target_job }, { timeout: 120000 }),
+  careerRecommendation: (self_introduction) => api.post('/ai/llm/career/recommendation/', { self_introduction }),
+  careerPlanGeneration: (self_introduction, selected_careers) => api.post('/ai/llm/career/plan/', { self_introduction, selected_careers }),
+  careerReport: (user_profile, target_job) => api.post('/career-report/', { user_profile, target_job }),
   saveChatRecord: (session_id, user_message, assistant_message, mode) => api.post('/ai/llm/save-chat/', { session_id, user_message, assistant_message, mode }),
   saveCareerEvaluation: (session_id, selected_careers, evaluation_result) => api.post('/ai/records/save-evaluation/', { session_id, selected_careers, evaluation_result }),
   saveCareerPlan: (session_id, report_content, radar_data) => api.post('/ai/records/save-plan/', { session_id, report_content, radar_data }),
@@ -102,20 +91,27 @@ export const companyAPI = {
 export default api
 
 export const jobFairAPI = {
-  getJobFairs: (page = 1, pageSize = 8) => api.get('/company-reviews/job-fairs/', {
+  getJobFairs: (page = 1, pageSize = 8, config = {}) => api.get('/company-reviews/job-fairs/', {
+    ...config,
     params: { page, page_size: pageSize }
   }),
   getFilterOptions: () => api.get('/company-reviews/job-fairs/filter_options/')
 }
 
 export const companyInfoAPI = {
-  getCompanyInfos: (page = 1, pageSize = 10) => api.get('/company-reviews/company-infos/', {
+  getCompanyInfos: (page = 1, pageSize = 10) => api.get('/company-reviews/company-info/', {
     params: { page, page_size: pageSize }
   })
 }
 
 export const computerCareerAPI = {
-  getComputerCareers: (page = 1, pageSize = 10) => api.get('/career-evaluation/computer-careers/', {
-    params: { page, page_size: pageSize }
+  getComputerCareers: (page = 1, pageSize = 10, filters = {}, config = {}) => api.get('/career-evaluation/computer-careers/', {
+    ...config,
+    params: { ...filters, page, page_size: pageSize }
   })
+}
+
+export const seniorAdviceAPI = {
+  list: (params, config = {}) => api.get('/ai/senior-advice/', { ...config, params }),
+  submit: (data, config = {}) => api.post('/ai/senior-advice/', data, config)
 }

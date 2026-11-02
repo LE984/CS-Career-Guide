@@ -1,302 +1,150 @@
 <template>
-  <div class="w-full bg-gradient-to-r from-white to-purple-100">
-    
-    <!-- Hero Section -->
-    <section class="relative min-h-[850px] flex items-center overflow-hidden px-8 py-20 bg-white">
-      <!-- Abstract Background Elements -->
-      <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-bl from-indigo-50/50 to-purple-50/30 -z-10 rounded-bl-[100px]"></div>
-      <div class="absolute top-40 right-40 w-72 h-72 bg-indigo-400/10 rounded-full blur-[100px] -z-10 animate-pulse-glow"></div>
-      <div class="absolute bottom-20 left-20 w-96 h-96 bg-purple-400/10 rounded-full blur-[120px] -z-10 animate-pulse-glow" style="animation-delay: -4s;"></div>
-      <!-- Tech Decor -->
-      <div class="absolute top-20 left-1/4 w-2 h-2 bg-indigo-200 rounded-full animate-ping"></div>
-      <div class="absolute bottom-40 right-1/3 w-3 h-3 bg-purple-200 rounded-full animate-pulse"></div>
-      <div class="max-w-7xl mx-auto editorial-grid w-full relative z-10">
-        <div class="col-span-12 lg:col-span-7 flex flex-col justify-center">
-          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-extrabold mb-8 w-fit border border-indigo-100/50">
-            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;"></span>
-            下一代职业发展平台
-          </div>
-          <h1 class="font-headline text-6xl md:text-8xl font-black text-slate-900 leading-[1.1] mb-8 tracking-tight">
-            开启你的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500">CS</span> <br/>职业生涯
-          </h1>
-          <p class="text-xl text-slate-600 max-w-xl mb-12 leading-relaxed font-medium">
-            专为计算机学子打造的全栈职业指导平台。从技能对齐到简历优化，从 AI 模拟面试到企业真实红黑榜，助你锁定顶级 Offer。
-          </p>
-          <div class="flex flex-wrap gap-5">
-            <button @click="navigateToCareerEvaluation" class="px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-3xl font-bold text-lg shadow-xl shadow-indigo-200 hover:translate-y-[-4px] active:scale-95 transition-all flex items-center gap-2">
-              开始测评 <span class="material-symbols-outlined"></span>
-            </button>
-            <button @click="navigateToCareerPaths" class="px-10 py-5 bg-white text-slate-900 rounded-3xl font-bold text-lg border-2 border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all flex items-center gap-2">
-              浏览职业路径 <span class="material-symbols-outlined"></span>
-            </button>
-          </div>
-        </div>
-        <div class="col-span-12 lg:col-span-5 relative hidden lg:flex items-center justify-center">
-          <div class="relative w-full max-w-[500px]">
-            <div class="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-[3rem] blur-3xl -z-10 scale-110"></div>
-            <div class="bg-white/40 backdrop-blur-xl p-8 rounded-[3.5rem] soft-shadow border border-white/50 hero-img-animated transition-transform duration-700">
-              <img alt="Technology Hub" class="rounded-[2.5rem] w-full h-[450px] object-cover shadow-2xl" src="@/assets/images/indexpicture1.jpg"/>
-              <div class="mt-8 space-y-4">
-                <div class="h-2.5 w-1/4 bg-indigo-600/30 rounded-full"></div>
-                <div class="h-2.5 w-full bg-slate-100 rounded-full"></div>
-                <div class="h-2.5 w-3/4 bg-slate-100 rounded-full"></div>
-              </div>
-            </div>
-            <!-- Decorative Floating Elements -->
-            <div class="absolute -top-10 -left-10 w-24 h-24 bg-white/80 backdrop-blur-md rounded-3xl shadow-xl flex items-center justify-center border border-white animate-bounce" style="animation-duration: 4s;">
-              <img 
-                src="@/assets/images/首页0.png" 
-                alt="首页0" 
-                class="w-full h-full object-cover rounded-2xl"
-                @error="handleImageError"
-              />
-            </div>
-            
-          </div>
+  <div class="home-page">
+    <section class="home-hero career-container">
+      <div class="hero-copy">
+        <p class="home-eyebrow"><span class="status-dot" aria-hidden="true"></span>下一代职业发展平台</p>
+        <h1>开启你的 <span>CS</span><br />职业生涯</h1>
+        <p class="hero-description">专为计算机学子打造的全栈职业指导平台。从技能对齐到简历优化，从 AI 模拟面试到企业真实红黑榜，助你锁定顶级 Offer。</p>
+        <div class="home-actions">
+          <router-link to="/career-paths" class="career-button">浏览职业路径 <span aria-hidden="true">→</span></router-link>
+          <router-link to="/career-paths/employment/self-introduction" class="career-button career-button-primary">开始测评 <span aria-hidden="true">↗</span></router-link>
         </div>
       </div>
-    </section>
-    
-    <!-- Core Modules Showcase (Bento Grid) -->
-    <section class="py-32 px-8 bg-slate-50/50 relative overflow-hidden">
-      <div class="max-w-7xl mx-auto">
-        <div class="text-center mb-20">
-          <h2 class="font-headline text-5xl font-black text-slate-900 mb-6">核心赋能模块</h2>
-          <p class="text-slate-500 text-lg max-w-2xl mx-auto font-medium">全方位覆盖求职链路，利用数据与 AI 填补信息差，打造沉浸式求职体验。</p>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <!-- Module Card 1 -->
-          <div class="md:col-span-2 bg-white p-10 rounded-[2.5rem] soft-shadow border border-slate-100 tech-glow-card transition-all duration-500 group cursor-pointer">
-            <div class="w-16 h-16 bg-indigo-50 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 overflow-hidden">
-              <img src="@/assets/images/路径10.png" alt="路径10" class="w-full h-full object-cover"/>
-            </div>
-            <h3 class="text-3xl font-black mb-4 text-slate-900">职业路径</h3>
-            <p class="text-slate-500 text-lg mb-8 leading-relaxed">根据技术趋势动态更新的技能树，精准定位前后端、算法、运维等 20+ 细分方向。</p>
-            <div class="flex items-center text-indigo-600 font-bold group-hover:gap-2 transition-all" @click="navigateToCareerPaths">
-              了解更多 
-            </div>
-          </div>
-          <!-- Module Card 2 -->
-          <div class="bg-white p-10 rounded-[2.5rem] soft-shadow border border-slate-100 tech-glow-card transition-all duration-500 group cursor-pointer">
-            <div class="w-16 h-16 bg-purple-50 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-purple-600 transition-all duration-300 overflow-hidden">
-              <img src="@/assets/images/评价10.png" alt="评价10" class="w-full h-full object-cover"/>
-            </div>
-            <h3 class="text-2xl font-black mb-4 text-slate-900">职业测评</h3>
-            <p class="text-slate-500 leading-relaxed">多维人格与技术栈匹配度评估，告诉你最适合的赛道。</p>
-            <div class="flex items-center text-indigo-600 font-bold group-hover:gap-2 transition-all mt-4" @click="navigateToCareerEvaluation">
-              开始测评 
-            </div>
-          </div>
-          <!-- Module Card 3 -->
-          <div class="bg-white p-10 rounded-[2.5rem] soft-shadow border border-slate-100 tech-glow-card transition-all duration-500 group cursor-pointer">
-            <div class="w-16 h-16 bg-cyan-50 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-cyan-500 transition-all duration-300 overflow-hidden">
-              <img src="@/assets/images/榜单10.png" alt="榜单10" class="w-full h-full object-cover"/>
-            </div>
-            <h3 class="text-2xl font-black mb-4 text-slate-900">企业红黑榜</h3>
-            <p class="text-slate-500 leading-relaxed">脱敏真实职场评价，避开"坑企"，直达"神仙公司"。</p>
-            <div class="mt-4 flex gap-2">
-              <span class="px-2 py-0.5 bg-green-50 text-green-600 text-[10px] font-black rounded-lg border border-green-100 uppercase tracking-tighter">推荐</span>
-              <span class="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-black rounded-lg border border-red-100 uppercase tracking-tighter">预警</span>
-            </div>
-            <div class="flex items-center text-indigo-600 font-bold group-hover:gap-2 transition-all mt-4" @click="navigateToCompanyReviews">
-              查看榜单 
-            </div>
-          </div>
-          <!-- Module Card 4 -->
-          <div class="md:col-span-4 bg-indigo-950 p-10 md:p-16 rounded-[3rem] relative overflow-hidden group shadow-2xl transition-all duration-500 hover:shadow-indigo-500/20">
-            <!-- Glassmorphism Overlay -->
-            <div class="absolute -right-20 -bottom-20 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px]"></div>
-            <div class="absolute -left-20 -top-20 w-80 h-80 bg-purple-500/10 rounded-full blur-[100px]"></div>
-            <div class="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                <div class="inline-block px-4 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full text-[10px] text-white font-black mb-6 tracking-widest uppercase">Premium AI 模块</div>
-                <h3 class="text-white text-4xl md:text-5xl font-black mb-6 leading-tight">AI 面试模拟仓</h3>
-                <p class="text-indigo-200/80 text-xl mb-10 leading-relaxed">深度集成 LangGraph 多智能体工作流，模拟真实技术面试官，提供实时反馈与专业改进建议。</p>
-                <button @click="navigateToInterview" class="px-10 py-5 bg-white text-indigo-900 rounded-[2rem] font-black text-lg hover:bg-indigo-50 active:scale-95 transition-all shadow-xl shadow-indigo-900/40">立即免费体验</button>
-              </div>
-              <div class="hidden md:block">
-                <div class="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-[2.5rem] font-mono text-sm text-indigo-100/90 shadow-2xl">
-                  <p class="text-indigo-400 mb-4 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                    // 正在初始化面试机器人...
-                  </p>
-                  <div class="space-y-4">
-                    <div class="flex gap-3">
-                      <span class="text-purple-400 font-bold shrink-0">面试官:</span>
-                      <p class="italic">"请解释下 Vue3 的组合式 API 比选项式 API 强在哪里？"</p>
-                    </div>
-                    <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
-                      <p class="text-indigo-300/60 mb-3">_等待候选人回答...</p>
-                      <div class="w-full bg-indigo-900/50 h-2 rounded-full overflow-hidden">
-                        <div class="w-2/3 h-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-[loading_2s_ease-in-out_infinite]"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="hero-visual">
+        <img class="hero-illustration" src="@/assets/images/career-journey.svg" alt="细线路径串联简历文档与对话框，描绘从职业探索到面试交流的旅程" width="560" height="440" fetchpriority="high" />
       </div>
     </section>
-    
-    <!-- Platform Advantages -->
-    <section class="py-32 px-8 bg-white overflow-hidden relative">
-      <div class="max-w-7xl mx-auto editorial-grid relative">
-        <div class="col-span-12 lg:col-span-4 flex flex-col justify-center">
-          <h2 class="font-headline text-5xl font-black mb-8 text-slate-900 leading-tight">为什么选择 <br/><span class="text-indigo-600">我们?</span></h2>
-          <p class="text-slate-500 text-lg font-medium leading-relaxed">我们不仅仅是信息的搬运工，更是你职场跃迁的加速器，用技术力量重塑求职可能。</p>
+
+    <section class="home-modules career-container">
+      <header class="section-heading"><div><p class="home-eyebrow">01 / EXPLORE</p><h2>核心赋能模块</h2></div><p>全方位覆盖求职链路，利用数据与 AI 填补信息差，打造沉浸式求职体验。</p></header>
+      <div class="module-grid">
+        <article class="module-card">
+          <div class="module-top"><img src="@/assets/images/路径10.png" alt="路径10" loading="lazy" /><span>01</span></div>
+          <h3>职业路径</h3><p>根据技术趋势动态更新的技能树，精准定位前后端、算法、运维等 20+ 细分方向。</p>
+          <router-link to="/career-paths" class="module-link">了解更多 <span aria-hidden="true">↗</span></router-link>
+        </article>
+        <article class="module-card">
+          <div class="module-top"><img src="@/assets/images/评价10.png" alt="评价10" loading="lazy" /><span>02</span></div>
+          <h3>职业测评</h3><p>多维人格与技术栈匹配度评估，告诉你最适合的赛道。</p>
+          <router-link to="/career-paths/employment/self-introduction" class="module-link">开始测评 <span aria-hidden="true">↗</span></router-link>
+        </article>
+        <article class="module-card">
+          <div class="module-top"><img src="@/assets/images/榜单10.png" alt="榜单10" loading="lazy" /><span>03</span></div>
+          <h3>企业红黑榜</h3><p>脱敏真实职场评价，避开"坑企"，直达"神仙公司"。</p>
+          <router-link to="/company-reviews" class="module-link">查看榜单 <span aria-hidden="true">↗</span></router-link>
+        </article>
+      </div>
+      <article class="interview-feature">
+        <div class="interview-feature-copy"><p class="home-eyebrow">Premium AI 模块</p><h3>AI 面试模拟仓</h3><p>深度集成 LangGraph 多智能体工作流，模拟真实技术面试官，提供实时反馈与专业改进建议。</p><router-link to="/interview" class="career-button career-button-primary">立即免费体验 <span aria-hidden="true">↗</span></router-link></div>
+        <div class="interview-sample">
+          <p class="sample-status"><span class="status-dot" aria-hidden="true"></span>// 正在初始化面试机器人...</p>
+          <div class="sample-question"><span>面试官:</span><p>"请解释下 Vue3 的组合式 API 比选项式 API 强在哪里？"</p></div>
+          <div class="sample-answer">_等待候选人回答...<span aria-hidden="true">|</span></div>
         </div>
-        <div class="col-span-12 lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-10">
-          <div class="space-y-6 p-8 rounded-[2.5rem] hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 tech-glow-card cursor-default">
-            <div class="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden">
-              <img src="@/assets/images/首页1.png" alt="首页1" class="w-full h-full object-cover" @error="handleImageError"/>
-            </div>
-            <h4 class="text-2xl font-black text-slate-900">全栈架构</h4>
-            <p class="text-slate-500 leading-relaxed font-medium">系统化覆盖从底层计算机组成原理到上层云原生应用的所有技能节点。</p>
-          </div>
-          <div class="space-y-6 p-8 rounded-[2.5rem] hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 tech-glow-card cursor-default">
-            <div class="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden">
-              <img src="@/assets/images/首页2.png" alt="首页2" class="w-full h-full object-cover" @error="handleImageError"/>
-            </div>
-            <h4 class="text-2xl font-black text-slate-900">AI 驱动</h4>
-            <p class="text-slate-500 leading-relaxed font-medium">基于最新大模型技术，为你定制个性化的学习路径与改写建议。</p>
-          </div>
-          <div class="space-y-6 p-8 rounded-[2.5rem] hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 tech-glow-card cursor-default">
-            <div class="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center group-hover:scale-110 transition-transform overflow-hidden">
-              <img src="@/assets/images/首页3.png" alt="首页3" class="w-full h-full object-cover" @error="handleImageError"/>
-            </div>
-            <h4 class="text-2xl font-black text-slate-900">真实评价</h4>
-            <p class="text-slate-500 leading-relaxed font-medium">拒绝虚假宣传，所有企业点评均经过严格的人工审核与身份核验。</p>
-          </div>
-        </div>
+      </article>
+    </section>
+
+    <section class="home-advantages career-container">
+      <header class="section-heading"><div><p class="home-eyebrow">02 / WHY US</p><h2>为什么选择<br /><span>我们?</span></h2></div><p>我们不仅仅是信息的搬运工，更是你职场跃迁的加速器，用技术力量重塑求职可能。</p></header>
+      <div class="advantage-grid">
+        <article><img src="@/assets/images/首页1.png" alt="首页1" loading="lazy" @error="handleImageError" /><h4>全栈架构</h4><p>系统化覆盖从底层计算机组成原理到上层云原生应用的所有技能节点。</p></article>
+        <article><img src="@/assets/images/首页2.png" alt="首页2" loading="lazy" @error="handleImageError" /><h4>AI 驱动</h4><p>基于最新大模型技术，为你定制个性化的学习路径与改写建议。</p></article>
+        <article><img src="@/assets/images/首页3.png" alt="首页3" loading="lazy" @error="handleImageError" /><h4>真实评价</h4><p>拒绝虚假宣传，所有企业点评均经过严格的人工审核与身份核验。</p></article>
       </div>
     </section>
-    
-    <!-- Technology Stack Section -->
-    <section class="py-24 px-8 border-t border-slate-100 bg-slate-50/30">
-      <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col lg:flex-row items-center justify-between gap-16">
-          <div class="max-w-md text-center lg:text-left">
-            <h2 class="font-headline text-4xl font-black text-slate-900 mb-6">卓越的底层架构</h2>
-            <p class="text-slate-500 font-medium">我们深知 CS 学子的标准，因此在产品构建上也追求极致的技术美学与性能。</p>
-          </div>
-          <div class="flex flex-wrap gap-16 justify-center opacity-60 grayscale hover:grayscale-0 transition-all duration-700">
-            <div class="flex flex-col items-center gap-3">
-              <span class="text-3xl font-black text-slate-900">Vue 3</span>
-              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">前端</span>
-            </div>
-            <div class="flex flex-col items-center gap-3">
-              <span class="text-3xl font-black text-slate-900">Django</span>
-              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-purple-600 bg-purple-50 px-3 py-1 rounded-full">后端</span>
-            </div>
-            <div class="flex flex-col items-center gap-3">
-              <span class="text-3xl font-black text-slate-900">MySQL</span>
-              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full">数据库</span>
-            </div>
-            <div class="flex flex-col items-center gap-3">
-              <span class="text-3xl font-black text-slate-900">LangGraph</span>
-              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">AI 多智能体</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
+    <section class="home-stack career-container">
+      <div><p class="home-eyebrow">03 / BUILT WITH</p><h2>卓越的底层架构</h2><p>我们深知 CS 学子的标准，因此在产品构建上也追求极致的技术美学与性能。</p></div>
+      <div class="stack-list"><div><strong>Vue 3</strong><span>前端</span></div><div><strong>Django</strong><span>后端</span></div><div><strong>MySQL</strong><span>数据库</span></div><div><strong>LangGraph</strong><span>AI 多智能体</span></div></div>
     </section>
-    
-    <!-- CTA Section -->
-    <section class="py-24 px-8 relative">
-      <div class="max-w-6xl mx-auto bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 rounded-[3.5rem] p-16 md:p-24 text-center text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
-        <!-- Dynamic Background Effects -->
-        <div class="absolute top-0 right-0 w-[40rem] h-[40rem] bg-white/10 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse-glow"></div>
-        <div class="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-purple-400/20 rounded-full blur-[100px] -ml-48 -mb-48 animate-pulse-glow" style="animation-delay: -2s;"></div>
-        <div class="relative z-10">
-          <h2 class="font-headline text-5xl md:text-6xl font-black mb-8 tracking-tight">准备好迎接你的第一个<br/>顶级 Offer 了吗？</h2>
-          <p class="text-xl text-indigo-100/90 mb-14 max-w-2xl mx-auto font-medium leading-relaxed">加入优秀计算机学子的选择，让你的职业起点更高、更稳、更远。</p>
-          <button @click="navigateToCareerPaths" class="px-14 py-6 bg-white text-indigo-700 rounded-[2rem] font-black text-xl hover:bg-indigo-50 hover:-translate-y-1 active:scale-95 transition-all shadow-2xl shadow-black/20 flex items-center gap-4 mx-auto group">
-            立即开启免费规划 <span class="material-symbols-outlined text-2xl group-hover:translate-x-2 transition-transform"></span>
-          </button>
-        </div>
-      </div>
-    </section>
+
+    <section class="home-cta career-container"><div><p class="home-eyebrow">YOUR NEXT CHAPTER</p><h2>准备好迎接你的第一个<br />顶级 Offer 了吗？</h2><p>加入优秀计算机学子的选择，让你的职业起点更高、更稳、更远。</p></div><router-link to="/career-paths" class="career-button career-button-primary">立即开启免费规划 <span aria-hidden="true">↗</span></router-link></section>
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
-function navigateToCareerPaths() {
-  router.push('/career-paths')
-}
-
-function navigateToCareerEvaluation() {
-  // 先跳转到自我介绍页面，默认使用就业路径
-  router.push('/career-paths/employment/self-introduction')
-}
-
-function navigateToCompanyReviews() {
-  router.push('/company-reviews')
-}
-
-function navigateToInterview() {
-  router.push('/interview')
-}
-
-function navigateToAI() {
-  // 这里可以导航到AI聊天页面
-  router.push('/ai-chat')
-}
-
 function handleImageError(event) {
-  // 处理图片加载失败的情况
+  event.target.onerror = null
   event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9IiNmNWY1ZjUiLz48cGF0aCBkPSJNMTAgMTVjLTIuNyAwLTUgMi4zLTUgNXMxLjY0IDMgMy4zNiAzYzEuNzIgMCAzLTIgMy00cy0xLjI4LTMtMy0zczMtMi4zIDMtNXoiIGZpbGw9IiM4ODgiLz48L3N2Zz4='
   event.target.alt = '图片加载失败'
 }
 </script>
 
 <style scoped>
-.editorial-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 2.5rem;
+.home-page { color: var(--career-text); }
+.home-eyebrow { font-size: 11px; letter-spacing: .14em; color: var(--career-muted); font-weight: 500; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: #7b8e5b; flex: none; }
+.home-hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 88px; align-items: center; padding-block: 92px 100px; }
+.hero-copy > .home-eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.hero-copy h1 { font-size: clamp(44px, 5.6vw, 76px); line-height: 1.22; letter-spacing: -.06em; font-weight: 500; }
+.hero-copy h1 span { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-style: italic; color: #657453; }
+.hero-description { max-width: 470px; color: var(--career-muted); font-size: 15px; line-height: 2; margin: 26px 0 34px; }
+.home-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.home-actions .career-button { min-height: 48px; gap: 26px; }
+.hero-visual { min-width: 0; }
+.hero-illustration { display: block; width: 100%; height: auto; max-width: 560px; margin-inline: auto; }
+.home-modules, .home-advantages { padding-block: 64px 80px; border-top: 1px solid var(--career-border); }
+.section-heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 40px; margin-bottom: 38px; }
+.section-heading h2, .home-stack h2 { font-size: 32px; line-height: 1.4; margin-top: 12px; }
+.section-heading > p { max-width: 100%; flex-shrink: 0; white-space: nowrap; color: var(--career-muted); font-size: 14px; line-height: 1.9; }
+.module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--career-border); border-radius: 6px; overflow: hidden; }
+.module-card { padding: 30px; background: #fff; display: flex; flex-direction: column; transition: background .2s; }
+.module-card:hover { background: #f5f6f0; }
+.module-card + .module-card { border-left: 1px solid var(--career-border); }
+.module-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.module-top img { width: 46px; height: 46px; object-fit: cover; border-radius: 5px; }
+.module-top > span { font-size: 11px; color: #858a7f; font-variant-numeric: tabular-nums; }
+.module-card h3 { font-size: 22px; margin-bottom: 14px; }
+.module-card > p { font-size: 14px; line-height: 1.9; color: var(--career-muted); }
+.module-link { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 30px; font-size: 13px; color: var(--career-text); }
+.module-link span { font-size: 20px; }
+.interview-feature { margin-top: 24px; padding: 42px; display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: center; background: #edf0e5; border: 1px solid #dde2d2; border-radius: 6px; }
+.interview-feature h3 { font-size: 30px; margin: 12px 0 16px; }
+.interview-feature-copy > p:not(.home-eyebrow) { font-size: 14px; color: #64705b; line-height: 1.9; margin-bottom: 26px; }
+.interview-sample { background: #fafbf7; border: 1px solid #d6ddca; border-radius: 5px; padding: 26px; font-size: 13px; }
+.sample-status { font-family: ui-monospace, monospace; color: #738164; font-size: 11px; display: flex; gap: 9px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #e3e7db; }
+.sample-question { padding: 22px 0; line-height: 1.9; }
+.sample-question > span { color: #79866c; font-size: 11px; display: block; margin-bottom: 8px; }
+.sample-answer { color: #7c8474; font-size: 12px; display: flex; justify-content: space-between; border-top: 1px solid #e3e7db; padding-top: 18px; }
+.home-advantages { border-top: 0; padding-top: 24px; }
+.advantage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 54px; }
+.advantage-grid article { border-top: 1px solid var(--career-border); padding-top: 26px; }
+.advantage-grid img { width: 44px; height: 44px; object-fit: cover; border-radius: 5px; margin-bottom: 22px; }
+.advantage-grid h4 { font-size: 20px; margin-bottom: 12px; }
+.advantage-grid p, .home-stack > div > p:last-child { font-size: 14px; line-height: 1.9; color: var(--career-muted); }
+.home-stack { padding-block: 48px 64px; border-top: 1px solid var(--career-border); display: grid; grid-template-columns: 1fr 1.2fr; gap: 70px; align-items: center; }
+.home-stack h2 { font-size: 26px; margin-bottom: 14px; }
+.stack-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+.stack-list div { display: flex; flex-direction: column; gap: 12px; }
+.stack-list strong { font-size: 20px; font-weight: 500; letter-spacing: -.04em; }
+.stack-list span { font-size: 11px; color: var(--career-muted); }
+.home-cta { border-top: 1px solid var(--career-border); padding-block: 64px 80px; display: flex; justify-content: space-between; align-items: center; gap: 32px; }
+.home-cta h2 { font-size: 36px; line-height: 1.5; margin: 16px 0; }
+.home-cta > div > p:last-child { font-size: 14px; color: var(--career-muted); }
+.home-cta > a { flex: none; gap: 24px; }
+@media (max-width: 1050px) {
+  .home-hero { gap: 40px; padding-block: 64px; }
+  .module-card { padding: 24px; }
+  .interview-feature { gap: 30px; padding: 30px; }
+  .home-stack { grid-template-columns: 1fr; gap: 32px; }
 }
-
-.soft-shadow {
-  box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.15);
-}
-
-@keyframes float-hero {
-  0%, 100% { transform: translateY(0) rotate(2deg); }
-  50% { transform: translateY(-20px) rotate(4deg); }
-}
-
-.hero-img-animated {
-  animation: float-hero 6s ease-in-out infinite;
-}
-
-.tech-glow-card:hover {
-  box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.3);
-  border-color: rgba(99, 102, 241, 0.3);
-  transform: translateY(-8px) scale(1.02);
-}
-
-.binary-blueprint-bg {
-  background-image: radial-gradient(#6366f110 1px, transparent 1px);
-  background-size: 30px 30px;
-}
-
-@keyframes loading {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(150%); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.1); }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 8s ease-in-out infinite;
+@media (max-width: 760px) {
+  .home-hero { grid-template-columns: 1fr; gap: 36px; padding-block: 44px; }
+  .hero-copy h1 { font-size: clamp(42px, 10vw, 64px); }
+  .hero-description { font-size: 14px; margin: 22px 0 26px; }
+  .hero-illustration { max-width: 440px; }
+  .section-heading { align-items: flex-start; flex-direction: column; gap: 18px; margin-bottom: 28px; }
+  .section-heading h2 { font-size: 28px; }
+  .section-heading > p { white-space: normal; }
+  .home-modules, .home-advantages { padding-block: 40px; }
+  .module-grid, .interview-feature, .advantage-grid { grid-template-columns: 1fr; }
+  .module-card + .module-card { border-left: 0; border-top: 1px solid var(--career-border); }
+  .module-top { margin-bottom: 20px; }
+  .interview-feature { padding: 24px; gap: 28px; }
+  .interview-sample { padding: 20px; }
+  .advantage-grid { gap: 30px; }
+  .stack-list { grid-template-columns: repeat(2, 1fr); gap: 26px; }
+  .home-cta { flex-direction: column; align-items: flex-start; padding-block: 40px 52px; }
+  .home-cta h2 { font-size: 28px; }
 }
 </style>

@@ -1,0 +1,114 @@
+{
+  "dataset_version": "java-contract-v1",
+  "test_only": true,
+  "cases": [
+    {
+      "query_id": "dev-1",
+      "split": "dev",
+      "task": "question",
+      "query": "请检索：Java基础",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "query_id": "dev-2",
+      "split": "dev",
+      "task": "question",
+      "query": "请检索：集合",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000002"
+      ]
+    },
+    {
+      "query_id": "dev-3",
+      "split": "dev",
+      "task": "question",
+      "query": "请检索：JVM",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000003"
+      ]
+    },
+    {
+      "query_id": "dev-4",
+      "split": "dev",
+      "task": "question",
+      "query": "请检索：Spring",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000004"
+      ]
+    },
+    {
+      "query_id": "dev-5",
+      "split": "dev",
+      "task": "question",
+      "query": "请检索：数据库",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000005"
+      ]
+    },
+    {
+      "query_id": "dev-6",
+      "split": "dev",
+      "task": "question",
+      "query": "请检索：并发",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000006"
+      ]
+    },
+    {
+      "query_id": "test-1",
+      "split": "test",
+      "task": "question",
+      "query": "面试知识点：Java基础",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "query_id": "test-2",
+      "split": "test",
+      "task": "question",
+      "query": "面试知识点：集合",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000002"
+      ]
+    },
+    {
+      "query_id": "test-3",
+      "split": "test",
+      "task": "question",
+      "query": "面试知识点：JVM",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000003"
+      ]
+    },
+    {
+      "query_id": "test-4",
+      "split": "test",
+      "task": "question",
+      "query": "面试知识点：Spring",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000004"
+      ]
+    },
+    {
+      "query_id": "test-5",
+      "split": "test",
+      "task": "question",
+      "query": "面试知识点：数据库",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000005"
+      ]
+    },
+    {
+      "query_id": "test-6",
+      "split": "test",
+      "task": "question",
+      "query": "面试知识点：并发",
+      "relevant_ids": [
+        "00000000-0000-4000-8000-000000000006"
+      ]
+    }
+  ]
+}

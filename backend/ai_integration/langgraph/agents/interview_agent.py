@@ -3,14 +3,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import Tool
 from ..tools.time_tool import get_time
 from ..utils.prompt_manager import get_prompt
-import os
+from cs_career_guide.ai_config import get_llm_kwargs
 
 def create_interview_agent():
     llm = ChatOpenAI(
-        model="qwen-turbo-2025-07-15", 
         temperature=0.7,
-        api_key=os.getenv('api_key'),
-        base_url=os.getenv('base_url')
+        **get_llm_kwargs(),
     )
     
     # 创建工具列表

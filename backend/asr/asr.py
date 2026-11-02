@@ -1,12 +1,16 @@
 import asyncio
 import json
-import os
 import uuid
 
 import websockets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+
+
+class ASRServiceError(RuntimeError):
+    """A provider failed without exposing its response or credentials."""
 
 
 class ASRView(APIView):
@@ -17,9 +21,15 @@ class ASRView(APIView):
         if not audio:
             return Response({
                 'result': '音频不存在'
-            })
+            }, status=400)
         pcm_data = audio.read()
-        text = asyncio.run(self.run_asr_tasks(pcm_data))
+        try:
+            text = asyncio.run(self.run_asr_tasks(pcm_data))
+        except TimeoutError:
+            return Response({'result': '语音识别超时，请重试'}, status=504)
+        except Exception:
+            # Provider messages may contain account information. Never forward them.
+            return Response({'result': '语音识别服务暂不可用，请稍后重试'}, status=502)
         return Response({
             'result': 'success',
             'text': text,
@@ -45,29 +55,38 @@ class ASRView(APIView):
         text = ''
         async for msg in ws:
             data = json.loads(msg)
-            event = data['header']['event']
+            event = data.get('header', {}).get('event')
             if event == 'result-generated':
-                output = data['payload']['output']
-                if output.get('transcription', None) and output['transcription']['sentence_end']:
-                    text += output['transcription']['text']
-            elif event in ['task-finished', 'task-failed']:
-                break
-        return text
+                output = data.get('payload', {}).get('output', {})
+                # Fun-ASR returns sentence; preserve the legacy Gummy response.
+                sentence = output.get('sentence') or output.get('transcription') or {}
+                if sentence.get('sentence_end') and not sentence.get('heartbeat'):
+                    text += sentence.get('text', '')
+            elif event == 'task-failed':
+                raise ASRServiceError('ASR task failed')
+            elif event == 'task-finished':
+                return text
+        raise ASRServiceError('ASR connection ended before task completion')
 
     async def run_asr_tasks(self, pcm_data):
         task_id = uuid.uuid4().hex
-        api_key = os.getenv('api_key')
-        wss_url = os.getenv('WSS_URL')
+        api_key = settings.ASR_API_KEY
+        wss_url = settings.ASR_WSS_URL
         
         if not api_key:
-            raise ValueError("api_key environment variable not set")
+            raise ValueError("ASR_API_KEY or LLM_API_KEY environment variable not set")
         if not wss_url:
-            raise ValueError("WSS_URL environment variable not set")
+            raise ValueError("ASR_WSS_URL environment variable not set")
+        if not settings.ASR_MODEL:
+            raise ValueError("ASR_MODEL environment variable not set")
             
         headers = {
             "Authorization": f"Bearer {api_key}"
         }
-        async with websockets.connect(wss_url, additional_headers=headers) as ws:
+        async with asyncio.timeout(120), websockets.connect(wss_url, additional_headers=headers) as ws:
+            parameters = {'sample_rate': 16000, 'format': 'pcm'}
+            if not settings.ASR_MODEL.startswith('fun-asr'):
+                parameters['transcription_enabled'] = True
             await ws.send(json.dumps({
                 "header": {
                     "streaming": "duplex",
@@ -75,12 +94,8 @@ class ASRView(APIView):
                     "action": "run-task"
                 },
                 "payload": {
-                    "model": "gummy-realtime-v1",
-                    "parameters": {
-                        "sample_rate": 16000,
-                        "format": "pcm",
-                        "transcription_enabled": True,
-                    },
+                    "model": settings.ASR_MODEL,
+                    "parameters": parameters,
                     "input": {},
                     "task": "asr",
                     "task_group": "audio",
@@ -88,10 +103,15 @@ class ASRView(APIView):
                 }
             }))
             async for msg in ws:
-                if json.loads(msg)['header']['event'] == 'task-started':
+                event = json.loads(msg).get('header', {}).get('event')
+                if event == 'task-failed':
+                    raise ASRServiceError('ASR task failed to start')
+                if event == 'task-started':
                     break
-            _, text = await asyncio.gather(
-                self.asr_sender(pcm_data, ws, task_id),
-                self.asr_receiver(ws),
-            )
-            return text
+            else:
+                raise ASRServiceError('ASR connection ended before task start')
+            # Cancel the sender too if the receiver reports an early failure.
+            async with asyncio.TaskGroup() as tasks:
+                tasks.create_task(self.asr_sender(pcm_data, ws, task_id))
+                receiver = tasks.create_task(self.asr_receiver(ws))
+            return receiver.result()

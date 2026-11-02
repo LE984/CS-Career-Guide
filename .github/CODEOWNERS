@@ -1,0 +1,22 @@
+# Integrator owns public contracts, fixed expectations, migrations and CI.
+/backend/career_platform/contracts.py @vacontinuejatotired
+/backend/career_platform/composition*.py @vacontinuejatotired
+/backend/career_platform/api.py @vacontinuejatotired
+/backend/career_platform/serializers.py @vacontinuejatotired
+/backend/career_platform/urls.py @vacontinuejatotired
+/backend/career_platform/permissions.py @vacontinuejatotired
+/backend/career_platform/errors.py @vacontinuejatotired
+/backend/career_platform/models/ @vacontinuejatotired
+/backend/**/migrations/ @vacontinuejatotired
+/backend/career_platform/tests/ @vacontinuejatotired
+/backend/career_platform/test_*.py @vacontinuejatotired
+/backend/cs_career_guide/settings*.py @vacontinuejatotired
+/backend/cs_career_guide/urls.py @vacontinuejatotired
+/frontend/src/features/career-platform/ @vacontinuejatotired
+/frontend/src/router/ @vacontinuejatotired
+/frontend/src/components/Navbar.vue @vacontinuejatotired
+/frontend/tests/career-platform.test.mjs @vacontinuejatotired
+/docs/implementation/00-shared-contracts.md @vacontinuejatotired
+/docs/career_platform_plan.md @vacontinuejatotired
+/ci/ @vacontinuejatotired
+/.github/ @vacontinuejatotired

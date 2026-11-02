@@ -1,10 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-base-200">
-    <!-- Background Elements -->
-    <div class="absolute inset-0 bg-gradient-to-r from-white to-purple-100 dark:from-gray-900 dark:to-gray-800 pointer-events-none"></div>
-    <div class="absolute top-[-10%] left-[-5%] w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none"></div>
-    <div class="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse-slow delay-1000 pointer-events-none"></div>
-
+  <div class="minimal-auth flex items-center justify-center">
     <div class="w-full max-w-md p-8 glass-card relative z-10 animate-fade-in-up">
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent to-primary mb-2">创建账户</h1>
@@ -13,39 +8,45 @@
       
       <form @submit.prevent="register" class="space-y-6">
         <div class="form-control">
-          <label class="label">
+          <label class="label" for="register-username">
             <span class="label-text font-medium">用户名</span>
           </label>
           <input
             v-model="form.username"
+            id="register-username"
+            autocomplete="username"
             type="text"
-            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            class="input input-bordered w-full"
             placeholder="请输入用户名"
             required
           />
         </div>
         
         <div class="form-control">
-          <label class="label">
+          <label class="label" for="register-password">
             <span class="label-text font-medium">密码</span>
           </label>
           <input
             v-model="form.password"
+            id="register-password"
+            autocomplete="new-password"
             type="password"
-            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            class="input input-bordered w-full"
             placeholder="请输入密码"
             required
           />
         </div>
 
         <div class="form-control">
-          <label class="label">
+          <label class="label" for="register-confirm_password">
             <span class="label-text font-medium">确认密码</span>
           </label>
           <input
             v-model="form.confirm_password"
+            id="register-confirm_password"
+            autocomplete="new-password"
             type="password"
-            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            class="input input-bordered w-full"
             placeholder="请确认密码"
             required
           />
@@ -62,7 +63,7 @@
 
         <div class="text-center text-sm">
           <span class="text-base-content/70">已有账号？</span>
-          <router-link to="/login" class="link link-primary font-medium ml-1">立即登录</router-link>
+          <router-link :to="{ path: '/login', query: { redirect: safeRedirect(route.query.redirect) } }" class="link link-primary font-medium ml-1">立即登录</router-link>
         </div>
       </form>
       
@@ -78,10 +79,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { authAPI } from '@/api'
+import { clearSession, safeRedirect } from '@/auth/session.js'
 
 const router = useRouter()
+const route = useRoute()
 const form = ref({
   username: '',
   password: '',
@@ -95,12 +98,12 @@ const register = async () => {
   error.value = ''
   try {
     const response = await authAPI.register(form.value)
-    // 清除之前的用户数据，包括自我介绍
-    localStorage.removeItem('selfIntroduction')
+    clearSession()
     // 设置新用户信息
     localStorage.setItem('token', response.token)
     localStorage.setItem('user', JSON.stringify(response.user))
-    router.push('/')
+    const redirect = safeRedirect(route.query.redirect)
+    await router.replace(router.resolve(redirect).matched.length ? redirect : '/')
   } catch (err) {
     if (err.response) {
       if (err.response.data?.username) {

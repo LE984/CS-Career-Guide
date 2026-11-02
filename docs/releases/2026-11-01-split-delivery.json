@@ -1,0 +1,161 @@
+{
+  "date": "2026-11-01",
+  "timezone": "Asia/Shanghai",
+  "repository": "vacontinuejatotired/CS-Career-Guide",
+  "code_baseline": "d9395a319be3c99d67b3ff062266ee6d8edee5ce",
+  "frontend_publication": {
+    "commit": "7909ecf62f6b2b1e02be0c3d1e3726bd7ec3688c",
+    "components": [
+      "frontend"
+    ],
+    "compatibility": "component-contracts",
+    "complete": true,
+    "images": {
+      "frontend": {
+        "repository": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend",
+        "image_id": "sha256:fe5518ca0c246ba9febc1d8fbaa100d5b4a6a576d906ba004d439f9aa5b31b43",
+        "tags": [
+          "sha-7909ecf",
+          "latest"
+        ],
+        "digest": "sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f",
+        "reference": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f"
+      }
+    }
+  },
+  "install": {
+    "action": "install",
+    "success": true,
+    "project": "cs-career-guide-demo",
+    "backend_container_unchanged": true,
+    "env_file_unchanged": true,
+    "frontend_image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f",
+    "backend_image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend@sha256:75110f2b4dff6b5488bab73ffd563cf7ed431979e0050d1bdd32bb5b48ea2cf9",
+    "gateway_image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:91fc9c3924b93f76adc9cd36a0bb93e53885ff8e97df10233caa45bb432789a5",
+    "gateway_container": "57aab10cc0771ad57a1e3f1ca1b36b4fd420ab89a2873944bdd3357da09797a5",
+    "http_checks": [
+      "/",
+      "/login",
+      "/static/admin/css/base.css",
+      "/api/users/profile/",
+      "/media/split-check-nonexistent"
+    ],
+    "single_frontend_activation_verified": true,
+    "database_migrations": false,
+    "real_model": false,
+    "backup_directory": ".split-backup-20261101T135651-j2dtgkzq",
+    "tools_relative_path": ".split-backup-20261101T135651-j2dtgkzq/tools/ci"
+  },
+  "verification": {
+    "local_offline_ci_tests": 89,
+    "pr_delivery_ci": {
+      "run": 41312995286,
+      "conclusion": "success",
+      "business_complete": "skipped by existing delivery path rules"
+    },
+    "frontend_release_run": 41304757512,
+    "server_install_run": 41313632683,
+    "independent_server_audit_run": 41313707147,
+    "server_backend_recreated": false,
+    "server_backend_image_published": false,
+    "server_frontend_recreation_verified": true,
+    "server_sse_or_authenticated_business_test": false,
+    "browser_acceptance": false,
+    "real_model": false,
+    "database_migrations": false,
+    "production_digest_rollback_drill": false
+  },
+  "automation": {
+    "SPLIT_DELIVERY_RELEASE_ENABLED": true,
+    "DEPLOY_ENV_SYNC_ENABLED": true,
+    "DEPLOY_FRONTEND_ENABLED": true,
+    "DEPLOY_BACKEND_ENABLED": true
+  },
+  "runtime": {
+    "backend": [
+      {
+        "id": "e547601b906ed8ed0be4d309734f7fbb999fd82f40e9d849a0491a933fe179e6",
+        "state": "running",
+        "health": "healthy",
+        "image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend:latest",
+        "repository_digests": [
+          "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend@sha256:75110f2b4dff6b5488bab73ffd563cf7ed431979e0050d1bdd32bb5b48ea2cf9"
+        ],
+        "ports": {},
+        "named_volumes": [
+          "cs-career-guide-demo_backend-static",
+          "cs-career-guide-demo_media",
+          "cs-career-guide-demo_sqlite-data"
+        ]
+      }
+    ],
+    "frontend": [
+      {
+        "id": "ae49e62dd9ddcf67d2fb7a7e76cdda0929af050646f94a16382d75da96f35b72",
+        "state": "running",
+        "health": "healthy",
+        "image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f",
+        "repository_digests": [
+          "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f"
+        ],
+        "ports": {},
+        "named_volumes": []
+      }
+    ],
+    "gateway": [
+      {
+        "id": "57aab10cc0771ad57a1e3f1ca1b36b4fd420ab89a2873944bdd3357da09797a5",
+        "state": "running",
+        "health": "healthy",
+        "image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:91fc9c3924b93f76adc9cd36a0bb93e53885ff8e97df10233caa45bb432789a5",
+        "repository_digests": [
+          "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:91fc9c3924b93f76adc9cd36a0bb93e53885ff8e97df10233caa45bb432789a5"
+        ],
+        "ports": {
+          "8080/tcp": [
+            {
+              "HostIp": "",
+              "HostPort": "80"
+            },
+            {
+              "HostIp": "",
+              "HostPort": "48080"
+            }
+          ]
+        },
+        "named_volumes": [
+          "cs-career-guide-demo_backend-static",
+          "cs-career-guide-demo_media"
+        ]
+      }
+    ],
+    "watchtower": [
+      {
+        "id": "3e9d5d25d6c2622320da9fb3cd5bf91cd5166b294745aba05fee9238e6e54208",
+        "state": "exited",
+        "health": "unhealthy",
+        "image": "containrrr/watchtower:1.7.1",
+        "repository_digests": [
+          "containrrr/watchtower@sha256:6dd50763bbd632a83cb154d5451700530d1e44200b268a4e9488fefdfcf2b038",
+          "mirror.ccs.tencentyun.com/containrrr/watchtower@sha256:6dd50763bbd632a83cb154d5451700530d1e44200b268a4e9488fefdfcf2b038"
+        ],
+        "ports": {},
+        "named_volumes": []
+      }
+    ]
+  },
+  "known_business_failure": {
+    "runs": [
+      41309171882,
+      41311945848
+    ],
+    "databases": [
+      "sqlite",
+      "mysql"
+    ],
+    "tests": 17,
+    "failures": 14,
+    "errors": 3,
+    "reason": "Existing five-module 501 / FEATURE_NOT_IMPLEMENTED skeletons; no business gate downgrade"
+  }
+}

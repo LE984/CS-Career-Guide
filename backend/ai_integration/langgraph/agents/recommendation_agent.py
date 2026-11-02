@@ -4,7 +4,7 @@ from langchain_core.tools import Tool
 from ..tools.time_tool import get_time
 from ..tools import keyword_search_tool, semantic_search_tool, read_chunk_tool
 from ..utils.prompt_manager import get_prompt
-import os
+from cs_career_guide.ai_config import get_llm_kwargs
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,14 +12,9 @@ logger = logging.getLogger(__name__)
 def create_recommendation_agent():
     """创建推荐代理"""
     try:
-        api_key = os.getenv('api_key')
-        base_url = os.getenv('base_url')
-        
         llm = ChatOpenAI(
-            model="qwen-turbo-2025-07-15", 
             temperature=0.7,
-            api_key=api_key,
-            base_url=base_url
+            **get_llm_kwargs(),
         )
         
         tools = [
