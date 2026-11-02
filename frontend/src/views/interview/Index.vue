@@ -3,27 +3,27 @@
     <main class="career-container interview-workspace">
       <header class="interview-heading">
         <div><p class="career-eyebrow">求职准备 / AI 模拟面试</p><h1>{{ isInterviewing ? '专注回答，慢慢把经历讲清楚' : '开始一场模拟面试' }}</h1><p>围绕自己的简历与项目练习表达，结束后查看整场复盘。</p></div>
-        <span class="interview-duration">{{ selectedDuration }} 分钟 · 文字 / 语音回答</span>
+        <router-link to="/users" class="career-button interview-history-link"><WorkspaceIcon name="clock" />练习记录<WorkspaceIcon name="arrow" /></router-link>
       </header>
       <div class="interview-layout" :class="{ 'is-running': isInterviewing, 'is-expanded': isExpanded }">
         <section ref="workspaceRef" class="interview-main" :role="isExpanded ? 'dialog' : null" :aria-modal="isExpanded ? true : null" aria-label="模拟面试" @keydown="handleWorkspaceKeydown">
           <div class="interview-chat-toolbar">
-            <span>面试对话</span>
+            <span class="interview-panel-title"><WorkspaceIcon name="message" />{{ isInterviewing ? '面试进行中' : '练习准备' }}<small v-if="!isInterviewing">文字优先 · 语音可选</small></span>
             <div class="interview-playback-controls">
               <template v-if="isInterviewing"><span class="interview-clock" role="timer" aria-label="面试剩余时间"><span>剩余时间</span><strong class="interview-timer">{{ formatTime(remainingTime) }}</strong><span v-if="isPaused">已暂停</span></span><button type="button" class="career-button" @click="pauseInterview">{{ isPaused ? '继续面试' : '暂停面试' }}</button><button type="button" class="career-button end-interview" @click="hangupInterview">结束面试</button></template>
               <label v-if="ENABLE_TTS"><input v-model="voiceOutputEnabled" type="checkbox" @change="toggleVoiceOutput" />语音播报</label>
               <button v-if="ENABLE_TTS && voiceOutputEnabled && isInterviewing" type="button" class="career-button" :disabled="isPaused" @click="togglePlayback">{{ isPlaybackPaused ? '继续播报' : '暂停播报' }}</button>
-              <button ref="resumeToggleRef" type="button" class="career-button" :aria-expanded="resumeOpen" aria-controls="interview-resume" @click="toggleResume">{{ resumeOpen ? '收起简历' : '查看简历' }}</button>
-              <button type="button" class="career-button" :aria-expanded="isExpanded" @click="isExpanded = !isExpanded">{{ isExpanded ? '还原对话' : '放大对话' }}</button>
+              <button ref="resumeToggleRef" type="button" class="career-button" :aria-expanded="resumeOpen" aria-controls="interview-resume" @click="toggleResume"><WorkspaceIcon name="file" />{{ resumeOpen ? '收起简历' : '查看简历' }}</button>
+              <button type="button" class="career-button" :aria-expanded="isExpanded" @click="isExpanded = !isExpanded"><WorkspaceIcon name="expand" />{{ isExpanded ? '还原对话' : '放大对话' }}</button>
             </div>
           </div>
           <div class="interview-stage" :class="{ 'has-resume': resumeOpen }">
           <div class="interview-conversation" :inert="resumeOpen && isNarrow">
           <div v-if="!isInterviewing" class="interview-setup">
             <div class="interview-section-heading"><span class="section-node" aria-hidden="true"></span><div><h2>选择面试风格</h2><p>根据这次想练习的内容选择，开始前可以更改。</p></div></div>
-            <div class="interview-style-grid"><button v-for="style in interviewStyleOptions" :key="style.id" type="button" class="interview-style" :class="{ 'is-selected': selectedStyle === style.id }" :aria-pressed="selectedStyle === style.id" @click="selectedStyle = style.id"><span class="style-radio" aria-hidden="true"></span><div><strong>{{ style.title }}</strong><p>{{ style.description }}</p></div><span v-if="selectedStyle === style.id" class="selected-caption">已选择</span></button></div>
+            <div class="interview-style-grid"><button v-for="style in interviewStyleOptions" :key="style.id" type="button" class="interview-style" :class="{ 'is-selected': selectedStyle === style.id }" :aria-pressed="selectedStyle === style.id" @click="selectedStyle = style.id"><WorkspaceIcon class="style-icon" :name="{ gentle: 'message', technical: 'code', pressure: 'compass', behavioral: 'user' }[style.id]" /><div><strong>{{ style.title }}</strong><p>{{ style.description }}</p></div><span class="selected-caption" :class="{ active: selectedStyle === style.id }"><WorkspaceIcon v-if="selectedStyle === style.id" name="check" /><span class="sr-only">{{ selectedStyle === style.id ? '已选择' : '未选择' }}</span></span></button></div>
             <div class="interview-duration-choice"><label for="interview-duration">面试时长</label><select id="interview-duration" v-model.number="selectedDuration"><option v-for="minutes in INTERVIEW_DURATIONS" :key="minutes" :value="minutes">{{ minutes }} 分钟</option></select><span>按自己的节奏选择，随时可以提前结束。</span></div>
-            <div class="interview-start"><p>建议先保存简历，面试会结合已有的简历内容展开。</p><button type="button" class="career-button career-button-primary" @click="startInterview">开始面试 →</button></div>
+            <div class="interview-start"><p>建议先保存简历，面试会结合已有的简历内容展开。</p><button type="button" class="career-button career-button-primary" @click="startInterview">开始面试<WorkspaceIcon name="arrow" /></button></div>
           </div>
           <div v-if="isInterviewing || messages.length" ref="chatRef" class="interview-chat" aria-label="面试对话" aria-live="polite" aria-relevant="additions text" @scroll="trackConversationScroll">
             <div v-for="(msg,index) in messages" :key="index" class="interview-message" :class="{ 'is-user': msg.type !== 'ai' }">
@@ -36,11 +36,11 @@
             <label class="sr-only" for="interview-answer">你的面试回答</label>
             <textarea id="interview-answer" ref="inputRef" v-model="inputMessage" placeholder="输入你的回答，也可以点击麦克风使用语音…" :disabled="isPaused" @keydown="handleAnswerKeydown"></textarea>
             <p v-if="audioStatus" class="audio-status" role="status">{{ audioStatus }}</p>
-            <div class="interview-input-actions"><span>{{ isLoading ? '回复中也可编辑下一条回答' : 'Enter 发送 · Shift+Enter 换行' }}</span><div><button type="button" class="career-button microphone-button" :disabled="isPaused || isStartingRecording" :class="{ 'is-recording': isRecording }" :aria-pressed="isRecording" :aria-label="isRecording ? '关闭麦克风' : '开启麦克风'" @click="toggleRecording"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>{{ isStartingRecording ? '开启中…' : isRecording ? '关闭麦克风' : '语音回答' }}</button><button type="button" class="career-button career-button-primary" :disabled="isLoading || isPaused || !inputMessage.trim()" @click="sendMessage">{{ isLoading ? '回复中…' : '发送回答 →' }}</button></div></div>
+            <div class="interview-input-actions"><span>{{ isLoading ? '回复中也可编辑下一条回答' : 'Enter 发送 · Shift+Enter 换行' }}</span><div><button type="button" class="career-button microphone-button" :disabled="isPaused || isStartingRecording" :class="{ 'is-recording': isRecording }" :aria-pressed="isRecording" :aria-label="isRecording ? '关闭麦克风' : '开启麦克风'" @click="toggleRecording"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>{{ isStartingRecording ? '开启中…' : isRecording ? '关闭麦克风' : '语音回答' }}</button><button type="button" class="career-button career-button-primary" :disabled="isLoading || isPaused || !inputMessage.trim()" @click="sendMessage">{{ isLoading ? '回复中…' : '发送回答' }}<WorkspaceIcon name="arrow" /></button></div></div>
           </div>
           </div>
           <aside v-if="resumeOpen" id="interview-resume" class="interview-resume" aria-label="简历观览">
-            <header><div><span class="resume-caption">面试参考</span><h2>我的简历</h2></div><button ref="resumeCloseRef" type="button" class="career-button" aria-label="关闭简历观览" @click="toggleResume">关闭 ×</button></header>
+            <header><div><span class="resume-caption">面试参考</span><h2>我的简历</h2></div><button ref="resumeCloseRef" type="button" class="career-button" aria-label="关闭简历观览" @click="toggleResume"><WorkspaceIcon name="close" />关闭</button></header>
             <ResumePreview />
           </aside>
           </div>
@@ -48,13 +48,16 @@
         <aside class="interview-aside"><section><h2>这次，试着把这些讲清楚</h2><ol><li><span>01</span><div><h3>具体做了什么</h3><p>从项目背景开始，说明自己负责的部分。</p></div></li><li><span>02</span><div><h3>为什么这样做</h3><p>解释选择依据，比较考虑过的其他方案。</p></div></li><li><span>03</span><div><h3>结果如何验证</h3><p>说清测试方式和观察结果，不确定的地方如实说明。</p></div></li></ol></section><section class="interview-help"><h2>开始前的小检查</h2><p>已保存最新简历<br />找一个适合说话的环境<br />语音回答时允许麦克风权限</p><router-link to="/resume" class="career-link">查看并完善简历 →</router-link></section><details class="interview-tips"><summary>回答问题的小提示</summary><p>按“背景 → 任务 → 行动 → 结果”组织经历。不会的问题可以说明思路，不需要编造经历和数字。</p></details></aside>
       </div>
     </main>
-    <div v-if="showReview" class="interview-review-overlay" role="dialog" aria-modal="true" aria-labelledby="interview-review-title">
-      <section class="interview-review-dialog"><header><h2 id="interview-review-title">面试复盘报告</h2><button type="button" class="career-button" aria-label="关闭复盘报告" @click="showReview = false">关闭 ×</button></header><div class="interview-review-body"><div v-if="!reviewContent" class="review-loading" role="status"><span class="loading loading-spinner loading-md"></span>正在生成整场复盘，请稍候…</div><p v-else><StreamingText :text="interviewPlainText(reviewContent)" :active="isReviewLoading" /></p></div><footer><button class="career-button career-button-primary" @click="showReview = false">关闭报告</button></footer></section>
-    </div>
+    <WorkspaceDialog :open="showReview" title="面试复盘报告" title-id="interview-review-title" caption="回顾这次练习，找到下一步" @close="showReview = false">
+      <div class="interview-review-body"><div v-if="!reviewContent" class="review-loading" role="status"><span class="loading loading-spinner loading-md"></span>正在生成整场复盘，请稍候…</div><p v-else><StreamingText :text="interviewPlainText(reviewContent)" :active="isReviewLoading" /></p></div>
+      <template #footer><router-link to="/users" class="career-button">查看练习记录<WorkspaceIcon name="arrow" /></router-link><button type="button" class="career-button career-button-primary" @click="showReview = false">关闭报告</button></template>
+    </WorkspaceDialog>
   </div>
 </template>
 
 <script setup>
+import WorkspaceIcon from '@/components/WorkspaceIcon.vue'
+import WorkspaceDialog from '@/components/WorkspaceDialog.vue'
 import { VAD_ASSET_BASE_URL, ENABLE_TTS } from '@/config'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -1120,4 +1123,102 @@ const interviewStyleOptions = [
     justify-content: flex-end;
   }
 }
+
+/* 与简历和个人中心统一的练习工作台。 */
+.interview-page { padding: 44px 0 64px; }
+.interview-heading { align-items: center; margin-bottom: 32px; }
+.interview-heading h1 { font-size: clamp(28px,3vw,38px); line-height: 1.4; margin: 9px 0 12px; }
+.interview-page .career-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 9px; min-height: 44px; }
+.interview-history-link { flex-shrink: 0; font-size: 13px; }
+.interview-layout { grid-template-columns: minmax(0,1fr) 290px; gap: 28px; }
+.interview-main { border-radius: 18px; }
+.interview-chat-toolbar { border-radius: 18px 18px 0 0; padding: 17px 24px; background: #fcfdf9; }
+.interview-panel-title { display: flex; align-items: center; gap: 9px; color: #35432e; font-size: 14px; }
+.interview-panel-title small { color: var(--career-muted); font-size: 11px; margin-left: 5px; }
+.interview-playback-controls { gap: 8px; }
+.interview-playback-controls .career-button { min-height: 38px; }
+.interview-playback-controls svg { width: 15px; height: 15px; }
+.interview-setup { padding: 26px; }
+.interview-section-heading { gap: 0; }
+.section-node { display: none; }
+.interview-section-heading h2 { font-size: 22px; }
+.interview-style-grid { gap: 12px; margin-top: 20px; }
+.interview-style { flex-direction: row; gap: 14px; padding: 20px; border-radius: 14px; min-height: 136px; }
+.interview-style > div { padding-right: 15px; }
+.interview-style:hover { border-color: #a6b795; background: #fafcf6; }
+.interview-style.is-selected { border-color: #748963; background: #f0f5e9; box-shadow: inset 0 0 0 1px #748963; }
+.style-icon { width: 24px; height: 24px; padding: 8px; box-sizing: content-box; background: #f0f3e9; border-radius: 10px; color: #536746; }
+.interview-style strong { font-size: 17px; }
+.interview-style p { margin-top: 7px; font-size: 13px; }
+.selected-caption { top: 22px; right: 22px; width: 20px; height: 20px; border: 1px solid #d2dbca; border-radius: 50%; display: grid; place-items: center; }
+.selected-caption.active { color: white; background: #536746; border-color: #536746; }
+.selected-caption svg { width: 13px; height: 13px; }
+.interview-duration-choice { margin-top: 20px; padding: 14px; background: #f8f9f4; border: 1px solid #e6eadf; border-radius: 12px; }
+.interview-duration-choice > label { color: #35432e; font-weight: 500; }
+.interview-duration-choice select { min-height: 44px; border-radius: 8px; border-color: #d2dbca; }
+.interview-start { margin-top: 22px; padding-top: 22px; }
+.interview-start p { max-width: 330px; }
+.interview-start .career-button { min-width: 144px; }
+.interview-aside > section, .interview-tips { border-radius: 16px; padding: 24px; }
+.interview-aside h2 { font-size: 15px; }
+.interview-aside ol { gap: 24px; }
+.interview-aside li > span { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border-radius: 8px; background: #eff3e8; color: #647a51; flex: none; }
+.interview-aside h3 { font-size: 14px; }
+.interview-aside p { font-size: 12px; }
+.interview-aside .interview-help { background: #eef3e6; border-color: #dce5d0; }
+.interview-help .career-link { color: #445a35; }
+.interview-tips summary { min-height: 26px; }
+.interview-conversation { border-radius: 0 0 18px 18px; }
+.interview-message-avatar { border-radius: 10px; width: 34px; height: 34px; }
+.interview-message-label { color: #69725e; }
+.is-user .interview-message-body > p { border-radius: 0 14px 14px 14px; background: #f1f5eb; border-color: #e0e7d7; }
+.interview-input { border-radius: 0 0 18px 18px; padding: 20px 24px; }
+.interview-input textarea { min-height: 96px; border-radius: 10px; background: #fafbf7; font-size: 15px; }
+.interview-input textarea::placeholder { color: #818b77; }
+.interview-input-actions > span { color: #727d67; }
+.interview-input-actions .career-button { min-height: 42px; }
+.recording-state { flex-wrap: wrap; color: #69725e; }
+.interview-resume { background: #f6f8f0; }
+.is-expanded .interview-input, .is-expanded .interview-chat-toolbar { border-radius: 0; }
+.is-expanded .interview-main { border-radius: 0; }
+.interview-review-body { padding: 0; max-height: none; }
+@media(max-width:1100px) {
+ .interview-heading { flex-direction: row; align-items: flex-start; }
+ .interview-layout { grid-template-columns: minmax(0,1fr); }
+ .interview-aside { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .interview-aside > section:first-child { grid-row: span 2; }
+}
+@media(max-width:760px) {
+ .interview-page { padding: 28px 0 40px; }
+ .interview-workspace { width: calc(100% - 32px); }
+ .interview-heading { flex-direction: column; gap: 16px; }
+ .interview-heading > div > p:last-child { font-size: 13px; }
+ .interview-panel-title small { display: none; }
+ .interview-chat-toolbar { padding: 15px; gap: 12px; }
+ .interview-playback-controls { width: 100%; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .interview-playback-controls .career-button { width: 100%; white-space: nowrap; }
+ .interview-setup { padding: 22px 16px; }
+ .interview-section-heading h2 { font-size: 20px; }
+ .interview-style-grid { gap: 12px; margin-top: 20px; }
+ .interview-style { min-height: 130px; padding: 18px; gap: 10px; flex-direction: row; align-items: flex-start; }
+ .style-icon { width: 21px; height: 21px; padding: 9px; border-radius: 9px; }
+ .interview-style > div { padding-right: 16px; }
+ .interview-style strong { font-size: 16px; }
+ .interview-style p { font-size: 12px; }
+ .selected-caption { top: 18px; right: 14px; width: 16px; height: 16px; }
+ .interview-duration-choice { padding: 14px; gap: 10px; }
+ .interview-duration-choice > span { width: 100%; }
+ .interview-start { align-items: stretch; gap: 14px; }
+ .interview-start .career-button { width: 100%; }
+ .interview-aside { grid-template-columns: 1fr; }
+ .interview-aside > section:first-child { grid-row: auto; }
+ .interview-aside > section, .interview-tips { padding: 22px; }
+ .interview-input { padding: 16px; }
+ .interview-input textarea { font-size: 16px; min-height: 86px; }
+ .interview-input-actions .career-button { flex: 1; font-size: 12px; padding-inline: 10px; }
+ .recording-state { font-size: 11px; }
+ .interview-clock { width: 100%; grid-column: 1/-1; }
+ .is-running .interview-main { height: max(620px,calc(100dvh - 180px)); }
+}
+
 </style>

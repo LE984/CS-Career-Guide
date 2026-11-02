@@ -1,13 +1,13 @@
 <template>
-  <div class="resume-page text-gray-900">
+  <div class="resume-page text-gray-900" :class="{ 'show-mobile-preview': mobilePane === 'preview' }">
     <main class="career-container resume-workspace">
       <div class="resume-heading">
         <div class="resume-toolbar">
-          <div><p class="career-eyebrow">求职准备 / 我的简历</p><h1>简历工作台</h1><p class="resume-subtitle">左侧整理经历，右侧实时预览。保存后可以继续编辑，或带着这份简历练习面试。</p></div>
+          <div><p class="career-eyebrow">求职准备 / 我的简历</p><h1>简历工作台</h1><p class="resume-subtitle">把经历整理成清晰的表达。边编辑、边预览，准备好你的下一次机会。</p></div>
           <div class="resume-actions">
-            <button type="button" @click="saveResume" class="career-button" :disabled="isSaving">{{ isSaving ? '同步中…' : '保存草稿' }}</button>
-            <button type="button" @click="exportPDF" class="career-button career-button-primary">导出简历 ↓</button>
-            <button type="button" @click="goToInterview" class="career-button">模拟面试 →</button>
+            <button type="button" @click="saveResume" class="career-button" :disabled="isSaving"><WorkspaceIcon name="save" />{{ isSaving ? '同步中…' : '保存简历' }}</button>
+            <button type="button" @click="exportPDF" class="career-button career-button-primary"><WorkspaceIcon name="download" />导出 PDF</button>
+            <button type="button" @click="goToInterview" class="career-button">模拟面试<WorkspaceIcon name="arrow" /></button>
           </div>
         </div>
         <p v-if="saveNotice" role="status" class="resume-save-notice" :class="{ 'is-error': saveFailed }">{{ saveNotice }}</p>
@@ -25,18 +25,24 @@
         </div>
       </div>
 
+      <div class="resume-workspace-bar">
+        <div><WorkspaceIcon name="file" /><span>整理简历</span><small>内容以你的真实经历为准</small></div>
+        <div class="resume-mobile-switch" role="group" aria-label="简历视图"><button type="button" :aria-pressed="mobilePane === 'edit'" @click="mobilePane = 'edit'"><WorkspaceIcon name="edit" />编辑</button><button type="button" :aria-pressed="mobilePane === 'preview'" @click="mobilePane = 'preview'"><WorkspaceIcon name="eye" />预览</button></div>
+        <span class="resume-preview-hint"><WorkspaceIcon name="eye" />实时预览</span>
+      </div>
+      <nav class="resume-section-nav" aria-label="简历章节"><button v-for="section in resumeSections" :key="section.id" type="button" @click="navigateSection(section.id)">{{ section.label }}</button></nav>
       <!-- 左右分栏布局 -->
       <div class="resume-columns">
         <!-- 左侧编辑区域 -->
         <div class="resume-editor" aria-label="简历编辑区">
           <!-- 基本信息 -->
-          <div class="mb-8">
+          <div id="resume-section-basic" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
                 基本信息
               </h2>
-              <button @click="toggleBasicInfo" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+              <button @click="toggleBasicInfo" :aria-expanded="showBasicInfo" :aria-label="(showBasicInfo ? '收起' : '展开') + '基本信息'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                 {{ showBasicInfo ? '隐藏' : '显示' }}
               </button>
             </div>
@@ -45,9 +51,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">头像</label>
                 <div class="flex flex-col items-center">
                   <div class="w-24 h-24 border border-gray-300 flex items-center justify-center mb-2 overflow-hidden">
-                    <img v-if="avatarPreview || resume.avatar_url" :src="avatarPreview || resume.avatar_url" class="w-full h-full object-cover" alt="头像"/>
+                    <img v-if="avatarPreview || resume.avatar_url" :src="avatarPreview || resume.avatar_url" class="w-full h-full object-cover" alt="头像"/><WorkspaceIcon v-else name="user" class="resume-avatar-placeholder" />
                   </div>
-                  <button @click="triggerAvatarUpload" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                  <button @click="triggerAvatarUpload" :disabled="uploadingAvatar" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
                     {{ uploadingAvatar ? '上传中...' : '上传头像' }}
                   </button>
                   <button v-if="resume.avatar_url" @click="removeAvatar" class="text-sm text-red-600 hover:text-red-800 font-medium mt-1">
@@ -57,43 +63,43 @@
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
-                <input v-model="resume.name" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label for="resume-resume-name" class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                <input id="resume-resume-name" v-model="resume.name" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">意向岗位</label>
-                <input v-model="resume.target_position" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label for="resume-resume-target-position" class="block text-sm font-medium text-gray-700 mb-1">意向岗位</label>
+                <input id="resume-resume-target-position" v-model="resume.target_position" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">电话</label>
-                <input v-model="resume.phone" type="tel" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label for="resume-resume-phone" class="block text-sm font-medium text-gray-700 mb-1">电话</label>
+                <input id="resume-resume-phone" v-model="resume.phone" type="tel" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
-                <input v-model="resume.email" type="email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label for="resume-resume-email" class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                <input id="resume-resume-email" v-model="resume.email" type="email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>
               <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">地址</label>
-                <input v-model="resume.address" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label for="resume-resume-address" class="block text-sm font-medium text-gray-700 mb-1">地址</label>
+                <input id="resume-resume-address" v-model="resume.address" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
               </div>
             </div>
           </div>
 
           <!-- 个人自评 -->
-          <div class="mb-8">
+          <div id="resume-section-evaluation" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
                 个人自评
               </h2>
-              <button @click="toggleSelfEvaluation" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+              <button @click="toggleSelfEvaluation" :aria-expanded="showSelfEvaluation" :aria-label="(showSelfEvaluation ? '收起' : '展开') + '个人自评'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                 {{ showSelfEvaluation ? '隐藏' : '显示' }}
               </button>
             </div>
             <div v-if="showSelfEvaluation" class="space-y-4">
               <div class="border border-gray-200 rounded-md p-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">编辑内容（支持 Markdown 语法）</label>
-                <textarea
+                <label for="resume-resume-self-evaluation" class="block text-sm font-medium text-gray-700 mb-2">编辑内容（支持 Markdown 语法）</label>
+                <textarea id="resume-resume-self-evaluation"
                   v-model="resume.self_evaluation"
                   rows="6"
                   placeholder="例如：&#10;- 熟练掌握 Java/Python&#10;- 具备良好的团队协作能力&#10;- 热爱技术，持续学习"
@@ -105,7 +111,7 @@
           </div>
 
           <!-- 教育背景 -->
-          <div class="mb-8">
+          <div id="resume-section-education" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
@@ -115,7 +121,7 @@
                 <button @click="addEducation" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   + 添加
                 </button>
-                <button @click="toggleEducation" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <button @click="toggleEducation" :aria-expanded="showEducation" :aria-label="(showEducation ? '收起' : '展开') + '教育背景'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   {{ showEducation ? '隐藏' : '显示' }}
                 </button>
               </div>
@@ -125,23 +131,23 @@
                 <div class="flex justify-between items-start">
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">学校</label>
-                      <input v-model="edu.school" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <label :for="'resume-edu-school-' + index" class="block text-sm font-medium text-gray-700 mb-1">学校</label>
+                      <input :id="'resume-edu-school-' + index" v-model="edu.school" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">专业</label>
-                      <input v-model="edu.major" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <label :for="'resume-edu-major-' + index" class="block text-sm font-medium text-gray-700 mb-1">专业</label>
+                      <input :id="'resume-edu-major-' + index" v-model="edu.major" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">学历</label>
-                      <input v-model="edu.degree" type="text" placeholder="例如：本科、硕士、博士" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <label :for="'resume-edu-degree-' + index" class="block text-sm font-medium text-gray-700 mb-1">学历</label>
+                      <input :id="'resume-edu-degree-' + index" v-model="edu.degree" type="text" placeholder="例如：本科、硕士、博士" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">时间</label>
-                      <input v-model="edu.period" type="text" placeholder="2020.09-2024.06" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <label :for="'resume-edu-period-' + index" class="block text-sm font-medium text-gray-700 mb-1">时间</label>
+                      <input :id="'resume-edu-period-' + index" v-model="edu.period" type="text" placeholder="2020.09-2024.06" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                   </div>
-                  <button @click="removeEducation(index)" class="text-red-500 hover:text-red-700 ml-4">
+                  <button @click="removeEducation(index)" :aria-label="'删除第 ' + (index + 1) + ' 条教育经历'" class="text-red-500 hover:text-red-700 ml-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -155,7 +161,7 @@
           </div>
 
           <!-- 实习经历 -->
-          <div class="mb-8">
+          <div id="resume-section-experience" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
@@ -165,7 +171,7 @@
                 <button @click="addExperience" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   + 添加
                 </button>
-                <button @click="toggleExperience" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <button @click="toggleExperience" :aria-expanded="showExperience" :aria-label="(showExperience ? '收起' : '展开') + '实习经历'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   {{ showExperience ? '隐藏' : '显示' }}
                 </button>
               </div>
@@ -176,24 +182,24 @@
                   <div class="w-full">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">公司</label>
-                        <input v-model="exp.company" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-exp-company-' + index" class="block text-sm font-medium text-gray-700 mb-1">公司</label>
+                        <input :id="'resume-exp-company-' + index" v-model="exp.company" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">职位</label>
-                        <input v-model="exp.position" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-exp-position-' + index" class="block text-sm font-medium text-gray-700 mb-1">职位</label>
+                        <input :id="'resume-exp-position-' + index" v-model="exp.position" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">时间</label>
-                        <input v-model="exp.period" type="text" placeholder="2023.06-至今" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-exp-period-' + index" class="block text-sm font-medium text-gray-700 mb-1">时间</label>
+                        <input :id="'resume-exp-period-' + index" v-model="exp.period" type="text" placeholder="2023.06-至今" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">工作描述</label>
-                      <textarea v-model="exp.description" rows="3" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                      <label :for="'resume-exp-description-' + index" class="block text-sm font-medium text-gray-700 mb-1">工作描述</label>
+                      <textarea :id="'resume-exp-description-' + index" v-model="exp.description" rows="3" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
                   </div>
-                  <button @click="removeExperience(index)" class="text-red-500 hover:text-red-700 ml-4">
+                  <button @click="removeExperience(index)" :aria-label="'删除第 ' + (index + 1) + ' 条实习经历'" class="text-red-500 hover:text-red-700 ml-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -207,7 +213,7 @@
           </div>
 
           <!-- 项目经验 -->
-          <div class="mb-8">
+          <div id="resume-section-projects" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
@@ -217,7 +223,7 @@
                 <button @click="addProject" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   + 添加
                 </button>
-                <button @click="toggleProjects" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <button @click="toggleProjects" :aria-expanded="showProjects" :aria-label="(showProjects ? '收起' : '展开') + '项目经验'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   {{ showProjects ? '隐藏' : '显示' }}
                 </button>
               </div>
@@ -228,29 +234,29 @@
                   <div class="w-full">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">项目名称</label>
-                        <input v-model="project.name" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-project-name-' + index" class="block text-sm font-medium text-gray-700 mb-1">项目名称</label>
+                        <input :id="'resume-project-name-' + index" v-model="project.name" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">担任角色</label>
-                        <input v-model="project.role" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-project-role-' + index" class="block text-sm font-medium text-gray-700 mb-1">担任角色</label>
+                        <input :id="'resume-project-role-' + index" v-model="project.role" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">时间</label>
-                        <input v-model="project.period" type="text" placeholder="2023.06-2023.09" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-project-period-' + index" class="block text-sm font-medium text-gray-700 mb-1">时间</label>
+                        <input :id="'resume-project-period-' + index" v-model="project.period" type="text" placeholder="2023.06-2023.09" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">项目链接</label>
-                        <input v-model="project.url" type="url" placeholder="https://github.com/xxx/xxx" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-project-url-' + index" class="block text-sm font-medium text-gray-700 mb-1">项目链接</label>
+                        <input :id="'resume-project-url-' + index" v-model="project.url" type="url" placeholder="https://github.com/xxx/xxx" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">项目描述（支持 Markdown 语法）</label>
-                      <textarea v-model="project.description" rows="4"  class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"></textarea>
+                      <label :for="'resume-project-description-' + index" class="block text-sm font-medium text-gray-700 mb-1">项目描述（支持 Markdown 语法）</label>
+                      <textarea :id="'resume-project-description-' + index" v-model="project.description" rows="4"  class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"></textarea>
                       <p class="text-xs text-gray-500 mt-1">支持 **加粗**、*斜体*、`代码`、- 列表 等 Markdown 语法</p>
                     </div>
                   </div>
-                  <button @click="removeProject(index)" class="text-red-500 hover:text-red-700 ml-4">
+                  <button @click="removeProject(index)" :aria-label="'删除第 ' + (index + 1) + ' 条项目经历'" class="text-red-500 hover:text-red-700 ml-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -267,20 +273,20 @@
           </div>
 
           <!-- 专业技能 -->
-          <div class="mb-8">
+          <div id="resume-section-skills" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
                 专业技能
               </h2>
-              <button @click="toggleSkills" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+              <button @click="toggleSkills" :aria-expanded="showSkills" :aria-label="(showSkills ? '收起' : '展开') + '专业技能'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                 {{ showSkills ? '隐藏' : '显示' }}
               </button>
             </div>
             <div v-if="showSkills" class="space-y-4">
               <div class="border border-gray-200 rounded-md p-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">技能描述（支持 Markdown 语法）</label>
-                <textarea
+                <label for="resume-resume-skills" class="block text-sm font-medium text-gray-700 mb-2">技能描述（支持 Markdown 语法）</label>
+                <textarea id="resume-resume-skills"
                   v-model="resume.skills"
                   rows="4"
                   placeholder="- 编程语言: Java, Python, Go&#10;- 框架: Spring Boot, Vue3, React&#10;- 工具: Git, Docker, Kubernetes&#10;- 数据库: MySQL, Redis, MongoDB"
@@ -292,7 +298,7 @@
           </div>
 
           <!-- 证书认证 -->
-          <div class="mb-8">
+          <div id="resume-section-certificates" class="mb-8 resume-section" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-bold text-gray-800 flex items-center">
                 <span class="w-2 h-6 bg-blue-500 mr-2"></span>
@@ -302,7 +308,7 @@
                 <button @click="addCertificate" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   + 添加
                 </button>
-                <button @click="toggleCertificates" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <button @click="toggleCertificates" :aria-expanded="showCertificates" :aria-label="(showCertificates ? '收起' : '展开') + '证书认证'" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   {{ showCertificates ? '隐藏' : '显示' }}
                 </button>
               </div>
@@ -313,25 +319,25 @@
                   <div class="w-full">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">证书名称</label>
-                        <input v-model="cert.name" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-cert-name-' + index" class="block text-sm font-medium text-gray-700 mb-1">证书名称</label>
+                        <input :id="'resume-cert-name-' + index" v-model="cert.name" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">颁发机构</label>
-                        <input v-model="cert.issuer" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-cert-issuer-' + index" class="block text-sm font-medium text-gray-700 mb-1">颁发机构</label>
+                        <input :id="'resume-cert-issuer-' + index" v-model="cert.issuer" type="text" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">获得日期</label>
-                        <input v-model="cert.period" type="text" placeholder="2024.06" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label :for="'resume-cert-period-' + index" class="block text-sm font-medium text-gray-700 mb-1">获得日期</label>
+                        <input :id="'resume-cert-period-' + index" v-model="cert.period" type="text" placeholder="2024.06" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       </div>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">描述（支持 Markdown 语法）</label>
-                      <textarea v-model="cert.description" rows="3" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"></textarea>
+                      <label :for="'resume-cert-description-' + index" class="block text-sm font-medium text-gray-700 mb-1">描述（支持 Markdown 语法）</label>
+                      <textarea :id="'resume-cert-description-' + index" v-model="cert.description" rows="3" class="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"></textarea>
                       <p class="text-xs text-gray-500 mt-1">支持 **加粗**、*斜体*、`代码`、- 列表 等 Markdown 语法</p>
                     </div>
                   </div>
-                  <button @click="removeCertificate(index)" class="text-red-500 hover:text-red-700 ml-4">
+                  <button @click="removeCertificate(index)" :aria-label="'删除第 ' + (index + 1) + ' 条证书'" class="text-red-500 hover:text-red-700 ml-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -350,15 +356,15 @@
 
         <!-- 右侧预览区域 -->
         <div class="resume-preview" aria-label="简历预览">
-          <div class="resume-preview-heading"><strong>简历预览</strong><span>与左侧编辑内容同步</span></div>
+          <div class="resume-preview-heading"><strong><WorkspaceIcon name="file" />简历预览</strong><span>与编辑内容实时同步</span></div>
           <div class="resume-preview-scroll">
           <div class="resume-paper">
             <!-- 预览头部 -->
             <div class="border-b border-gray-200 pb-4 mb-6 flex items-start">
-              <div class="w-20 h-20 border border-gray-300 flex-shrink-0 overflow-hidden mr-4">
+              <div v-if="avatarPreview || resume.avatar_url" class="w-20 h-20 border border-gray-300 flex-shrink-0 overflow-hidden mr-4">
                 <img v-if="avatarPreview || resume.avatar_url" :src="avatarPreview || resume.avatar_url" class="w-full h-full object-cover" alt="头像"/>
               </div>
-              <div class="flex-grow">
+              <div class="flex-grow min-w-0">
                 <h2 class="text-xl font-bold text-gray-900">{{ resume.name || '姓名' }}</h2>
                 <div class="text-sm">求职意向：{{ resume.target_position || '意向岗位' }}</div>
                 <div class="flex flex-wrap gap-4 mt-2 text-gray-600 text-sm">
@@ -464,7 +470,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
+import WorkspaceIcon from '@/components/WorkspaceIcon.vue'
 import { useRouter } from 'vue-router'
 import { marked } from 'marked'
 
@@ -477,7 +484,15 @@ import jsPDF from 'jspdf'
 
 const router = useRouter()
 
-const showPreview = ref(false)
+const mobilePane = ref('edit')
+const resumeSections = [{id:'basic', label:'基本信息'}, {id:'evaluation', label:'个人自评'}, {id:'education', label:'教育背景'}, {id:'experience', label:'实习经历'}, {id:'projects', label:'项目经验'}, {id:'skills', label:'专业技能'}, {id:'certificates', label:'证书认证'}]
+async function navigateSection(id) {
+  mobilePane.value = 'edit'
+  await nextTick()
+  const section = document.getElementById(`resume-section-${id}`)
+  section?.scrollIntoView({ block: 'start', behavior: 'instant' })
+  section?.focus({ preventScroll: true })
+}
 const avatarInput = ref(null)
 const avatarPreview = ref(null)
 const uploadingAvatar = ref(false)
@@ -1499,4 +1514,66 @@ onMounted(async () => {
     padding: 24px 20px;
   }
 }
+
+/* 简历工作台：保留原编辑与导出逻辑，只调整页面组织。 */
+.resume-page { padding: 44px 0 64px; }
+.resume-toolbar h1 { font-size: clamp(28px,3vw,38px); margin: 9px 0 12px; line-height: 1.4; }
+.resume-toolbar { align-items: center; }
+.resume-subtitle { font-size: 14px; max-width: 540px; }
+.resume-actions { flex-wrap: wrap; }
+.resume-actions .career-button { display: inline-flex; gap: 8px; border-radius: 9px; min-height: 44px; align-items: center; justify-content: center; }
+.resume-save-notice { margin-top: 18px; background: #f0f3e9; border-color: #d5dfca; color: #43543a; border-radius: 10px; }
+.resume-workspace-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--career-border); padding-top: 24px; margin-top: 30px; }
+.resume-workspace-bar > div:first-child, .resume-preview-hint { display: flex; gap: 9px; align-items: center; font-size: 14px; }
+.resume-workspace-bar small, .resume-preview-hint { color: var(--career-muted); font-size: 12px; }
+.resume-preview-hint { display: inline-flex; }
+.resume-mobile-switch { display: none; }
+.resume-section-nav { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 16px 22px; }
+.resume-section-nav button { min-height: 38px; padding: 7px 13px; background: #f0f3e9; color: #526349; border: 1px solid transparent; border-radius: 7px; font-size: 12px; white-space: nowrap; }
+.resume-section-nav button:hover { border-color: #bbc8ad; background: #e8eedf; }
+.resume-editor { border-radius: 16px; padding: 26px; max-height: min(860px,calc(100dvh - 160px)); min-height: 540px; }
+.resume-section { scroll-margin-top: 22px; outline-offset: 6px; }
+.resume-editor > div { border-color: #e9ece3; padding-bottom: 28px; }
+.resume-editor h2 { font-size: 18px; }
+.resume-editor label { color: #51584c; }
+.resume-editor :is(input,textarea) { border-color: #d4dacd; border-radius: 8px; background: #fdfefb; font-size: 14px; }
+.resume-editor input { min-height: 44px; }
+.resume-editor :is(input,textarea):focus { outline: 2px solid #687c53; outline-offset: 2px; box-shadow: none; }
+.resume-editor :is(.text-blue-600,.text-blue-800) { color: #526349; }
+.resume-editor .text-red-500, .resume-editor .text-red-600 { color: #966044; }
+.resume-editor button { min-height: 36px; }
+.resume-editor button[aria-label^="删除"] { min-width: 36px; border-radius: 7px; background: #faf4ef; margin-left: 8px; }
+.resume-editor .border-gray-200 { border-color: #e1e5db; border-radius: 12px; background: #fcfdf9; }
+.resume-editor .border-dashed { border-color: #cfd7c4; border-radius: 12px; padding-block: 24px; background: #f7f9f2; }
+.resume-editor .w-24.h-24 { border-radius: 14px; background: #f0f3e9; }
+.resume-preview { border-radius: 16px; background: #eef1e7; }
+.resume-preview-heading { padding: 18px 22px; }
+.resume-preview-heading strong { display: flex; align-items: center; gap: 8px; }
+.resume-preview-scroll { max-height: min(800px,calc(100dvh - 220px)); min-height: 480px; padding: 24px; }
+.resume-paper { box-shadow: 0 6px 18px #30372b08; border: 1px solid #e7e9e1; }
+.resume-paper .flex.justify-between { gap: 12px; flex-wrap: wrap; }
+@media(max-width:1100px) { .resume-toolbar { align-items: flex-start; } }
+@media(max-width:760px) {
+ .resume-page { padding: 28px 0 40px; }
+ .resume-workspace { width: calc(100% - 32px); }
+ .resume-subtitle { font-size: 13px; }
+ .resume-actions { width: 100%; gap: 8px; }
+ .resume-actions .career-button { flex: 1; padding-inline: 8px; font-size: 12px; }
+ .resume-workspace-bar { align-items: center; margin-top: 24px; padding-top: 20px; }
+ .resume-workspace-bar small, .resume-preview-hint { display: none; }
+ .resume-mobile-switch { display: flex; background: #edf1e5; border: 1px solid #dce2d3; border-radius: 9px; padding: 3px; }
+ .resume-mobile-switch button { display: flex; align-items: center; gap: 5px; min-height: 38px; padding: 7px 10px; font-size: 12px; border-radius: 6px; }
+ .resume-mobile-switch button[aria-pressed="true"] { background: white; color: #43543a; box-shadow: 0 1px 4px #2028200a; }
+ .resume-mobile-switch svg { width: 15px; height: 15px; }
+ .resume-section-nav { flex-wrap: nowrap; overflow-x: auto; padding-block: 14px 18px; }
+ .resume-editor { padding: 20px 16px; max-height: none; min-height: 0; overflow: visible; }
+ .resume-editor :is(input,textarea) { font-size: 16px; }
+ .resume-page:not(.show-mobile-preview) .resume-preview, .show-mobile-preview .resume-editor { display: none; }
+ .resume-preview-scroll { max-height: none; min-height: 0; padding: 12px; }
+ .resume-paper { min-height: 560px; padding: 24px 18px; }
+ .resume-preview-heading { padding: 16px; }
+ .resume-preview-heading > span { font-size: 10px; }
+ .resume-section { scroll-margin-top: 120px; }
+}
+
 </style>
