@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-r from-white to-purple-100 text-on-surface antialiased">
+  <div class="minimal-page companies-page min-h-screen text-on-surface antialiased">
     <main class="pt-24 pb-24 max-w-7xl mx-auto px-2">
       <!-- Page Header -->
       <header class="mb-16">
@@ -20,7 +20,7 @@
         <div class="lg:col-span-8 space-y-12">
           <!-- Filter & Tabs -->
           <section class="space-y-8">
-            <div class="flex flex-wrap items-center gap-2 p-1 bg-surface-container-low rounded-2xl w-fit">
+            <div class="company-tabs flex flex-wrap items-center gap-2 p-1 bg-surface-container-low rounded-2xl w-fit">
               <button 
                 @click="switchTab('recommended')"
                 :class="activeTab === 'recommended' ? 'px-8 py-2.5 bg-surface-container-lowest text-secondary font-bold rounded-xl shadow-sm rounded-2xl border-2 border-black' : 'px-8 py-2.5 text-on-surface-variant hover:text-secondary transition-all font-medium rounded-2xl border-2 border-black'"

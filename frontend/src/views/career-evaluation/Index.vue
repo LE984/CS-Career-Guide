@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-gradient-to-r from-white to-purple-100 font-body text-on-surface min-h-screen">
+  <div class="minimal-page evaluation-page font-body text-on-surface min-h-screen">
     <main class="pt-24 pb-64">
       <!--Category Navigation -->
       <section class="max-w-7xl mx-auto px-8 mb-10">
@@ -425,7 +425,7 @@
       </section>
     </main>
     <!-- Selection Summary Bar -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-8rem)] max-w-4xl z-50 bg-indigo-600/95 dark:bg-indigo-900/95 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl p-5 editorial-shadow">
+    <div class="evaluation-actionbar">
       <div class="flex flex-col md:flex-row items-center justify-between gap-5">
         <div class="flex items-center gap-5 w-full md:w-auto min-w-0">
           <div class="flex items-center gap-3 whitespace-nowrap text-white">

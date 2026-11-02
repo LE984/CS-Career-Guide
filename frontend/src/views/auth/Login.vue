@@ -1,10 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-base-200">
-    <!-- Background Elements -->
-    <div class="absolute inset-0 bg-gradient-to-r from-white to-purple-100 dark:from-gray-900 dark:to-gray-800 pointer-events-none"></div>
-    <div class="absolute top-[-10%] right-[-5%] w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow pointer-events-none"></div>
-    <div class="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse-slow delay-1000 pointer-events-none"></div>
-
+  <div class="minimal-auth flex items-center justify-center">
     <div class="w-full max-w-md p-8 glass-card relative z-10 animate-fade-in-up">
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent mb-2">欢迎回来</h1>
@@ -13,26 +8,30 @@
       
       <form @submit.prevent="login" class="space-y-6">
         <div class="form-control">
-          <label class="label">
+          <label class="label" for="login-username">
             <span class="label-text font-medium">用户名</span>
           </label>
           <input
             v-model="form.username"
+            id="login-username"
+            autocomplete="username"
             type="text"
-            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            class="input input-bordered w-full"
             placeholder="请输入用户名"
             required
           />
         </div>
         
         <div class="form-control">
-          <label class="label">
+          <label class="label" for="login-password">
             <span class="label-text font-medium">密码</span>
           </label>
           <input
             v-model="form.password"
+            id="login-password"
+            autocomplete="current-password"
             type="password"
-            class="input input-bordered w-full bg-white/50 dark:bg-gray-800/50 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+            class="input input-bordered w-full"
             placeholder="请输入密码"
             required
           />

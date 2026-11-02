@@ -1367,7 +1367,7 @@ onMounted(async () => {
   border-bottom: 0;
 }
 .resume-editor h2 {
-  color: #344054;
+  color: #3d4438;
   font-size: 16px;
   font-weight: 600;
 }
@@ -1384,7 +1384,7 @@ onMounted(async () => {
   border-radius: 5px;
   font-size: 13px;
   background: #fff;
-  color: #27374d;
+  color: #30372b;
 }
 .resume-editor input {
   min-height: 36px;
@@ -1402,7 +1402,7 @@ onMounted(async () => {
   border: 1px solid var(--career-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #edf1f6;
+  background: #eceee5;
 }
 .resume-preview-heading {
   display: flex;
@@ -1413,7 +1413,7 @@ onMounted(async () => {
   background: #fff;
   border-bottom: 1px solid var(--career-border);
   font-size: 13px;
-  color: #475467;
+  color: #59614f;
 }
 .resume-preview-heading strong {
   font-weight: 500;

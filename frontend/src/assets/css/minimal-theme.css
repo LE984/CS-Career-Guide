@@ -1,0 +1,135 @@
+/* 全站极简视觉层：共享色彩、间距与控件，不改变业务状态颜色。 */
+:root {
+  --career-bg: #faf9f6;
+  --career-surface: #ffffff;
+  --career-text: #242723;
+  --career-muted: #6e716a;
+  --career-border: #e1e2db;
+  --career-blue: #333f32;
+  --career-blue-dark: #202b20;
+  --career-blue-soft: #eff2e9;
+  --career-teal: #526349;
+  --career-width: 1200px;
+  --career-nav-height: 80px;
+}
+body { background: var(--career-bg); line-height: 1.65; }
+::selection { background: #dfe8cd; color: #242723; }
+.app-shell { background: var(--career-bg); }
+.app-content { min-height: calc(100dvh - var(--career-nav-height)); }
+.app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4 { font-weight: 600; letter-spacing: -.035em; }
+.app-shell :focus-visible { outline: 2px solid #687c53; outline-offset: 4px; }
+.career-eyebrow { font-size: 12px; letter-spacing: .08em; }
+.career-button { min-height: 44px; border-radius: 5px; padding: 11px 20px; transition: background .18s, border-color .18s, color .18s; }
+.career-button:hover { background: #f1f2eb; border-color: #939b89; }
+.career-button-primary { background: var(--career-blue); color: #fff; border-color: var(--career-blue); }
+.career-button-primary:hover { background: var(--career-blue-dark); border-color: var(--career-blue-dark); }
+.career-button:disabled { opacity: .5; }
+.app-shell .glass-card, .app-shell .glass-effect { background: #fff; backdrop-filter: none; border: 1px solid var(--career-border); border-radius: 8px; box-shadow: none; }
+.app-shell .glass-card:hover { transform: none; box-shadow: none; }
+.app-shell .text-gradient { color: var(--career-text); background: none; }
+.app-shell .btn { border-radius: 5px; box-shadow: none; font-weight: 500; text-transform: none; }
+.app-shell .input, .app-shell .textarea, .app-shell .select { background: #fff; border-color: #d6d9cf; border-radius: 5px; color: var(--career-text); }
+.app-shell .input:focus, .app-shell .textarea:focus, .app-shell .select:focus { border-color: #687c53; }
+/* 避免旧导航的全局 .link 动效挤压表单内的文字链接。 */
+.app-shell .link { display: inline; width: auto; height: auto; border-radius: 0; overflow: visible; }
+.app-shell .link::before { content: none; }
+.app-shell .link:hover, .app-shell .link:focus { width: auto; }
+
+/* 以页面类限定旧页面的调整范围，保留内容、SVG 和状态提示。 */
+.minimal-page { background: var(--career-bg); color: var(--career-text); }
+.minimal-page > main { padding-top: 64px; padding-bottom: 80px; }
+.minimal-page > main > header { margin-bottom: 48px; }
+.minimal-page h1 { font-size: clamp(30px, 4vw, 48px); line-height: 1.3; }
+.minimal-page :is(.rounded-2xl, .rounded-3xl, .rounded-\[2\.5rem\]) { border-radius: 8px; }
+.minimal-page :is(.shadow-lg, .shadow-xl, .shadow-2xl, .editorial-shadow, .strong-shadow) { box-shadow: none; }
+.minimal-page .bg-clip-text { background: none; color: var(--career-text); }
+.minimal-page :is(.text-indigo-600, .text-purple-600, .text-cyan-600) { color: var(--career-blue); }
+.minimal-page :is(.bg-indigo-50, .bg-purple-50, .bg-cyan-50) { background: var(--career-blue-soft); }
+.minimal-page :is(.bg-slate-100, .bg-slate-50) { background: #f0f1eb; }
+.minimal-page .recommendation-gradient { background: #30392d; border-radius: 8px; }
+.minimal-page .role-item.selected { background: var(--career-blue-soft); border-color: var(--career-blue); color: var(--career-blue); }
+.minimal-auth { min-height: calc(100dvh - var(--career-nav-height)); padding: 72px 24px; background: var(--career-bg); }
+.minimal-auth > .glass-card { padding: 40px; border-radius: 8px; animation: none; }
+.minimal-auth h1 { background: none; color: var(--career-text); font-size: 30px; }
+.minimal-auth .input, .minimal-auth .btn { min-height: 48px; }
+.minimal-auth .label-text { color: var(--career-text); }
+.app-shell .site-header { background: var(--career-bg); }
+.app-shell .site-nav { gap: 30px; }
+.app-shell .site-nav-links { gap: 24px; }
+.app-shell .site-nav-link { font-size: 13px; color: var(--career-muted); }
+.app-shell .site-nav-link:hover, .app-shell .site-nav-link.is-active { color: var(--career-text); }
+.app-shell .site-nav-link.is-active::after { height: 1px; bottom: 18px; }
+.app-shell .site-account .career-button { padding: 9px 16px; min-height: 38px; }
+.app-shell .site-avatar { border-color: var(--career-border); }
+.app-shell .site-user-panel { box-shadow: 0 8px 24px #2427230a; }
+.app-shell .site-user-panel a:hover { background: var(--career-blue-soft); }
+.app-shell .career-brand { color: var(--career-text); gap: 11px; }
+.app-shell .career-brand small { color: var(--career-muted); margin-top: 5px; }
+.app-shell .career-brand svg [stroke] { stroke: var(--career-blue); }
+.app-shell .career-brand svg rect { stroke: #b4bea8; }
+.app-shell .platform-workspace { padding-top: 48px; padding-bottom: 64px; }
+.app-shell .platform-panel { padding: 32px; border-radius: 6px; }
+.app-shell .platform-form input, .app-shell .platform-form textarea, .app-shell .platform-form select { border-color: #d6d9cf; }
+.app-shell .platform-status { background: #f0f1eb; color: var(--career-muted); }
+.app-shell .platform-workspace h1 { font-size: 32px; }
+
+.app-shell .evaluation-page > main { padding-bottom: 200px; }
+.app-shell .evaluation-page > main > section:first-child h2 { font-size: clamp(30px, 4vw, 44px); }
+.app-shell .evaluation-page .recommendation-gradient { background: #30392d; box-shadow: none; }
+.app-shell .evaluation-page .recommendation-gradient .text-secondary { color: #d9e4cb; }
+.app-shell .evaluation-page .recommendation-gradient .bg-secondary { background: #5b6c4c; }
+.app-shell .evaluation-page .recommendation-gradient .rounded-3xl { backdrop-filter: none; }
+.app-shell .evaluation-page .evaluation-actionbar {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40;
+  width: min(1160px, calc(100% - 40px)); padding: 18px 22px; border: 1px solid #56634b;
+  border-radius: 6px; background: #333f32; box-shadow: 0 4px 20px #24272312;
+}
+.evaluation-actionbar > div > div { flex: 1; flex-wrap: wrap; gap: 8px 20px; }
+.evaluation-actionbar > div > div > div:first-child { white-space: normal; }
+.evaluation-actionbar > div > div > div:first-child > span { font-size: 14px; font-weight: 500; }
+.evaluation-actionbar > div > div > div:last-child > span { color: #d5ddce; font-size: 12px; font-style: normal; margin-left: 0; }
+.evaluation-actionbar button { border-radius: 4px; box-shadow: none; font-size: 13px; font-weight: 500; padding: 12px 18px; color: #333f32; }
+.app-shell .companies-page .company-tabs { background: transparent; padding: 0 0 12px; gap: 8px; border-bottom: 1px solid var(--career-border); width: 100%; }
+.app-shell .company-tabs button { border: 1px solid var(--career-border); border-radius: 4px; box-shadow: none; padding: 9px 15px; font-size: 13px; }
+.app-shell .company-tabs button.text-secondary { background: var(--career-blue); border-color: var(--career-blue); color: #fff; }
+.app-shell .companies-page main > header a { border: 1px solid var(--career-border); font-size: 14px; padding: 12px 22px; border-radius: 4px; }
+.app-shell .companies-page .rounded-\[2rem\], .app-shell .companies-page .rounded-\[1\.5rem\] { border-radius: 6px; border: 1px solid var(--career-border); }
+.app-shell .companies-page .bg-base-container p { color: var(--career-muted); font-weight: 500; }
+.app-shell .path-detail-page > .relative { max-width: 1200px; margin-inline: auto; padding-block: 48px 64px; }
+.app-shell .path-detail-page .glass { background: #fff; background-image: none; backdrop-filter: none; border: 1px solid var(--career-border); border-radius: 6px; box-shadow: none; }
+
+@media (max-width: 1100px) {
+  .app-shell .site-nav { gap: 20px; }
+  .app-shell .site-nav-links { gap: 15px; }
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  .app-shell .site-nav { flex-wrap: wrap; padding-top: 16px; gap: 0; }
+  .app-shell .site-nav-links { order: 3; width: 100%; height: 48px; gap: 28px; overflow-x: auto; }
+  .app-shell .site-nav-link.is-active::after { bottom: 0; }
+}
+@media (max-width: 760px) {
+  .app-shell .site-nav { gap: 0; }
+  .app-shell .site-nav-links { gap: 24px; height: 46px; }
+  .app-shell .site-nav-link.is-active::after { bottom: 0; }
+  .minimal-page > main { padding: 36px 20px 56px; }
+  .minimal-auth { padding: 40px 20px; min-height: calc(100dvh - 110px); }
+  .minimal-auth > .glass-card { padding: 28px 24px; }
+  .app-shell .platform-panel { padding: 20px; }
+  .app-shell .evaluation-page > main { padding-inline: 0; padding-bottom: 240px; }
+  .app-shell .evaluation-page > main > section { padding-inline: 20px; }
+  .app-shell .evaluation-page .recommendation-gradient { padding: 24px; }
+  .app-shell .evaluation-page .recommendation-gradient h2 { font-size: 20px; }
+  .app-shell .evaluation-page .recommendation-gradient .text-xl { font-size: 16px; }
+  .app-shell .evaluation-page .evaluation-actionbar { bottom: 12px; width: calc(100% - 24px); padding: 16px; }
+  .evaluation-actionbar > div { gap: 12px; }
+  .evaluation-actionbar > div > div { gap: 8px; }
+  .evaluation-actionbar > div > div > div:first-child { width: 100%; }
+  .app-shell .path-detail-page .card-body { padding: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .app-shell *, .app-shell *::before, .app-shell *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}

@@ -1,5 +1,5 @@
 <template>
-  <div class="font-body text-on-surface antialiased min-h-screen bg-gradient-to-r from-white to-purple-100">
+  <div class="minimal-page font-body text-on-surface antialiased min-h-screen">
     <main class="pt-32 pb-24 px-6 max-w-5xl mx-auto">
     <!-- Header Section -->
     <header class="mb-16">

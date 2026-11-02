@@ -665,7 +665,7 @@ const interviewStyleOptions = [
 }
 .interview-timer {
   font: 18px ui-monospace, Consolas, monospace;
-  color: #344054;
+  color: #3d4438;
   margin-right: 14px;
   font-variant-numeric: tabular-nums;
 }
@@ -712,7 +712,7 @@ const interviewStyleOptions = [
 }
 .interview-section-heading h2 {
   font-size: 18px;
-  color: #344054;
+  color: #3d4438;
   font-weight: 600;
 }
 .interview-section-heading p {
@@ -743,7 +743,7 @@ const interviewStyleOptions = [
 }
 .interview-style.is-selected {
   border-color: var(--career-blue);
-  background: #f4f8ff;
+  background: var(--career-blue-soft);
 }
 .style-radio {
   width: 14px;
@@ -759,7 +759,7 @@ const interviewStyleOptions = [
 .interview-style strong {
   font-size: 15px;
   font-weight: 600;
-  color: #344054;
+  color: #3d4438;
 }
 .interview-style p {
   margin-top: 9px;
@@ -804,7 +804,7 @@ const interviewStyleOptions = [
 .interview-aside h2 {
   font-size: 14px;
   font-weight: 600;
-  color: #344054;
+  color: #3d4438;
 }
 .interview-aside ol {
   display: grid;
@@ -822,7 +822,7 @@ const interviewStyleOptions = [
 }
 .interview-aside h3 {
   font-size: 13px;
-  color: #344054;
+  color: #3d4438;
   font-weight: 500;
 }
 .interview-aside p {
@@ -841,7 +841,7 @@ const interviewStyleOptions = [
 .interview-tips summary {
   cursor: pointer;
   font-size: 13px;
-  color: #475467;
+  color: #59614f;
 }
 .interview-tips p {
   margin-top: 12px;
@@ -875,21 +875,21 @@ const interviewStyleOptions = [
 .is-expanded .interview-main { position: fixed; inset: 0; width: 100%; height: 100dvh !important; z-index: 1200; display: flex; flex-direction: column; border: 0; border-radius: 0; }
 .is-expanded .interview-chat-toolbar { position: relative; top: auto; flex: none; border-radius: 0; }
 .is-expanded .interview-main .interview-chat { flex: 1; }
-.interview-clock { display: inline-flex; gap: 8px; align-items: center; color: #62748b; }
+.interview-clock { display: inline-flex; gap: 8px; align-items: center; color: #717866; }
 .interview-clock > span { font-size: 11px; }
-.interview-clock .interview-timer { margin: 0 8px 0 0; font-size: 19px; font-weight: 500; color: #1b4b7c; }
+.interview-clock .interview-timer { margin: 0 8px 0 0; font-size: 19px; font-weight: 500; color: #495e36; }
 .interview-stage { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; flex: 1; position: relative; }
 .interview-stage.has-resume { grid-template-columns: minmax(0, 1fr) minmax(260px, 32%); }
 .interview-conversation { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; border-radius: 0 0 8px 8px; }
 .is-expanded .interview-conversation { border-radius: 0; }
 .is-expanded .interview-setup { overflow-y: auto; }
-.interview-duration-choice { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 24px; color: #475467; font-size: 13px; }
-.interview-duration-choice select { padding: 8px 30px 8px 12px; border: 1px solid #ced8e5; border-radius: 5px; background: #fff; color: #27374d; }
+.interview-duration-choice { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 24px; color: #59614f; font-size: 13px; }
+.interview-duration-choice select { padding: 8px 30px 8px 12px; border: 1px solid #d6d9cf; border-radius: 5px; background: #fff; color: #30372b; }
 .interview-duration-choice > span { color: var(--career-muted); font-size: 12px; }
-.interview-resume { min-width: 0; min-height: 0; overflow-y: auto; border-left: 1px solid var(--career-border); background: #f6f8fb; }
+.interview-resume { min-width: 0; min-height: 0; overflow-y: auto; border-left: 1px solid var(--career-border); background: #f6f7f1; }
 .interview-resume > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px; background: #fff; border-bottom: 1px solid var(--career-border); }
-.interview-resume h2 { font-size: 16px; font-weight: 600; color: #344054; margin-top: 4px; }
-.resume-caption { font-size: 11px; color: #7a8799; }
+.interview-resume h2 { font-size: 16px; font-weight: 600; color: #3d4438; margin-top: 4px; }
+.resume-caption { font-size: 11px; color: #7e8574; }
 .audio-status { color: #8a5a16; font-size: 12px; line-height: 1.7; margin-top: 8px; }
 .interview-chat {
   flex: 1;
@@ -912,7 +912,7 @@ const interviewStyleOptions = [
   flex: none;
   background: var(--career-blue-soft);
   color: var(--career-blue);
-  border: 1px solid #d0e1f7;
+  border: 1px solid #d5ddc8;
   border-radius: 50%;
   font-size: 11px;
 }
@@ -922,24 +922,24 @@ const interviewStyleOptions = [
 }
 .interview-message-label {
   font-size: 12px;
-  color: #7a8799;
+  color: #7e8574;
 }
 .interview-message-body > p {
   margin-top: 8px;
   font-size: 15px;
-  color: #27374d;
+  color: #30372b;
   line-height: 1.9;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .is-user .interview-message-avatar {
-  background: #f1f4f8;
+  background: #f1f3eb;
   color: #586577;
   border-color: #dfe5ec;
 }
 .is-user .interview-message-body > p {
-  background: #f6f8fb;
-  border: 1px solid #e3e9f0;
+  background: #f6f7f1;
+  border: 1px solid #dfe4d5;
   border-radius: 6px;
   padding: 14px 16px;
   font-size: 14px;
@@ -961,7 +961,7 @@ const interviewStyleOptions = [
   align-items: center;
   gap: 7px;
   font-size: 12px;
-  color: #7a8799;
+  color: #7e8574;
   margin-bottom: 12px;
 }
 .recording-state > span:first-child {
@@ -983,12 +983,12 @@ const interviewStyleOptions = [
   min-height: 85px;
   max-height: 180px;
   resize: vertical;
-  border: 1px solid #ced8e5;
+  border: 1px solid #d6d9cf;
   border-radius: 5px;
   padding: 12px;
   font-size: 14px;
   line-height: 1.8;
-  color: #27374d;
+  color: #30372b;
   background: #fff;
 }
 .interview-input textarea::placeholder {
@@ -1044,7 +1044,7 @@ const interviewStyleOptions = [
 }
 .interview-review-dialog h2 {
   font-size: 20px;
-  color: #344054;
+  color: #3d4438;
 }
 .interview-review-body {
   padding: 26px;

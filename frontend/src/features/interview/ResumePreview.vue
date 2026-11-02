@@ -38,23 +38,23 @@ onUnmounted(() => controller?.abort())
 </script>
 
 <style scoped>
-.reader-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; font-size: 11px; color: #7a8799; border-bottom: 1px solid #e3e9f0; }
+.reader-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; font-size: 11px; color: #7e8574; border-bottom: 1px solid #dfe4d5; }
 .reader-tools button, .reader-state button { min-height: 30px; padding: 5px 10px; font-size: 12px; }
 .reader-state { padding: 48px 24px; text-align: center; font-size: 13px; color: #66788e; line-height: 1.9; }
-.reader-state h3 { font-size: 14px; font-weight: 500; color: #344054; }
+.reader-state h3 { font-size: 14px; font-weight: 500; color: #3d4438; }
 .reader-state p { margin: 12px 0 20px; }
 .reader-state a { font-size: 12px; }
-.resume-document { margin: 18px 16px 24px; padding: 26px 20px; background: #fff; border: 1px solid #e3e9f0; border-radius: 4px; color: #344054; overflow-wrap: anywhere; }
+.resume-document { margin: 18px 16px 24px; padding: 26px 20px; background: #fff; border: 1px solid #dfe4d5; border-radius: 4px; color: #3d4438; overflow-wrap: anywhere; }
 .resume-document > header { padding-bottom: 22px; border-bottom: 2px solid #d4e2f3; }
 .resume-document h3 { font-size: 23px; font-weight: 600; letter-spacing: -.02em; }
 .resume-target { margin-top: 8px; font-size: 14px; color: #346591; }
-.resume-contacts { display: grid; gap: 5px; margin-top: 14px; font-size: 11px; color: #7a8799; }
+.resume-contacts { display: grid; gap: 5px; margin-top: 14px; font-size: 11px; color: #7e8574; }
 .resume-document section { margin-top: 25px; }
-.resume-document h4 { font-size: 13px; font-weight: 600; color: #346591; padding-bottom: 8px; border-bottom: 1px solid #e3e9f0; }
+.resume-document h4 { font-size: 13px; font-weight: 600; color: #346591; padding-bottom: 8px; border-bottom: 1px solid #dfe4d5; }
 .resume-entry { margin-top: 13px; }
 .resume-entry h5 { font-size: 13px; font-weight: 600; line-height: 1.8; }
-.entry-meta, .entry-url { margin-top: 3px; font-size: 11px; line-height: 1.8; color: #7a8799; }
+.entry-meta, .entry-url { margin-top: 3px; font-size: 11px; line-height: 1.8; color: #7e8574; }
 .entry-description { margin-top: 6px; white-space: pre-wrap; font-size: 12px; line-height: 1.95; }
-.resume-document footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #e3e9f0; font-size: 11px; line-height: 1.9; color: #7a8799; }
+.resume-document footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #dfe4d5; font-size: 11px; line-height: 1.9; color: #7e8574; }
 .resume-document footer p { margin-top: 7px; }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-r from-white to-purple-100">
+  <div class="minimal-page min-h-screen">
     <main class="pt-24 pb-24 max-w-4xl mx-auto px-4">
       <!-- Page Header -->
       <header class="mb-12 text-center">

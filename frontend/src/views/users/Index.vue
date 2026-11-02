@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-gradient-to-r from-white to-purple-100 text-on-surface min-h-screen">
+  <div class="minimal-page text-on-surface min-h-screen">
     <!-- Main Content Canvas -->
     <main class="pt-24 pb-12 px-8 max-w-7xl mx-auto">
       <!-- Message Notification -->
