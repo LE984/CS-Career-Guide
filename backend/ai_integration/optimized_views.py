@@ -21,6 +21,7 @@ import logging
 
 from ai_integration.langgraph.graphs.graph import create_chat_workflow
 from .serializers import SeniorAdviceSerializer
+from .senior_advice_views import senior_advice_list
 from ai_integration.arag_integration import get_career_search
 from ai_integration.arag_agent import get_arag_agent
 
@@ -868,74 +869,6 @@ def health_check(request):
             "status": "unhealthy",
             "error": str(e)
         }, status=500)
-
-
-@api_view(['GET', 'POST'])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def senior_advice_list(request):
-    """
-    学长学姐建议列表API
-    
-    GET: 获取已审核的建议列表
-    POST: 提交新的建议（需要认证）
-    """
-    if request.method == 'GET':
-        try:
-            from .serializers import SeniorAdviceSerializer
-            # 获取已审核的建议
-            advices = SeniorAdvice.objects.filter(is_approved=True).order_by('-created_at')
-            serializer = SeniorAdviceSerializer(advices, many=True)
-            
-            return JsonResponse({
-                "success": True,
-                "results": serializer.data,
-                "count": advices.count()
-            })
-        except Exception as e:
-            logger.error(f"Error getting senior advice list: {str(e)}")
-            return JsonResponse({
-                "success": False,
-                "error": str(e)
-            }, status=500)
-    
-    elif request.method == 'POST':
-        try:
-            from .serializers import SeniorAdviceSerializer
-            
-            # 检查用户是否认证
-            if not request.user.is_authenticated:
-                return JsonResponse({
-                    "success": False,
-                    "error": "Authentication required"
-                }, status=401)
-            
-            # 解析请求数据
-            data = json.loads(request.body)
-            
-            # 创建序列化器实例
-            serializer = SeniorAdviceSerializer(data=data)
-            if serializer.is_valid():
-                # 关联当前用户
-                advice = serializer.save(user=request.user, is_approved=False)  # 默认待审核
-                
-                return JsonResponse({
-                    "success": True,
-                    "message": "建议提交成功，等待审核",
-                    "data": serializer.data
-                }, status=201)
-            else:
-                return JsonResponse({
-                    "success": False,
-                    "message": "提交失败",
-                    "errors": serializer.errors
-                }, status=400)
-        except Exception as e:
-            logger.error(f"Error submitting senior advice: {str(e)}")
-            return JsonResponse({
-                "success": False,
-                "error": str(e)
-            }, status=500)
 
 
 @api_view(['PATCH'])

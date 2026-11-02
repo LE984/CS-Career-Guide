@@ -91,7 +91,8 @@ export const companyAPI = {
 export default api
 
 export const jobFairAPI = {
-  getJobFairs: (page = 1, pageSize = 8) => api.get('/company-reviews/job-fairs/', {
+  getJobFairs: (page = 1, pageSize = 8, config = {}) => api.get('/company-reviews/job-fairs/', {
+    ...config,
     params: { page, page_size: pageSize }
   }),
   getFilterOptions: () => api.get('/company-reviews/job-fairs/filter_options/')
@@ -104,7 +105,13 @@ export const companyInfoAPI = {
 }
 
 export const computerCareerAPI = {
-  getComputerCareers: (page = 1, pageSize = 10) => api.get('/career-evaluation/computer-careers/', {
-    params: { page, page_size: pageSize }
+  getComputerCareers: (page = 1, pageSize = 10, filters = {}, config = {}) => api.get('/career-evaluation/computer-careers/', {
+    ...config,
+    params: { ...filters, page, page_size: pageSize }
   })
+}
+
+export const seniorAdviceAPI = {
+  list: (params, config = {}) => api.get('/ai/senior-advice/', { ...config, params }),
+  submit: (data, config = {}) => api.post('/ai/senior-advice/', data, config)
 }

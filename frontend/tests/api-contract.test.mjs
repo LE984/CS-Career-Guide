@@ -12,7 +12,7 @@ const apiSource = (await readFile(new URL('../src/api/index.js', import.meta.url
   .replace("from 'axios'", `from '${pathToFileURL(require.resolve('axios/unsafe/axios.js')).href}'`)
   .replace("from '../config'", `from '${dataModule(configSource)}'`)
   .replace("from './transport.js'", `from '${new URL('../src/api/transport.js', import.meta.url).href}'`)
-const { default: api, resumeAPI, interviewAPI, companyInfoAPI, aiAPI } = await import(dataModule(apiSource))
+const { default: api, resumeAPI, interviewAPI, companyInfoAPI, aiAPI, computerCareerAPI, jobFairAPI, seniorAdviceAPI } = await import(dataModule(apiSource))
 globalThis.localStorage = { getItem: () => 'contract-test-token' }
 
 test('streaming chat requires explicit voice opt-in and forwards cancellation', async () => {
@@ -87,4 +87,38 @@ test('company information endpoint uses the singular Django router prefix', asyn
   await companyInfoAPI.getCompanyInfos(2, 25)
   assert.equal(sent.url, '/company-reviews/company-info/')
   assert.deepEqual(sent.params, { page: 2, page_size: 25 })
+})
+
+test('company browsing forwards page filters and cancellation without fetching additional pages', async () => {
+  const requests = []
+  api.defaults.adapter = async config => {
+    requests.push(config)
+    return { data: { count: 100000, results: [] }, status: 200, statusText: 'OK', headers: {}, config }
+  }
+  const controller = new AbortController()
+  const config = { signal: controller.signal }
+  await computerCareerAPI.getComputerCareers(234, 20, { search: '长沙' }, config)
+  await seniorAdviceAPI.list({ page: 3, page_size: 10, search: '开发', ordering: 'rating' }, config)
+  await jobFairAPI.getJobFairs(2, 6, config)
+  assert.equal(requests.length, 3)
+  assert.deepEqual(requests.map(r => r.params), [
+    { page: 234, page_size: 20, search: '长沙' },
+    { page: 3, page_size: 10, search: '开发', ordering: 'rating' },
+    { page: 2, page_size: 6 },
+  ])
+  assert.ok(requests.every(r => r.signal === controller.signal))
+})
+
+test('advice submission preserves optional blanks and the top-level success message', async () => {
+  let sent
+  api.defaults.adapter = async config => {
+    sent = config
+    return { data: { success: true, message: '等待审核', data: { id: 12 } }, status: 201, statusText: 'Created', headers: {}, config }
+  }
+  const body = { company: '示例公司', current_company: '', salary_info: '', pros: [], cons: [] }
+  const response = await seniorAdviceAPI.submit(body)
+  assert.equal(sent.url, '/ai/senior-advice/')
+  assert.equal(sent.method, 'post')
+  assert.deepEqual(JSON.parse(sent.data), body)
+  assert.equal(response.message, '等待审核')
 })

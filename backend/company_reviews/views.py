@@ -5,6 +5,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.db import DatabaseError
+import logging
 from .models import Company, CompanyInfo, JobFair
 from career_platform.permissions import StaffWritePermission
 from .serializers import CompanySerializer, CompanyInfoSerializer, JobFairSerializer
@@ -258,6 +260,13 @@ class JobFairViewSet(viewsets.ModelViewSet):
     pagination_class = StandardPagination
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except DatabaseError:
+            logging.getLogger(__name__).exception('双选会列表数据库查询失败')
+            return Response({'code': 'JOB_FAIRS_UNAVAILABLE', 'message': '双选会数据暂时无法读取，请稍后重试。'}, status=503)
     
     def get_queryset(self):
         queryset = super().get_queryset()
