@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-03",
+  "timezone": "Asia/Shanghai",
+  "repository": "vacontinuejatotired/CS-Career-Guide",
+  "deployed_commit": "deccc0cd18f647fc43622161ac28fda8789afae6",
+  "fix_pull_request": 19,
+  "release": {
+    "run": 41611783087,
+    "conclusion": "success",
+    "jobs": {
+      "Detect component changes": "success",
+      "Frontend checks": "success",
+      "Delivery configuration and offline harness": "success",
+      "Backend checks": "success",
+      "Platform gates / Platform documentation": "success",
+      "Platform gates / Platform acceptance (${{ matrix.database }})": "skipped",
+      "Frontend image": "success",
+      "Backend image": "success",
+      "Shared gateway integration and persistence": "success",
+      "Publish verified backend image": "success",
+      "Publish verified frontend image": "success",
+      "Deploy published frontend digest": "success",
+      "Deploy published backend digest": "success",
+      "Release summary": "success"
+    }
+  },
+  "independent_audit": {
+    "run": 41614838351,
+    "conclusion": "success",
+    "baseline_run": 41467510972
+  },
+  "publications": {
+    "frontend": {
+      "commit": "deccc0cd18f647fc43622161ac28fda8789afae6",
+      "components": [
+        "frontend"
+      ],
+      "compatibility": "candidate-integration",
+      "complete": true,
+      "images": {
+        "frontend": {
+          "repository": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend",
+          "image_id": "sha256:64f1635723272968cac2de2d89d1d99fa13850367f5e7a0c46e1d1f2ebd45379",
+          "tags": [
+            "sha-deccc0c",
+            "latest"
+          ],
+          "digest": "sha256:0eaff01c024d2fe0ed67ebc894488eb89e5671c0c12e053ba8a1631bd0914449",
+          "reference": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:0eaff01c024d2fe0ed67ebc894488eb89e5671c0c12e053ba8a1631bd0914449"
+        }
+      }
+    },
+    "backend": {
+      "commit": "deccc0cd18f647fc43622161ac28fda8789afae6",
+      "components": [
+        "backend"
+      ],
+      "compatibility": "candidate-integration",
+      "complete": true,
+      "images": {
+        "backend": {
+          "repository": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend",
+          "image_id": "sha256:0b8c789d1cd6bc1de88e7f261431cc55e5aa3e9b46ca6eac77edb4ea37228126",
+          "tags": [
+            "sha-deccc0c",
+            "latest"
+          ],
+          "digest": "sha256:069aa3a67c4c54c694e1f5ce29ee5cee48f2c1946152c8e6d81963ab16c2ea67",
+          "reference": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend@sha256:069aa3a67c4c54c694e1f5ce29ee5cee48f2c1946152c8e6d81963ab16c2ea67"
+        }
+      }
+    }
+  },
+  "server": {
+    "compose_project": "cs-career-guide-demo",
+    "services": {
+      "frontend": {
+        "id": "5d02e1a4f5b61d1134005a8519031850d9f9049c1f55c7c75d661f7ee431b9a4",
+        "state": "running",
+        "health": "healthy",
+        "image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:0eaff01c024d2fe0ed67ebc894488eb89e5671c0c12e053ba8a1631bd0914449",
+        "repository_digests": [
+          "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:0eaff01c024d2fe0ed67ebc894488eb89e5671c0c12e053ba8a1631bd0914449"
+        ],
+        "named_volumes": [],
+        "ports": {}
+      },
+      "backend": {
+        "id": "15b13f840addb9beaa34f5912f26c79753be76f6d661c0b2ace6d327235e0574",
+        "state": "running",
+        "health": "healthy",
+        "image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend@sha256:069aa3a67c4c54c694e1f5ce29ee5cee48f2c1946152c8e6d81963ab16c2ea67",
+        "repository_digests": [
+          "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-backend@sha256:069aa3a67c4c54c694e1f5ce29ee5cee48f2c1946152c8e6d81963ab16c2ea67"
+        ],
+        "named_volumes": [
+          "cs-career-guide-demo_backend-static",
+          "cs-career-guide-demo_media",
+          "cs-career-guide-demo_sqlite-data"
+        ],
+        "ports": {}
+      },
+      "gateway": {
+        "id": "57aab10cc0771ad57a1e3f1ca1b36b4fd420ab89a2873944bdd3357da09797a5",
+        "state": "running",
+        "health": "healthy",
+        "image": "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:91fc9c3924b93f76adc9cd36a0bb93e53885ff8e97df10233caa45bb432789a5",
+        "repository_digests": [
+          "crpi-gbihc3e57h3o3f2l.cn-hangzhou.personal.cr.aliyuncs.com/tencent-ubutun22/cs-career-guide-frontend@sha256:91fc9c3924b93f76adc9cd36a0bb93e53885ff8e97df10233caa45bb432789a5"
+        ],
+        "named_volumes": [
+          "cs-career-guide-demo_backend-static",
+          "cs-career-guide-demo_media"
+        ],
+        "ports": {
+          "8080/tcp": [
+            {
+              "HostIp": "",
+              "HostPort": "80"
+            },
+            {
+              "HostIp": "",
+              "HostPort": "48080"
+            }
+          ]
+        }
+      }
+    },
+    "gateway_container_unchanged": true,
+    "named_volumes_and_ports_unchanged": true,
+    "watchtower_state": "exited"
+  },
+  "public_http_checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "is_spa": true
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "is_spa": true
+    },
+    {
+      "path": "/static/admin/css/base.css",
+      "status": 200,
+      "is_spa": false
+    },
+    {
+      "path": "/api/users/profile/",
+      "status": 401,
+      "is_spa": false
+    }
+  ],
+  "verification_scope": {
+    "five_module_complete_acceptance": "skipped",
+    "five_module_implementation": "501 scaffold remains",
+    "application_tests": "passed",
+    "runner_full_gateway_and_persistence": "passed",
+    "real_model": false,
+    "browser_business_acceptance": false,
+    "production_authenticated_business_api_write": false,
+    "startup_migrations": "正常启动入口先执行 migrate 再启动 Gunicorn；后端已健康，未独立查询迁移表或用户数据。",
+    "database_engine_changed": false,
+    "business_data_imported": false,
+    "note": "仅本次发布按用户授权跳过五模块完整业务验收；固定测试、既有路径门禁和 SSH 校验未永久禁用。"
+  }
+}
