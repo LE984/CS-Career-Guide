@@ -1,5 +1,19 @@
 # 演示部署验收状态与接手记录
 
+## 2026-11-03 双端部署与独立审计通过
+
+按用户本次授权，现有应用改动已通过 GitHub Actions 部署到服务器；五模块完整业务验收跳过，原固定测试、业务变更路径规则及 SSH 校验继续保留。五模块仍为 `501 / FEATURE_NOT_IMPLEMENTED` 骨架，不将跳过写成业务通过。
+
+- 部署版本：`deccc0cd18f647fc43622161ac28fda8789afae6`，已合并 [PR #19](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/19) 的 publisher digest 输出修复；此前现有应用与文档改动均包含在此版本中。
+- [master 发布 41611783087](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41611783087) 整体成功：前后端测试、交付配置、文档门禁、双镜像、完整网关与 SQLite 持久化联调、双端 ACR 发布及两个 SSH 激活任务均通过；`Platform acceptance` 为 skipped。
+- 两份发布记录均为 `complete=true`、源码版本一致、`compatibility=candidate-integration`。frontend digest 为 `sha256:0eaff01c024d2fe0ed67ebc894488eb89e5671c0c12e053ba8a1631bd0914449`；backend digest 为 `sha256:069aa3a67c4c54c694e1f5ce29ee5cee48f2c1946152c8e6d81963ab16c2ea67`。
+- [部署后独立只读审计 41614838351](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41614838351) 成功：frontend/backend/gateway 均 running、healthy；前后端容器已重建，实际配置镜像及 RepoDigests 与各自发布记录完全一致。
+- 与发布前审计 `41467510972` 比较，gateway 容器与 digest、Compose 项目、各服务命名卷及端口映射保持；SQLite/static/media 卷保留，Watchtower 继续 exited。审计记录不包含真实环境变量值。
+- 部署后公网只读 HTTP 检查：`/`、`/login` 均 200 且包含 SPA 入口，`/static/admin/css/base.css` 为 200，未携带 Token 的 `/api/users/profile/` 为预期 401。
+- 后端正常启动入口先执行 `migrate` 再启动 Gunicorn，已完成启动并健康；包含 `users.0013_normalize_gender_choices`，但本次未独立读取迁移表或用户数据，不声称完成数据库逐项审计。未切换数据库、导入示例业务数据、执行真实模型或浏览器业务验收。
+
+脱敏发布、运行镜像、容器/卷和检查范围记录见 [2026-11-03-deccc0c.json](releases/2026-11-03-deccc0c.json)。以下失败历史保留，不能用其结果覆盖本次成功记录。
+
 ## 2026-11-02 授权手动发布与后续重试
 
 用户在同日文档门禁复核后明确要求将现有修改部署到服务器，并跳过五模块业务开发的 CI 检测；该授权替代此前暂停部署的决定，仅适用于本次发布。五模块仍为 501 骨架，本地完整验收的 14 failures、3 errors 保留，不作为已实现或已通过处理。
