@@ -298,12 +298,39 @@ class WorkflowTests(unittest.TestCase):
                 self.assertIn(guard, job['if'])
             step = job['steps'][-1]
             self.assertEqual(step['env']['DEPLOY_COMPONENT'], component)
-            self.assertEqual(step['env']['DEPLOY_IMAGE'], '${{ needs.publish-' + component + '.outputs.image }}')
+            self.assertEqual(step['env']['DEPLOY_IMAGE'],
+                "${{ format('{0}/{1}/cs-career-guide-" + component + "@{2}', "
+                "vars.ACR_REGISTRY || secrets.ACR_REGISTRY, "
+                "vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE, needs.publish-" + component + ".outputs.digest) }}")
             for name in ('DEPLOY_SSH_HOST', 'DEPLOY_SSH_USER', 'DEPLOY_SSH_PORT', 'DEPLOY_ENV_PATH', 'DEPLOY_SSH_KEY', 'DEPLOY_SSH_KNOWN_HOSTS'):
                 self.assertEqual(step['env'][name], '${{ secrets.' + name + ' }}')
             self.assertEqual(set(AI_KEYS) & set(step['env']), set(AI_KEYS) if component == 'backend' else set())
         compose = yaml.safe_load((ROOT / 'deploy/docker-compose.yml').read_text())
         self.assertTrue(set(AI_KEYS).issubset(compose['services']['backend']['environment']))
+
+    def test_publisher_exposes_only_validated_digest_without_registry_secrets(self):
+        workflow = yaml.safe_load((ROOT / '.github/workflows/ci-cd.yml').read_text())
+        for component in ('backend', 'frontend'):
+            job = workflow['jobs']['publish-' + component]
+            self.assertEqual(job['outputs'], {'digest': '${{ steps.record.outputs.digest }}'})
+            step = next(s for s in job['steps'] if s.get('id') == 'record')
+            script = step['run'].split("python3 - <<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+            with tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'github-output'
+                record_path = Path(directory) / 'published-images.json'
+                digest = 'sha256:' + 'a' * 64
+                record = {'complete': True, 'components': [component],
+                    'images': {component: {'digest': digest, 'reference': IMAGES[component]}}}
+                record_path.write_text(json.dumps(record))
+                with patch.dict(os.environ, {'RUNNER_TEMP': directory, 'COMPONENT': component,
+                                             'GITHUB_OUTPUT': str(output)}):
+                    exec(compile(script, '<publisher-digest>', 'exec'), {})
+                    self.assertEqual(output.read_text(), 'digest=' + digest + '\n')
+                    self.assertNotIn('registry.invalid', output.read_text())
+                    record['images'][component]['digest'] = 'latest'
+                    record_path.write_text(json.dumps(record))
+                    with self.assertRaises(AssertionError):
+                        exec(compile(script, '<publisher-digest>', 'exec'), {})
 
 
 if __name__ == '__main__':

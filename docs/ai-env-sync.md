@@ -8,6 +8,8 @@
 
 DEPLOY_COMPONENT 指定 backend/frontend；DEPLOY_IMAGE 只能是该组件的完整 repository@sha256 digest，来自本次完成的发布记录。脚本不再按 latest 猜测本次部署版本。主流程仅用基础 Compose 加目标组件 pin override，不会加载另一组件 override，也不会重建另一服务/网关/数据库。
 
+发布 Job 只通过 output 传递校验过的 `sha256:<64位十六进制>` digest。部署 Job 使用同样的 ACR Variables/Secrets 坐标在自身环境内组装完整 `DEPLOY_IMAGE`。完整仓库引用可能包含以 Secrets 保存的 registry/namespace，GitHub 会以 `Skip output 'image' since it may contain secret` 丢弃该跨 Job 输出，导致部署在连接 SSH 前因空镜像引用失败；不要通过关闭掩码或编码秘密规避保护。修复后仍从 `complete=true` 的本次发布记录取 digest，不追踪 latest。
+
 ## 凭据与配置归属
 
 SSH Secrets 仍为 DEPLOY_SSH_HOST、DEPLOY_SSH_PORT（空默认22）、DEPLOY_SSH_USER、DEPLOY_ENV_PATH、DEPLOY_SSH_KEY、DEPLOY_SSH_KNOWN_HOSTS。严格主机密钥核验；不使用运行时 ssh-keyscan 建立信任。私钥临时权限600，传送完成后清理。

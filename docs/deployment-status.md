@@ -1,5 +1,18 @@
 # 演示部署验收状态与接手记录
 
+## 2026-11-02 授权手动发布与后续重试
+
+用户在同日文档门禁复核后明确要求将现有修改部署到服务器，并跳过五模块业务开发的 CI 检测；该授权替代此前暂停部署的决定，仅适用于本次发布。五模块仍为 501 骨架，本地完整验收的 14 failures、3 errors 保留，不作为已实现或已通过处理。
+
+- 代码版本：`65d9ea711848500edfebcd4ce68eedb967bbc26d`，已合并 [PR #18](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/18) 的六份真实验收记录。
+- 发布入口：[手动 CI/CD 41470153714](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41470153714)，`master`、`component=all`。本次五模块 `Platform acceptance` 为 skipped；原固定测试、push/PR 路径规则和发布依赖未修改。前后端应用测试、交付配置、双镜像检查、完整容器联调、镜像身份验证与 SSH 健康等待继续执行。
+- 发布前检查：[只读 SSH 审计 41467510972](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41467510972) 成功，frontend/backend/gateway 均 healthy，Watchtower 为 exited；原前后端 digest 分别为 `eaecc62f23c1b2c2aec66c4467a2e009fc85bec024df83d89dc71269ea1c634f`、`75110f2b4dff6b5488bab73ffd563cf7ed431979e0050d1bdd32bb5b48ea2cf9`。
+- 后端沿用既有启动入口执行迁移，包括已提交的 `users.0013_normalize_gender_choices`；不切换数据库、不导入示例数据、不执行真实模型调用。网关和已有命名卷由原部署保留。
+- 该次双端应用测试、镜像构建、完整容器联调和两端 ACR 发布均成功，五模块完整验收 skipped。首次运行及后续失败任务重试的 SSH 激活均失败，未宣称服务器已更新。
+- 根因：两个 publisher 的日志均出现 `Skip output 'image' since it may contain secret`；registry/namespace 使用 Secrets 时完整仓库引用被 GitHub 丢弃，导致 deploy 的 `DEPLOY_IMAGE` 为空，脚本在 SSH 连接前拒绝执行。单纯重跑失败任务不能修复此问题。
+- 后续只读 SSH 审计 [41609961586](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41609961586) 成功，证明 Actions 的现有 SSH 通道可用。修复方式为 publisher 仅输出经格式与引用一致性校验的 digest，deploy 在自身环境内使用 ACR 坐标组装完整引用；不降低主机密钥核验、敏感输出保护或镜像版本校验。
+- 修复后的发布与服务器实际 digest 需以新的运行及独立审计记录为准；本段不将现有 501 骨架或跳过的业务验收写成成功。
+
 ## 2026-11-01 独立交付已合并并完成服务器切换
 
 这是当日验收快照，实时操作仍须重新核对 Git/Actions/服务器。[PR #9](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/9) 至 [PR #15](https://github.com/vacontinuejatotired/CS-Career-Guide/pull/15) 已合入本 fork master，代码基线为 `d9395a319be3c99d67b3ff062266ee6d8edee5ce`。最终交付修复的 [PR Actions 41312995286](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/41312995286) 整体成功：两端检查、各自镜像、完整网关/持久化/SSE/IP 联调和真实首次切换均通过；该次纯交付改动按既有路径规则跳过完整业务验收，不代表五模块业务完成。

@@ -513,13 +513,16 @@ jobs:
           COMPONENT: backend
         run: |
           python3 - <<'PY'
-          import json, os
+          import json, os, re
           from pathlib import Path
           record = json.loads((Path(os.environ['RUNNER_TEMP']) / 'published-images.json').read_text())
           component = os.environ['COMPONENT']
           assert record['complete'] is True and record['components'] == [component]
+          digest = record['images'][component]['digest']
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
+          assert record['images'][component]['reference'].endswith('@' + digest)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('image=' + record['images'][component]['reference'] + '\n')
+              output.write('digest=' + digest + '\n')
           PY
       - name: Upload publication record
         if: always()
@@ -531,7 +534,7 @@ jobs:
           retention-days: 30
           overwrite: true
     outputs:
-      image: ${{ steps.record.outputs.image }}
+      digest: ${{ steps.record.outputs.digest }}
   publish-frontend:
     name: Publish verified frontend image
     needs:
@@ -579,13 +582,16 @@ jobs:
           COMPONENT: frontend
         run: |
           python3 - <<'PY'
-          import json, os
+          import json, os, re
           from pathlib import Path
           record = json.loads((Path(os.environ['RUNNER_TEMP']) / 'published-images.json').read_text())
           component = os.environ['COMPONENT']
           assert record['complete'] is True and record['components'] == [component]
+          digest = record['images'][component]['digest']
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
+          assert record['images'][component]['reference'].endswith('@' + digest)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('image=' + record['images'][component]['reference'] + '\n')
+              output.write('digest=' + digest + '\n')
           PY
       - name: Upload publication record
         if: always()
@@ -597,7 +603,7 @@ jobs:
           retention-days: 30
           overwrite: true
     outputs:
-      image: ${{ steps.record.outputs.image }}
+      digest: ${{ steps.record.outputs.digest }}
   deploy-backend:
     name: Deploy published backend digest
     needs:
@@ -639,7 +645,7 @@ jobs:
           TTS_MODEL: ${{ vars.TTS_MODEL }}
           TTS_VOICE: ${{ vars.TTS_VOICE }}
           DEPLOY_COMPONENT: backend
-          DEPLOY_IMAGE: ${{ needs.publish-backend.outputs.image }}
+          DEPLOY_IMAGE: ${{ format('{0}/{1}/cs-career-guide-backend@{2}', vars.ACR_REGISTRY || secrets.ACR_REGISTRY, vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE, needs.publish-backend.outputs.digest) }}
         run: python3 ci/sync_runtime_env.py
   deploy-frontend:
     name: Deploy published frontend digest
@@ -670,7 +676,7 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
           DEPLOY_COMPONENT: frontend
-          DEPLOY_IMAGE: ${{ needs.publish-frontend.outputs.image }}
+          DEPLOY_IMAGE: ${{ format('{0}/{1}/cs-career-guide-frontend@{2}', vars.ACR_REGISTRY || secrets.ACR_REGISTRY, vars.ACR_NAMESPACE || secrets.ACR_NAMESPACE, needs.publish-frontend.outputs.digest) }}
         run: python3 ci/sync_runtime_env.py
   release-summary:
     name: Release summary
