@@ -219,3 +219,20 @@ results = retriever.retrieve(
 ```
 
 演示请求字段：`role` 必填，`query` 默认空文本（最大500字符），`topic` 默认空（不限），`difficulty` 默认easy，`top_k` 默认5、范围1到20；不接受岗位ID、题目ID、用户ID或练习会话。响应包含 `is_demo=true`、`dataset=text-retrieval-demo-v1`、`count`、`results`，每个结果也标记 `is_demo=true`，其余字段沿用 RankedQuestion。题目ID只能在本演示材料中追溯，不能用于正式会话下发。页面不再显示未实现的手工会话ID和作答按钮，原正式API仍保留501。生产组装保持五个服务，演示由现有 InterviewRagService 的独立 demo_retrieve 操作调用。
+
+
+### 2026-11-09 课程页面字体统一
+
+共享页面样式调整：沿用全站无衬线字体，课程标题桌面32px/手机28px，内容标题18px、正文与表单14px、辅助文字12px。仅视觉调整，不改变本模块接口、状态或数据流，不代表业务实现完成。
+
+```acceptance-record
+{
+  "commit": "8607c29",
+  "command": "gh run view 42578102031 --repo vacontinuejatotired/CS-Career-Guide; node --test frontend/tests/*.test.mjs; node frontend/node_modules/vite/bin/vite.js build (cwd=frontend)",
+  "result": "failed",
+  "environment": "2026-11-09；Windows 本地隔离浏览器及 GitHub Actions",
+  "scope": "仅课程页面字体样式。前端78项与生产构建通过；浏览器1440/390px检查五个课程入口和个人中心、简历页，共14视图无横向溢出或JS运行异常。Actions前端检查及镜像构建成功，但共享组件变更缺实施文档导致总门禁失败。",
+  "limitations": "五模块正式业务未完成，未宣称complete通过；本轮完整业务重跑因WSL互操作失败未启动。浏览器使用隔离模拟API，仅初始页面，不覆盖检索结果和全部失败状态。用户已授权半成品演示上线；仅按既有手动流程发布前端，不修改门禁、不部署后端。线上结果另记。",
+  "evidence": "Actions 42578102031；output/playwright/typography-result.txt；frontend/src/features/career-platform/WorkspaceShell.vue；frontend/src/views/career-platform/Practice.vue"
+}
+```
