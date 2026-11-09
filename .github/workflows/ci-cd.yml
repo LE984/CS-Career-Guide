@@ -653,7 +653,7 @@ jobs:
     name: Deploy published frontend digest
     needs:
       - publish-frontend
-    if: needs.publish-frontend.result == 'success' && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.event_name != 'pull_request'
+    if: always() && !cancelled() && needs.publish-frontend.result == 'success' && github.ref == 'refs/heads/master' && github.repository == 'vacontinuejatotired/CS-Career-Guide' && github.event_name != 'pull_request'
       && vars.DEPLOY_ENV_SYNC_ENABLED == 'true' && vars.DEPLOY_FRONTEND_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 35

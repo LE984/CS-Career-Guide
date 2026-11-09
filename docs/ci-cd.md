@@ -86,3 +86,8 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 ## 2026-11-09 检索演示离线回归
 
 后端测试任务增加 `test_text_retrieval.py` 和 `test_retrieval_demo.py`，验证真实文本策略和演示接口鉴权、输入校验、来源、许可过滤，接口测试禁止数据库访问。原业务固定 complete 测试、所有跳过条件及发布依赖不变。手动发布按既有 workflow_dispatch 规则计算空业务差异，可能跳过完整业务验收；这仅用于用户明确授权的半成品演示发布，不能报告为业务验收通过。
+
+
+## 2026-11-09 前端独立激活条件修复
+
+手动前端发布运行42579875709已成功发布镜像，但前端激活因上游依赖链中未选中后端的skipped状态被GitHub隐式success条件跳过。前端deploy条件增加`always() && !cancelled()`，仍严格要求frontend publisher成功、本fork/master、非PR及原部署开关；不改变业务门禁、后端部署或测试Job。修复后真实激活及线上验证另记，不将原失败运行视为部署成功。
