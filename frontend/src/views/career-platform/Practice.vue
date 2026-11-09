@@ -1,17 +1,14 @@
 <template>
   <main class="career-container retrieval-demo">
-    <header class="demo-header">
+    <CourseNav />
+    <header class="demo-header course-content-enter">
       <div><p class="demo-eyebrow">岗位题库练习 / 文本检索</p><h1>让每一道题，都有据可查。</h1>
       <p class="demo-intro">选择岗位和知识点，观察题目如何筛选、排序，再查看原始参考要点。</p></div>
       <span class="demo-badge">演示版 · 自编虚构题</span>
     </header>
-    <nav class="demo-nav" aria-label="课程模块">
-      <router-link to="/career-platform/catalog">岗位与题库</router-link>
-      <span aria-current="page">文本检索演示</span>
-      <router-link to="/interview">自由模拟面试 →</router-link>
-    </nav>
+    <p class="demo-alternative">想直接练习对话？<router-link to="/interview">进入自由模拟面试 →</router-link></p>
     <aside class="demo-notice">当前仅演示题目检索。材料为专门编写的虚构示例，不是正式题库；不调用大模型、不保存回答或练习记录。</aside>
-    <div class="demo-layout">
+    <div class="demo-layout course-content-enter">
       <section class="demo-controls" aria-labelledby="filter-title">
         <h2 id="filter-title">检索条件</h2>
         <form @submit.prevent="search">
@@ -50,6 +47,7 @@
 <script setup>
 import { ref, reactive, onUnmounted } from 'vue'
 import client from '@/api'
+import CourseNav from '@/features/career-platform/CourseNav.vue'
 const form = reactive({role:'Java后端',topic:'集合',difficulty:'easy',query:'集合',top_k:5})
 const busy = ref(false), response = ref(null), submitted = ref(null), error = ref(false)
 const status = ref('选择条件后开始检索，或点击左侧示例。')
@@ -79,8 +77,10 @@ function preset(kind) {
 }
 </script>
 <style scoped>
-.retrieval-demo{padding-top:40px;padding-bottom:64px;color:#293b34;max-width:1200px}
+.retrieval-demo{padding-top:48px;padding-bottom:64px;color:#293b34;max-width:1200px}
 .demo-header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}.demo-eyebrow{font-size:12px;letter-spacing:.12em;color:#60796b}.demo-header h1{font-family:inherit;font-size:32px;font-weight:600;line-height:1.3;margin:12px 0}.demo-intro{font-size:14px;color:#68766e;line-height:1.9}.demo-badge{white-space:nowrap;border:1px solid #d5c5a0;background:#faf6ea;color:#80672f;border-radius:6px;padding:8px 12px;font-size:12px;margin-top:8px}.demo-nav{display:flex;flex-wrap:wrap;gap:24px;padding:24px 0 16px;border-bottom:1px solid #dce3dc;font-size:13px}.demo-nav span{color:#286347;font-weight:600}.demo-notice{background:#edf3ed;border-left:3px solid #527c60;padding:14px 18px;font-size:13px;line-height:1.9;margin:24px 0}.demo-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:40px;align-items:start}.demo-controls{background:#fff;border:1px solid #dce3dc;border-radius:12px;padding:24px}.demo-controls h2,.demo-results h2{font-size:18px;font-weight:600;margin:0 0 20px}.demo-controls form{display:grid;gap:16px}.demo-controls label{display:grid;gap:8px;font-size:12px;color:#53675b}.demo-controls input,.demo-controls select{width:100%;min-width:0;border:1px solid #ccd8ce;border-radius:6px;background:#fff;padding:10px;font-size:14px;color:#293b34}.demo-primary{border-radius:6px;padding:12px;background:#365e45;color:#fff;font-size:14px;margin-top:4px}.demo-primary:disabled{opacity:.6}.demo-scenarios{border-top:1px solid #e3e9e3;margin-top:24px;padding-top:18px}.demo-scenarios h3{font-size:12px;color:#6c7b70;margin:0 0 8px}.demo-scenarios button{display:flex;justify-content:space-between;width:100%;text-align:left;padding:10px 0;font-size:13px;color:#365e45}.demo-policy{font-size:12px;line-height:1.9;color:#7a8178;margin-top:18px}.demo-results-heading{display:flex;justify-content:space-between;align-items:baseline}.demo-results-heading h2{margin-bottom:12px}.demo-results-heading span{font-size:12px;color:#60796b}.demo-status{font-size:13px;color:#4e6955;padding:12px 0;line-height:1.8}.demo-error{color:#a33d32}.demo-query{font-size:12px;color:#788179;margin-bottom:18px;overflow-wrap:anywhere}.demo-question{padding:24px 0;border-top:1px solid #dce3dc}.demo-question-meta{display:flex;justify-content:space-between;gap:12px;color:#718273;font-size:11px}.demo-question h3{font-size:20px;line-height:1.65;font-weight:600;margin:12px 0 20px}.demo-points{padding:16px 20px;background:#f2f5ef;border-radius:8px}.demo-points h4{font-size:12px;color:#667e6a;margin:0 0 10px}.demo-points ul{list-style:disc;padding-left:18px;font-size:14px;line-height:1.9}.demo-source{font-size:11px;color:#7a8178;line-height:1.8;margin:16px 0 12px}.demo-question summary{font-size:12px;cursor:pointer;color:#365e45}.demo-question details{overflow-wrap:anywhere}.demo-id{font:inherit;color:#788179;margin-top:16px}.demo-question dl{margin-top:14px}.demo-question dt{font:inherit;color:#66836d}.demo-question dd{font-size:12px;line-height:1.8;margin-top:4px}.demo-footnote{border-top:1px solid #dce3dc;padding-top:18px;font-size:11px;line-height:1.8;color:#788179}.demo-empty{padding:50px 24px;background:#f2f5ef;border-radius:10px;margin:16px 0 24px}.demo-empty h3{font-size:20px;margin-bottom:12px}.demo-empty p{font-size:13px;color:#6c7b70;line-height:1.8}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid #527c60;outline-offset:4px}
+.demo-alternative{font-size:14px;color:var(--career-muted);margin-top:16px;line-height:1.8}
+.demo-alternative a{color:#365e45;text-decoration:underline;text-underline-offset:4px}
 /* Match the shared course workspace type scale; IDs and evidence remain readable. */
 .retrieval-demo{font-size:14px;line-height:1.8}
 .demo-nav,.demo-notice,.demo-controls label,.demo-scenarios button,.demo-status,.demo-empty p,.demo-question dd{font-size:14px}
@@ -88,6 +88,6 @@ function preset(kind) {
 .demo-controls h2,.demo-results h2,.demo-question h3,.demo-empty h3{font-size:18px;font-weight:600;line-height:1.5}
 .demo-controls input,.demo-controls select,.demo-primary{font-family:inherit;font-weight:400}
 .demo-primary{font-weight:500}
-@media(max-width:760px){.retrieval-demo{padding-top:24px}.demo-header{flex-direction:column;gap:8px}.demo-header h1{font-size:28px}.demo-layout{grid-template-columns:1fr;gap:28px}.demo-controls{padding:20px}.demo-controls form{grid-template-columns:1fr 1fr}.demo-primary{grid-column:1/-1}.demo-badge{margin-top:0}.demo-question h3{font-size:18px}.demo-nav{gap:16px}}
+@media(max-width:760px){.retrieval-demo{padding-top:48px}.demo-header{flex-direction:column;gap:8px}.demo-header h1{font-size:28px}.demo-layout{grid-template-columns:1fr;gap:28px}.demo-controls{padding:20px}.demo-controls form{grid-template-columns:1fr 1fr}.demo-primary{grid-column:1/-1}.demo-badge{margin-top:0}.demo-question h3{font-size:18px}.demo-nav{gap:16px}}
 @media(max-width:380px){.demo-controls form{grid-template-columns:1fr}}
 </style>
