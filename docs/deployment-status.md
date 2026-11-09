@@ -161,3 +161,14 @@ master 运行的后端日志明确记录：
 本会话已明确授权并完成服务器部署账号创建和相关 Secrets 配置；后来工作范围调整为现有面试实现的结构重构，本次再补运维文档。没有执行应用重建、模型调用或数据迁移。后续提交、推送、发布和服务器操作按当时明确授权执行，不能将历史文档中的临时授权限制当作当前事实，也不能将账号创建授权扩展为任意服务器变更。
 
 上线顺序：先整理并验证改动，再以部署账号验证 ACR，逐项补服务器 Compose 映射，协调停止旧 Watchtower，最后才启用同步并执行已获授权的发布。回滚前关闭同步开关；自动脚本不加载 digest override，见 [AI 环境同步](ai-env-sync.md) 与 [回滚手册](watchtower-rollback.md)。模拟面试实现与验收边界见 [重构说明](interview-refactor.md)。
+
+
+## 2026-11-09 课程字体统一前端上线
+
+- 样式 PR #22 已合并；部署条件修复 PR #23 已合并至 `63ae3fdd72bb2d0a9be4814201a55cd02de15f29`。修复仅为前端激活补充 `always() && !cancelled()`，原发布成功、仓库/master及部署开关要求保留。
+- PR #22 的原五模块 SQLite/MySQL complete 仍因501/FeatureNotImplemented失败，不将其解释为业务完成。PR #23 与 master 验证42591945685通过双端构建及runner联调；原测试和业务门禁未修改。
+- 合并交付修复时临时关闭 `SPLIT_DELIVERY_RELEASE_ENABLED`，等待自动验证结束后恢复原值true，防止此次共享CI改动发布后端。
+- 用户授权的手动前端发布部署 [42593151066](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/42593151066) 整体成功：前端检查、镜像、发布、前端激活及summary成功；后端构建/发布/激活和完整联调均skipped。独立组件发布不代表五模块业务验收成功。
+- 已发布记录complete=true、components=[frontend]。独立只读服务器审计 [42593666642](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/42593666642) 成功，前端running/healthy且RepoDigest匹配 `sha256:9d980766066ae8bd2e0633382f19b6b5219b850c3fa8875685425f8c68f7ef6e`；backend/gateway均healthy。后端仍为 `sha256:de98d373555230f5610f167184b100d91d0a2f8c79102c21be348d2139458a67`。审计未读取或替换真实环境文件。
+- 本地78项前端测试和生产构建通过；隔离模拟API下五课程页及个人中心、简历页在1440/390px共14视图无横向溢出或JS异常。初始页字体统一；检索结果/失败状态、线上登录后浏览器及真实模型未重新验收，不能以容器健康替代这些验收。
+- 脱敏运维证据位于Actions Artifact：`published-frontend-42593151066`、`split-deployment-audit-42593666642`。线上使用效果仍待用户浏览确认。
