@@ -81,3 +81,8 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 首次网关维护的镜像传输与日常构建缓存不同。SSH 大归档曾超时，维护任务改为 runner 用既有 ACR 凭据发布专用 `gateway-nginx-<imageID>` 基础设施标签，按 digest 校验后由服务器拉取；不改前后端 `latest`/SHA 标签，日常单端发布不执行该步骤。只读 audit 不传入 ACR 凭据。
 
 2026-11-01 最终安装与独立审计成功后，发布总开关和三项分端部署开关已开启。实际 digest、单端重建、保留后端与验收边界见[部署状态](deployment-status.md)；不能把启用开关理解为已经重新发布/部署 backend。
+
+
+## 2026-11-09 检索演示离线回归
+
+后端测试任务增加 `test_text_retrieval.py` 和 `test_retrieval_demo.py`，验证真实文本策略和演示接口鉴权、输入校验、来源、许可过滤，接口测试禁止数据库访问。原业务固定 complete 测试、所有跳过条件及发布依赖不变。手动发布按既有 workflow_dispatch 规则计算空业务差异，可能跳过完整业务验收；这仅用于用户明确授权的半成品演示发布，不能报告为业务验收通过。

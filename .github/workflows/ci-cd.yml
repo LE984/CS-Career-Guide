@@ -199,6 +199,8 @@ jobs:
           python -m unittest discover -s backend/tests -p 'test_env_config.py' -v 2>&1 | tee backend-config.log
           python -m unittest discover -s backend/tests -p 'test_deploy_runtime.py' -v 2>&1 | tee backend-deploy.log
           python -m unittest discover -s backend/tests -p 'test_interview.py' -v 2>&1 | tee backend-interview.log
+          python -m unittest discover -s backend/tests -p 'test_text_retrieval.py' -v 2>&1 | tee backend-text-retrieval.log
+          python -m unittest discover -s backend/tests -p 'test_retrieval_demo.py' -v 2>&1 | tee backend-retrieval-demo.log
           python -m unittest discover -s backend/tests -p 'test_asr.py' -v 2>&1 | tee backend-asr.log
           python -m unittest discover -s backend/tests -p 'test_career_path_migrations.py' -v 2>&1 | tee backend-career-path-migrations.log
       - uses: actions/upload-artifact@v4
