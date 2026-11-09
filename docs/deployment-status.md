@@ -172,3 +172,10 @@ master 运行的后端日志明确记录：
 - 已发布记录complete=true、components=[frontend]。独立只读服务器审计 [42593666642](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/42593666642) 成功，前端running/healthy且RepoDigest匹配 `sha256:9d980766066ae8bd2e0633382f19b6b5219b850c3fa8875685425f8c68f7ef6e`；backend/gateway均healthy。后端仍为 `sha256:de98d373555230f5610f167184b100d91d0a2f8c79102c21be348d2139458a67`。审计未读取或替换真实环境文件。
 - 本地78项前端测试和生产构建通过；隔离模拟API下五课程页及个人中心、简历页在1440/390px共14视图无横向溢出或JS异常。初始页字体统一；检索结果/失败状态、线上登录后浏览器及真实模型未重新验收，不能以容器健康替代这些验收。
 - 脱敏运维证据位于Actions Artifact：`published-frontend-42593151066`、`split-deployment-audit-42593666642`。线上使用效果仍待用户浏览确认。
+
+
+## 2026-11-09 课程导航统一上线
+
+PR #25合并至`59e086f6bf6cd8ad5297163f807c11cc5d2b2786`，五课程页共用五项导航及一致顶部位置，练习页自由面试改为辅助入口；内容160ms淡入，减少动态效果时禁用。78项前端测试、构建及1440/390px共10次隔离浏览器切换验证通过。PR原SQLite/MySQL正式业务验收仍因FeatureNotImplemented失败，未改门禁。
+
+用户授权的手动仅前端发布部署[42595704965](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/42595704965)整体成功；后端相关构建/发布/部署skipped。独立只读审计[42596613922](https://github.com/vacontinuejatotired/CS-Career-Guide/actions/runs/42596613922)确认frontend healthy且RepoDigest匹配`sha256:18d39353e0fe455d7380df3ee511df36205d660ec41699fb3e9c8512687e00f3`；与审计42593666642相比backend/gateway容器ID未变。未调用真实模型，线上登录后视觉效果待用户确认，不能将单组件发布视作完整业务验收。
