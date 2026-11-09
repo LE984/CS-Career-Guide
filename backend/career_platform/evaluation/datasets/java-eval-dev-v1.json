@@ -1,0 +1,85 @@
+{
+  "version": "java-eval-dev-v1",
+  "task": "question",
+  "split": "dev",
+  "description": "调参集：只用于选择权重与阈值，不参与结论报告。查询使用口语化问法，避免与题面逐字重合。",
+  "corpus_version": "java-corpus-v1",
+  "provenance": {
+    "author": "成员2（xuyihao）",
+    "created": "2026-11-09",
+    "license": "团队创作，仅用于离线指标计算",
+    "review": "相关标注由成员2逐条核对题干语义，未使用真实面试记录"
+  },
+  "queries": [
+    {
+      "id": "dev-01",
+      "query": "为什么哈希表里我的对象会被当成两个不同的键",
+      "relevant_ids": ["eval-java-q01", "eval-java-q07"],
+      "group": "relevant",
+      "topic": "集合"
+    },
+    {
+      "id": "dev-02",
+      "query": "哈希桶里的链表什么时候会变成树",
+      "relevant_ids": ["eval-java-q05"],
+      "group": "relevant",
+      "topic": "集合"
+    },
+    {
+      "id": "dev-03",
+      "query": "线程池里任务排满了会被丢掉吗",
+      "relevant_ids": ["eval-java-q11"],
+      "group": "relevant",
+      "topic": "并发"
+    },
+    {
+      "id": "dev-04",
+      "query": "一个线程改了共享变量，另一个线程为什么读不到",
+      "relevant_ids": ["eval-java-q13"],
+      "group": "relevant",
+      "topic": "并发"
+    },
+    {
+      "id": "dev-05",
+      "query": "查询明明有索引却很慢",
+      "relevant_ids": ["eval-java-q15", "eval-java-q17"],
+      "group": "relevant",
+      "topic": "数据库"
+    },
+    {
+      "id": "dev-06",
+      "query": "两个服务类互相注入，启动时会不会死循环",
+      "relevant_ids": ["eval-java-q19"],
+      "group": "relevant",
+      "topic": "Spring"
+    },
+    {
+      "id": "dev-07",
+      "query": "线程复用时怎么避免带上上一次请求的数据",
+      "relevant_ids": ["eval-java-q14"],
+      "group": "relevant",
+      "topic": "并发"
+    },
+    {
+      "id": "dev-08",
+      "query": "随机访问和频繁中间插入，选哪种列表",
+      "relevant_ids": ["eval-java-q04"],
+      "group": "relevant",
+      "topic": "集合"
+    },
+    {
+      "id": "dev-09",
+      "query": "用哪个容器能一边加一边安全地读",
+      "relevant_ids": ["eval-java-q06"],
+      "group": "relevant",
+      "topic": "集合"
+    },
+    {
+      "id": "dev-10",
+      "query": "周末去哪里爬山比较合适",
+      "relevant_ids": [],
+      "group": "unrelated",
+      "topic": "无关检测"
+    }
+  ]
+}
