@@ -16,6 +16,8 @@
 
 ## 固定指标与样例
 
+2026-11-09 已提供可独立调用的纯内存 `TextRetrievalStrategy`，输入候选字典、查询条件与 Top-K，输出 `RankedQuestion[]`。默认题干/标签/参考要点/参考答案权重为 `4/3/2/1`，`min_score=0` 且非空查询零匹配必定排除；参数、分词与调用方式见[成员4文本基线说明](04-interview-rag.md#2026-11-09-纯内存文本检索基线)。当前仅完成算法单元测试，虚构测试题不是正式评估集；尚未接入 EvaluationService，也没有正式相关性指标或调优效果结论。
+
 设K=5、相关集合R、去重后的前K预测P；Precision@K=命中数/K（不足K的空位算未命中），Recall@K=命中数/|R|，F1为前两者调和均值，HitRate@K为该query是否命中，MRR为首个相关结果名次倒数（无命中0）。逐query宏平均；R为空的样本作为无关检测组单列，不与正常相关样本分母混算。重复ID不能重复计分。非法未知ID记无关并保留诊断。
 
 ```json
@@ -153,5 +155,22 @@
   "scope": "骨架 7 项通过；固定完整业务验收 17 项为 14 failures、3 errors，五模块 501 / FeatureNotImplemented。测试提交 c34a98a 与部署目标 master 0f64e4e 的 tree 均为 cb53fd5f04e5e5197b289dadef18a8aea55c48b3。",
   "limitations": "五个业务模块尚未实现，本次未修改业务代码、固定测试或门禁。未重新验证 MySQL、真实模型或浏览器，未执行镜像发布、服务器重建或线上迁移。用户选择保留门禁，完整验收通过前不部署。",
   "evidence": ".runtime/gate-repair/scaffold.json; .runtime/gate-repair/scaffold.log; .runtime/gate-repair/complete.json; .runtime/gate-repair/complete.log; GitHub Actions 41456388774（文档门禁失败、应用测试/双镜像/联调成功）；41467510972（只读 SSH 审计成功）"
+}
+```
+
+
+### 2026-11-09 文本检索演示发布候选
+
+本次新增经过 Token 鉴权的 `POST /api/career-platform/questions/demo-retrieve/`，与正式 `questions/retrieve/` 隔离。页面 `/career-platform/practice` 改为明确标注的文本检索演示，提供条件筛选、排名与来源证据。候选为 `rag/demo.py` 专门编写的9条虚构演示材料，不导入测试 fixture、不写数据库、不创建会话或反馈；pending/restricted 不返回。正式五模块服务和旧自由面试边界保留。共享 URL 新增使本次按原规则核对六份文档与全部固定验收，不降低既有用例。详细输入、输出和范围见成员4说明。
+
+```acceptance-record
+{
+  "commit": "93640dd + dirty",
+  "command": "python -m unittest discover -s backend/tests -p test_text_retrieval.py -v; python -m unittest discover -s backend/tests -p test_retrieval_demo.py -v; node --test frontend/tests/*.test.mjs; node frontend/node_modules/vite/bin/vite.js build (cwd=frontend); python ci/project_acceptance.py --stage scaffold; python ci/project_acceptance.py --stage complete --module all",
+  "result": "failed",
+  "environment": "2026-11-09；Windows；隔离内存 SQLite；本地浏览器通过隔离预览 API 调用真实文本策略，无生产数据",
+  "scope": "文本策略17项、演示接口6项、前端78项和生产构建通过；骨架7项通过。固定完整业务17项仍为14 failures、3 errors，原因是五模块正式服务501。独立演示不冒充正式业务完成。",
+  "limitations": "仅发布候选准备。用户明确授权将标注演示的半成品部署到现有网站；允许使用既有手动发布流程，固定测试和门禁规则不改。未接数据库题库、真实模型、练习记录；远端CI、发布和线上浏览器结果另记。",
+  "evidence": "backend/tests/test_text_retrieval.py; backend/tests/test_retrieval_demo.py; output/retrieval-demo-20261109/scaffold.json; output/retrieval-demo-20261109/complete.json; pre-deploy audit Actions 42551685730"
 }
 ```

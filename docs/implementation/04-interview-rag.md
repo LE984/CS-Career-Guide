@@ -30,6 +30,47 @@ start支持 question_ids（1到20个UUID）。成员5重新校验题目与岗位
 
 ## 分步开发与验收
 
+### 2026-11-09 纯内存文本检索基线
+
+`backend/career_platform/rag/retrieval.py` 已实现独立的 `TextRetrievalStrategy`，调用签名沿用 `RetrievalStrategy`，输出沿用 `RankedQuestion`，未修改题库模型或公共契约。`InterviewRagService` 和生产组装仍未接入该策略，HTTP 检索与反馈继续返回 501；本节仅交付离线算法，不代表 RAG 完整业务完成。
+
+调用方将一组已物化的题目字典传入构造器，键名沿用 `InterviewQuestion`，不传 ORM QuerySet。候选至少应有 `id`、`permission_status`、`role`、`topic`、`difficulty`、`question`、`source`；`tags`、`key_points` 为字符串列表，`reference_answer`、`source_url` 为字符串。候选由可信数据适配层保证类型，本策略不承担导入校验。构造时深拷贝为快照，来源或许可变更后必须重新构造；未来接入正式题库时，数据层与会话下发环节仍需重新核验最新许可。
+
+```python
+from career_platform.rag.retrieval import TextRetrievalStrategy
+
+# candidate_questions 是调用方提供的题目字典序列；这里不加载任何测试题。
+retriever = TextRetrievalStrategy(candidate_questions)
+results = retriever.retrieve(
+    query="集合", role="Java 后端", topic="集合", difficulty="easy", top_k=5,
+)
+# results: list[RankedQuestion]；实际无命中时为 []。
+```
+
+- 筛选：只接受 `permission_status == "allowed"`；缺少稳定 ID、非空题干或来源的题目不返回。岗位、知识点和难度去除首尾空白、统一全半角和大小写后精确匹配，空条件表示不限；不做岗位别名或同义词推断。
+- 排序：英文/数字按词匹配，连续中文使用相邻二字片段。每个字段得分为“命中的查询词数量 / 查询词总数”，题干、标签、参考要点、参考答案默认权重分别为 `4/3/2/1`，加权后除以总权重，分数范围为 `[0, 1]`。重复词不累计加分，标签和要点分别作为独立文本分词，不拼接出跨字段词组。同分按题目 ID 字符串升序，输入候选顺序变化不影响同分结果。
+- 阈值与数量：构造器可传 `min_score`（默认 `0`）及 `field_weights`（上述四字段的非负权重，至少一个为正）。非空文本查询零匹配必定排除，`score >= min_score` 才返回；空白查询只筛选，分数为 `0`，正阈值会排除它；仅有标点的查询无结果。`top_k` 沿用公共上限，须为 `1..20` 整数，非法参数抛 `ValueError`，不冒充无命中。
+- 来源：每条 evidence 的 `source_id` 为题目 ID，`field_path` 指向原始 `source`、可选 `source_url`、题干、参考答案、`tags[i]` 或 `key_points[i]`，`quote` 保留原文；没有来源 URL 时不编造。`origin="catalog"` 仅沿用题库候选契约，不代表这些离线测试题是正式人审题。
+
+离线验证（仓库根目录，无需 Django 配置、数据库、Embedding 或模型 Key）：
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s backend/tests -p test_text_retrieval.py -v
+```
+
+虚构题目仅位于 `backend/tests/test_text_retrieval.py`，生产代码不导入。用例覆盖 Java 后端/集合/easy、未知知识点、pending/restricted/未知许可、四字段权重与查询覆盖率、中文匹配、全半角和大小写、空查询、Top-K、阈值、稳定排序、原文证据、缺少来源、快照隔离和契约签名。2026-11-09 本地 `codex/personal + dirty` 实际运行：上述 17 项全部通过；既有离线回归 `python -m unittest discover -s backend/tests -p test_interview.py` 的 6 项全部通过。未执行数据库、真实模型、练习记录、远端 CI 或部署。本基线参数尚未经过成员2正式评估，score 不能解释为语义置信度或能力评分；后续 LanceDB 和逐题反馈接入另行实现与验收。
+
+### 2026-11-03 本地空实现预留
+
+本次仅增加成员四的显式方法与中文 `TODO(成员4)` 注释，不代表检索或反馈已经实现：
+
+- `backend/career_platform/rag/retrieval.py`：`TextRetrievalStrategy.retrieve()` 预留文本检索基线，签名沿用 `RetrievalStrategy`；下次优先实现候选许可/条件过滤、文本匹配、稳定排序、Top-K 和真实来源证据。
+- `backend/career_platform/rag/service.py`：显式预留 `InterviewRagService.retrieve()`、`answer()`，注明检索预览、会话校验、先存回答再生成反馈、证据校验与幂等的后续步骤。
+- 三个方法均继续抛 `FeatureNotImplemented`；生产组装保持原样，不返回假题、固定反馈或默认空结果，不访问数据库、索引或真实模型。尚未新增 LanceDB 适配器或调整旧自由面试。
+- 其他成员未开工时，可先用仅供测试的虚构题目完成文本策略；正式数据与持久化依赖分别待成员一、成员五接口就绪后接入。专项完整业务验收在真实逻辑补齐前仍应失败。
+
+本地验证基于 `93640dd + dirty`：运行 `python ci/project_acceptance.py --stage scaffold --output output/rag-placeholders-20261103/scaffold.json`，隔离 SQLite 骨架 7 项通过；另行直接调用三个空方法，确认均抛 501、不会调用注入依赖，文本策略签名与现有 Protocol 一致，Python 语法检查通过。报告 `business_complete=false`。未执行完整 RAG 业务验收、真实模型/Embedding、浏览器、远端 CI、发布或部署；本次结果仅证明预留未冒充实现。
+
 | 步骤 | 实施 | 预期/失败条件 |
 | --- | --- | --- |
 | 1 | 文本基线、候选过滤、来源组装 | Java/集合/easy只返回合格题；pending和restricted不可见；重复输入结果稳定 |
@@ -159,3 +200,22 @@ start支持 question_ids（1到20个UUID）。成员5重新校验题目与岗位
   "evidence": ".runtime/gate-repair/scaffold.json; .runtime/gate-repair/scaffold.log; .runtime/gate-repair/complete.json; .runtime/gate-repair/complete.log; GitHub Actions 41456388774（文档门禁失败、应用测试/双镜像/联调成功）；41467510972（只读 SSH 审计成功）"
 }
 ```
+
+
+### 2026-11-09 文本检索演示发布候选
+
+本次新增经过 Token 鉴权的 `POST /api/career-platform/questions/demo-retrieve/`，与正式 `questions/retrieve/` 隔离。页面 `/career-platform/practice` 改为明确标注的文本检索演示，提供条件筛选、排名与来源证据。候选为 `rag/demo.py` 专门编写的9条虚构演示材料，不导入测试 fixture、不写数据库、不创建会话或反馈；pending/restricted 不返回。正式五模块服务和旧自由面试边界保留。共享 URL 新增使本次按原规则核对六份文档与全部固定验收，不降低既有用例。详细输入、输出和范围见成员4说明。
+
+```acceptance-record
+{
+  "commit": "93640dd + dirty",
+  "command": "python -m unittest discover -s backend/tests -p test_text_retrieval.py -v; python -m unittest discover -s backend/tests -p test_retrieval_demo.py -v; node --test frontend/tests/*.test.mjs; node frontend/node_modules/vite/bin/vite.js build (cwd=frontend); python ci/project_acceptance.py --stage scaffold; python ci/project_acceptance.py --stage complete --module all",
+  "result": "failed",
+  "environment": "2026-11-09；Windows；隔离内存 SQLite；本地浏览器通过隔离预览 API 调用真实文本策略，无生产数据",
+  "scope": "文本策略17项、演示接口6项、前端78项和生产构建通过；骨架7项通过。固定完整业务17项仍为14 failures、3 errors，原因是五模块正式服务501。独立演示不冒充正式业务完成。",
+  "limitations": "仅发布候选准备。用户明确授权将标注演示的半成品部署到现有网站；允许使用既有手动发布流程，固定测试和门禁规则不改。未接数据库题库、真实模型、练习记录；远端CI、发布和线上浏览器结果另记。",
+  "evidence": "backend/tests/test_text_retrieval.py; backend/tests/test_retrieval_demo.py; output/retrieval-demo-20261109/scaffold.json; output/retrieval-demo-20261109/complete.json; pre-deploy audit Actions 42551685730"
+}
+```
+
+演示请求字段：`role` 必填，`query` 默认空文本（最大500字符），`topic` 默认空（不限），`difficulty` 默认easy，`top_k` 默认5、范围1到20；不接受岗位ID、题目ID、用户ID或练习会话。响应包含 `is_demo=true`、`dataset=text-retrieval-demo-v1`、`count`、`results`，每个结果也标记 `is_demo=true`，其余字段沿用 RankedQuestion。题目ID只能在本演示材料中追溯，不能用于正式会话下发。页面不再显示未实现的手工会话ID和作答按钮，原正式API仍保留501。生产组装保持五个服务，演示由现有 InterviewRagService 的独立 demo_retrieve 操作调用。
