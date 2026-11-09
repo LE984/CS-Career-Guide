@@ -1,0 +1,113 @@
+{
+  "version": "java-eval-test-v1",
+  "task": "question",
+  "split": "test",
+  "description": "冻结的最终测试集：只用于报告结论，不参与权重选择、阈值调整或提示词样例。查询使用口语化问法，避免与题面逐字重合。",
+  "corpus_version": "java-corpus-v1",
+  "provenance": {
+    "author": "成员2（xuyihao）",
+    "created": "2026-11-09",
+    "license": "团队创作，仅用于离线指标计算",
+    "review": "相关标注由成员2逐条核对题干语义，未使用真实面试记录"
+  },
+  "queries": [
+    {
+      "id": "test-01",
+      "query": "读多写少的并发映射用什么实现",
+      "relevant_ids": ["eval-java-q06"],
+      "group": "relevant",
+      "topic": "集合"
+    },
+    {
+      "id": "test-02",
+      "query": "重写相等判断后集合还是没去重",
+      "relevant_ids": ["eval-java-q07", "eval-java-q01"],
+      "group": "relevant",
+      "topic": "集合"
+    },
+    {
+      "id": "test-03",
+      "query": "进程里哪块区域会内存溢出，哪块在堆外",
+      "relevant_ids": ["eval-java-q08"],
+      "group": "relevant",
+      "topic": "JVM"
+    },
+    {
+      "id": "test-04",
+      "query": "老年代满了会引发什么回收",
+      "relevant_ids": ["eval-java-q09"],
+      "group": "relevant",
+      "topic": "JVM"
+    },
+    {
+      "id": "test-05",
+      "query": "类加载时为什么要先问父加载器",
+      "relevant_ids": ["eval-java-q10"],
+      "group": "relevant",
+      "topic": "JVM"
+    },
+    {
+      "id": "test-06",
+      "query": "两个互斥锁该用哪个，能不能设超时",
+      "relevant_ids": ["eval-java-q12"],
+      "group": "relevant",
+      "topic": "并发"
+    },
+    {
+      "id": "test-07",
+      "query": "同一个事务里两次读到的行数不一样",
+      "relevant_ids": ["eval-java-q16"],
+      "group": "relevant",
+      "topic": "数据库"
+    },
+    {
+      "id": "test-08",
+      "query": "查询不回表是怎么做到的",
+      "relevant_ids": ["eval-java-q17"],
+      "group": "relevant",
+      "topic": "数据库"
+    },
+    {
+      "id": "test-09",
+      "query": "容器创建对象后按什么顺序回调",
+      "relevant_ids": ["eval-java-q18"],
+      "group": "relevant",
+      "topic": "Spring"
+    },
+    {
+      "id": "test-10",
+      "query": "事务写在私有方法或内部调用会怎样",
+      "relevant_ids": ["eval-java-q20"],
+      "group": "relevant",
+      "topic": "Spring"
+    },
+    {
+      "id": "test-11",
+      "query": "字符串拼接频繁为什么建议换别的类型",
+      "relevant_ids": ["eval-java-q03"],
+      "group": "relevant",
+      "topic": "Java基础"
+    },
+    {
+      "id": "test-12",
+      "query": "包装类型参与运算时报空指针",
+      "relevant_ids": ["eval-java-q02"],
+      "group": "relevant",
+      "topic": "Java基础"
+    },
+    {
+      "id": "test-13",
+      "query": "周末去哪里爬山比较合适",
+      "relevant_ids": [],
+      "group": "unrelated",
+      "topic": "无关检测"
+    },
+    {
+      "id": "test-14",
+      "query": "如何备考研究生英语考试",
+      "relevant_ids": [],
+      "group": "unrelated",
+      "topic": "无关检测"
+    }
+  ]
+}

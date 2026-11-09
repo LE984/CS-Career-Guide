@@ -1,0 +1,392 @@
+{
+  "version": "java-corpus-v1",
+  "description": "成员2 评估用 Java 后端题目语料快照。仅用于离线指标计算，不作为正式题库，也不进入生产检索索引。字段沿用 InterviewQuestion，便于被 TextRetrievalStrategy 直接消费。",
+  "provenance": {
+    "author": "成员2 eval owner",
+    "created": "2026-11-09",
+    "license": "团队创作，允许在本仓库内使用",
+    "review": "题目与要点由评估负责人自编并逐题核对；未复制付费题库或个人面试记录"
+  },
+  "questions": [
+    {
+      "id": "eval-java-q01",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "解释 equals 与 hashCode 的契约",
+      "key_points": [
+        "equals 判定相等的两个对象必须返回相同的 hashCode",
+        "重写 equals 必须同时重写 hashCode",
+        "hashCode 相同不代表对象相等",
+        "违反契约会让 HashMap、HashSet 出现重复元素或查不到"
+      ],
+      "reference_answer": "equals 描述业务相等，hashCode 描述哈希桶位置。契约要求相等对象哈希值相同，因此两者必须成对重写；否则基于哈希的集合会先按错误的桶查找，导致去重失效。",
+      "tags": ["Java基础", "equals", "hashCode", "对象契约"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q02",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "自动装箱与拆箱有哪些坑",
+      "key_points": [
+        "包装类缓存 -128 到 127，超出范围用 == 比较会得到 false",
+        "null 包装类拆箱会抛 NullPointerException",
+        "包装类型比较应使用 equals",
+        "高频计算使用基本类型可避免额外对象分配"
+      ],
+      "reference_answer": "装箱把基本类型包装成对象并可能命中 Integer 缓存；拆箱把包装类转回基本类型，遇到 null 直接空指针。混用 == 还会因为缓存区间产生看似正确的相等判断。",
+      "tags": ["Java基础", "包装类", "装箱", "拆箱", "空指针"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q03",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "Java基础",
+      "difficulty": "medium",
+      "question": "String 为什么设计成不可变",
+      "key_points": [
+        "字符串常量池可以安全复用同一实例",
+        "不可变对象天然线程安全",
+        "hashCode 可以缓存，作为 HashMap 键更高效",
+        "避免类加载、路径等安全校验被中途篡改"
+      ],
+      "reference_answer": "String 的 value 数组私有且不可修改，所有修改操作返回新对象。这样常量池可共享实例、多线程读取无需同步、哈希值可缓存，同时保证类名与资源路径等安全敏感值不会被篡改。",
+      "tags": ["Java基础", "String", "不可变", "常量池"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q04",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "集合",
+      "difficulty": "easy",
+      "question": "ArrayList 与 LinkedList 应该如何选择",
+      "key_points": [
+        "ArrayList 基于数组，支持 O(1) 随机访问",
+        "LinkedList 基于双向链表，插入删除不需要搬移数据",
+        "LinkedList 按索引定位仍需遍历，中间插入实际是 O(n)",
+        "顺序遍历为主的场景 ArrayList 通常更快"
+      ],
+      "reference_answer": "ArrayList 用连续数组存储，随机访问快、尾部追加摊还 O(1)，扩容时整体复制。LinkedList 额外维护节点指针，只在已定位节点附近插入删除才占优，实际业务中 ArrayList 更常用。",
+      "tags": ["集合", "ArrayList", "LinkedList", "数据结构"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q05",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "HashMap 的扩容与链表树化条件是什么",
+      "key_points": [
+        "默认负载因子 0.75，容量为 2 的整数次幂",
+        "链表长度达到 8 且表容量不小于 64 时转为红黑树",
+        "树节点少于 6 时退化为链表",
+        "扩容时按高位判断原地保留或迁移到 oldCap 偏移位置"
+      ],
+      "reference_answer": "元素数量超过容量乘负载因子时按两倍扩容，原有节点通过哈希高位决定留在原位还是迁移。只有容量达到 64 且单桶链表长度到 8 才树化，避免小表过早引入红黑树开销。",
+      "tags": ["集合", "HashMap", "扩容", "红黑树", "负载因子"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q06",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "ConcurrentHashMap 在 JDK8 如何保证线程安全",
+      "key_points": [
+        "取消分段锁，改为 CAS 加 synchronized 锁定桶首节点",
+        "写入只锁定冲突的单个桶，读操作基本无锁",
+        "size 通过 CounterCell 分段累加，避免热点",
+        "不允许 null 键和 null 值，避免并发语义歧义"
+      ],
+      "reference_answer": "JDK8 用 volatile 数组加 CAS 完成空桶插入，桶内冲突时对首节点加 synchronized，粒度从段降到一个桶；计数用 CounterCell 分散竞争，因此并发写吞吐比 Hashtable 和分段锁版本高。",
+      "tags": ["集合", "并发", "ConcurrentHashMap", "CAS", "线程安全"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q07",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "集合",
+      "difficulty": "easy",
+      "question": "HashSet 如何去重，自定义对象需要注意什么",
+      "key_points": [
+        "先按 hashCode 定位桶，再用 equals 判断是否相等",
+        "自定义对象必须同时重写 hashCode 与 equals",
+        "重写不完整会出现重复元素",
+        "HashSet 不保证迭代顺序"
+      ],
+      "reference_answer": "HashSet 内部用 HashMap 存元素，添加时先算哈希找到桶，再逐个用 equals 比较。只重写 equals 不重写 hashCode，两个相等对象会落到不同桶里，去重直接失效。",
+      "tags": ["集合", "HashSet", "去重", "hashCode", "equals"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q08",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "JVM",
+      "difficulty": "medium",
+      "question": "JVM 运行时数据区如何划分",
+      "key_points": [
+        "线程共享：堆和方法区，JDK8 起方法区由元空间实现",
+        "线程私有：虚拟机栈、本地方法栈、程序计数器",
+        "堆存放对象实例，是 GC 的主要区域",
+        "直接内存不属于运行时数据区，但受本机内存限制"
+      ],
+      "reference_answer": "JVM 启动时划分堆、元空间、虚拟机栈、本地方法栈和程序计数器。堆与元空间由所有线程共享，栈和计数器按线程创建；NIO 的直接内存通过 DirectByteBuffer 分配，OOM 时不报堆溢出。",
+      "tags": ["JVM", "内存模型", "堆", "元空间", "运行时数据区"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q09",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "JVM",
+      "difficulty": "hard",
+      "question": "哪些情况会触发 Full GC",
+      "key_points": [
+        "老年代剩余空间不足以容纳晋升对象或大对象",
+        "元空间或方法区空间耗尽",
+        "显式调用 System.gc，取决于是否禁用",
+        "并发收集失败退化为串行 Full GC"
+      ],
+      "reference_answer": "Full GC 通常由老年代空间不足、元空间扩张失败、显式 gc 调用或并发收集失败退化引起。排查应结合 GC 日志看晋升速率与内存泄漏，而不是只看次数。",
+      "tags": ["JVM", "GC", "Full GC", "老年代", "垃圾回收"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q10",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "JVM",
+      "difficulty": "medium",
+      "question": "类加载的双亲委派模型解决什么问题",
+      "key_points": [
+        "收到加载请求先委派给父加载器，父加载器无法完成才自己加载",
+        "避免同一个类被不同加载器重复加载",
+        "保护核心类库不被自定义类替换",
+        "SPI、热部署等场景会主动打破该模型"
+      ],
+      "reference_answer": "双亲委派让类加载请求逐级向上，保证 Object 等核心类由启动加载器加载，从而避免同名类冲突和被篡改。JDBC 这类 SPI 通过线程上下文加载器反向委派来打破限制。",
+      "tags": ["JVM", "类加载", "双亲委派", "ClassLoader"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q11",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "并发",
+      "difficulty": "easy",
+      "question": "线程池的核心参数与执行流程",
+      "key_points": [
+        "corePoolSize、maximumPoolSize、keepAliveTime、workQueue、threadFactory、handler",
+        "任务先占核心线程，再进队列，队列满才扩到最大线程数",
+        "达到上限后由拒绝策略处理",
+        "常用拒绝策略：AbortPolicy、CallerRunsPolicy、DiscardPolicy、DiscardOldestPolicy"
+      ],
+      "reference_answer": "提交任务时若线程数小于核心数直接新建线程，否则入队；队列满且未达最大线程数时继续扩容，仍满则触发拒绝策略。因此用无界队列会让 maximumPoolSize 形同虚设。",
+      "tags": ["并发", "线程池", "Executor", "拒绝策略", "队列"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q12",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "并发",
+      "difficulty": "medium",
+      "question": "synchronized 与 ReentrantLock 有什么区别",
+      "key_points": [
+        "synchronized 是关键字，由 JVM 管理；ReentrantLock 是 API",
+        "ReentrantLock 支持可中断、超时和公平锁",
+        "ReentrantLock 需要 finally 中调用 unlock",
+        "两者都是可重入的互斥锁"
+      ],
+      "reference_answer": "synchronized 使用简单，异常时自动释放监视器；ReentrantLock 提供 tryLock、lockInterruptibly 和 Condition，适合需要超时或细粒度唤醒的场景，代价是必须手动释放。",
+      "tags": ["并发", "synchronized", "ReentrantLock", "锁", "可重入"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q13",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "并发",
+      "difficulty": "hard",
+      "question": "volatile 保证了哪些语义，又不保证什么",
+      "key_points": [
+        "保证可见性：写立即刷回主内存，读必须从主内存获取",
+        "禁止指令重排序，插入内存屏障",
+        "不保证复合操作的原子性",
+        "适合状态标志和双重检查锁定的实例引用"
+      ],
+      "reference_answer": "volatile 提供可见性与有序性，count++ 这类读改写仍会丢失更新，需要锁或原子类。双重检查单例里给实例引用加 volatile 是为了防止构造与赋值重排。",
+      "tags": ["并发", "volatile", "可见性", "原子性", "内存屏障"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q14",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "并发",
+      "difficulty": "medium",
+      "question": "ThreadLocal 为什么会内存泄漏",
+      "key_points": [
+        "ThreadLocalMap 的 key 是 ThreadLocal 的弱引用",
+        "value 是强引用，key 被回收后 value 仍挂在 map 上",
+        "线程池复用线程会放大残留",
+        "用完必须显式 remove"
+      ],
+      "reference_answer": "ThreadLocalMap 以弱引用保存 key，ThreadLocal 对象被回收后 entry 的 value 仍被线程强引用，线程池里的线程长期存活就累积成泄漏，所以应在 finally 中 remove。",
+      "tags": ["并发", "ThreadLocal", "内存泄漏", "线程池", "弱引用"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q15",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "数据库",
+      "difficulty": "easy",
+      "question": "哪些写法会导致索引失效",
+      "key_points": [
+        "在索引列上使用函数或表达式",
+        "前导模糊匹配 like '%x'",
+        "隐式类型转换导致列侧计算",
+        "复合索引不满足最左前缀"
+      ],
+      "reference_answer": "索引失效多因列被包裹成表达式、使用了前置通配符、发生隐式转换，或复合索引跳过了最左列。应结合实际执行计划确认，而不是只凭 SQL 形状判断。",
+      "tags": ["数据库", "MySQL", "索引", "执行计划", "最左前缀"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q16",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "数据库",
+      "difficulty": "medium",
+      "question": "MySQL 各隔离级别下幻读如何处理",
+      "key_points": [
+        "读未提交、读已提交、可重复读、串行化四个级别",
+        "MySQL 默认可重复读",
+        "MVCC 快照读避免大部分不可重复读",
+        "当前读依靠临键锁与间隙锁抑制幻读"
+      ],
+      "reference_answer": "可重复读下普通 select 走 MVCC 快照，看不到新插入的行；select ... for update 等当前读通过间隙锁锁住区间，阻止其他事务插入，从而抑制幻读。",
+      "tags": ["数据库", "事务", "隔离级别", "MVCC", "幻读", "间隙锁"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q17",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "数据库",
+      "difficulty": "medium",
+      "question": "覆盖索引为什么能提升查询性能",
+      "key_points": [
+        "查询涉及的列全部包含在索引中",
+        "无需回表取主键对应的行数据",
+        "减少随机 IO 与行读取次数",
+        "执行计划中出现 Using index"
+      ],
+      "reference_answer": "覆盖索引把查询需要的列都放在二级索引里，引擎扫完索引即可返回结果，避免按主键回表。它同时能减少回表产生的随机 IO，但会增加索引体积和写入成本。",
+      "tags": ["数据库", "索引", "覆盖索引", "回表", "执行计划"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q18",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "Spring",
+      "difficulty": "easy",
+      "question": "Spring Bean 的生命周期有哪些阶段",
+      "key_points": [
+        "实例化后填充属性",
+        "执行 Aware 系列回调",
+        "BeanPostProcessor 的前置与后置处理",
+        "初始化方法、使用、销毁回调"
+      ],
+      "reference_answer": "容器先反射创建实例并注入依赖，随后调用 Aware 接口，再执行 BeanPostProcessor 前置处理与初始化方法，使用期结束后由后置处理器收尾并调用销毁方法。",
+      "tags": ["Spring", "Bean", "生命周期", "容器", "BeanPostProcessor"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q19",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "Spring",
+      "difficulty": "medium",
+      "question": "Spring 如何解决单例的循环依赖",
+      "key_points": [
+        "三级缓存保存原始对象、早期引用和工厂",
+        "提前暴露 ObjectFactory 生成代理对象",
+        "构造器注入的循环依赖无法解决",
+        "Spring Boot 2.6 起默认禁止循环依赖"
+      ],
+      "reference_answer": "单例 setter 注入的循环依赖通过三级缓存提前暴露半成品对象解决：先放入工厂，需要时取出早期引用并可能生成代理，从而打破 Java 构造期的强依赖。",
+      "tags": ["Spring", "循环依赖", "三级缓存", "依赖注入", "代理"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    },
+    {
+      "id": "eval-java-q20",
+      "role": "Java后端",
+      "category": "Java",
+      "topic": "Spring",
+      "difficulty": "medium",
+      "question": "@Transactional 在哪些情况下不生效",
+      "key_points": [
+        "同类内部方法调用绕过代理",
+        "非 public 方法默认不被事务增强",
+        "异常被捕获或不属于默认回滚类型",
+        "跨线程执行不在同一事务连接中"
+      ],
+      "reference_answer": "事务依赖代理拦截，类内自调用、非 public 方法、异常被吞掉或抛出受检异常未配置 rollbackFor、以及新开线程都会让事务边界失效。",
+      "tags": ["Spring", "事务", "代理", "AOP", "回滚"],
+      "source": "团队创作：评估语料快照 java-corpus-v1",
+      "source_url": "",
+      "permission_status": "allowed"
+    }
+  ]
+}

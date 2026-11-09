@@ -1,6 +1,6 @@
 # 成员2：评估与参数调优
 
-依照 [当前方案](../career_platform_plan.md) 和 [公共约定](00-shared-contracts.md)。已有职业评估页面不能视为本模块完成；目前 EvaluationRun、staff路由和页面可启动，评估执行/查询/导出均501。
+依照 [当前方案](../career_platform_plan.md) 和 [公共约定](00-shared-contracts.md)。已有职业评估页面不能视为本模块完成；骨架阶段 EvaluationRun、staff 路由和页面可启动，评估执行/查询/导出均 501。2026-11-09 起，`question` 任务的评估运行、查询与导出已实现（见文末实施与实验记录）；岗位匹配与简历匹配策略仍依赖成员1/3 的正式服务。
 
 ## 目标、目录和不做范围
 
@@ -206,5 +206,53 @@
   "scope": "仅统一课程导航和切换样式。78项前端测试、生产构建通过；1440/390px各点击五个入口，共10次切换均为同名同序五项导航、一个当前项、无横向溢出，导航纵向位置同尺寸一致；减少动态效果时动画为none。",
   "limitations": "不改变五模块正式业务、API、鉴权或数据；passed仅指此次前端专项，不代表五模块complete成功。未调用真实模型；线上发布及服务器运行版本另验收。用户要求验证后直接上线，仅发布前端，沿用既有半成品演示发布流程，不修改门禁。",
   "evidence": "output/playwright/course-nav-tests.log；output/playwright/course-nav-build.log；output/playwright/course-nav-check.js；output/playwright/course-nav-1440.png；output/playwright/course-nav-390.png"
+}
+```
+
+### 2026-11-09 成员2 实现：question 任务的评估运行、查询与导出
+
+本轮实现 `question` 任务的离线评估闭环：`evaluation/metrics.py`（纯函数指标）、`evaluation/datasets.py`（版本化冻结评估集与指纹）、`evaluation/strategies.py`（复用成员4 `TextRetrievalStrategy` 的排序适配器）、`evaluation/service.py`（运行/列表/详情/导出）和 `Evaluation.vue`（真实结果、逐例证据与导出）。未修改共享文件（contracts/serializers/composition/api/urls/migrations/固定测试）与 `views/evaluation.py`：输入校验、staff 鉴权、跨用户 404 仍由既有平台层提供。
+
+**数据**：`evaluation/datasets/java-corpus-v1.json` 是 20 道团队自编 Java 后端题（Java基础 3、集合 4、JVM 3、并发 4、数据库 3、Spring 3）；`java-eval-dev-v1.json`（9 条相关 query + 1 条无关检测）只用于选参数；`java-eval-test-v1.json`（12 条相关 query + 2 条无关检测）冻结后只用于报告结论。加载时返回深拷贝，并记录规范化 JSON 的 SHA-256；落库参数中保存 `dataset_sha256` 与 `corpus_version`，供复现。查询采用口语化问法，避免与题面逐字重合。
+
+**行为**：
+
+- POST `evaluation-runs/`：参数白名单仅 `k`（1-20，默认 5）；未登记数据集、未注册策略或未知参数一律 400 且零写入；`(user,request_id)` 同输入返回原记录，同键不同输入 409；成功记录 `status=succeeded`、`model_version=offline-text-v1`。
+- GET 列表/详情/导出：只读同一条记录，导出不重跑策略；导出额外携带 `contract_version`、`exported_at` 与 `groups`。
+- 指标：Precision 分母固定为 K（空位算未命中）；重复预测 ID 只计一次；相关集为空的样本归入无关检测组，不计入宏平均，仍逐例保存诊断。
+- 策略异常只记录异常类型，不回显供应商异常内容；全部样本失败时返回 503 且不落库。
+
+**实验记录（本地隔离 SQLite，离线文本策略，无真实模型、无 Embedding）**：
+
+| 阶段 | 集合 | 策略 | K | Precision@K | Recall@K | F1@K | HitRate@K | MRR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 基线 | dev | text-baseline | 5 | 0.222 | 0.889 | 0.349 | 0.889 | 0.806 |
+| 对照 | dev | text-balanced | 5 | 0.222 | 0.889 | 0.349 | 0.889 | 0.806 |
+| 基线 | test | text-baseline | 5 | 0.217 | 1.000 | 0.353 | 1.000 | 0.799 |
+| 对照 | test | text-balanced | 5 | 0.217 | 1.000 | 0.353 | 1.000 | 0.896 |
+
+Top-K 单变量扫描（text-baseline，其余参数不变）：dev 在 K=3/5/10 的 F1@K 为 0.456/0.349/0.195，test 为 0.483/0.353/0.194；K 越小精确率越高、召回越差（test 的 Recall 从 K=5 的 1.000 降到 K=3 的 0.917）。
+
+**结论与未采用的方案**：
+
+1. 均衡权重变体在 dev 上与基线完全一致，在 test 上只改变了个别 query 的首命中名次（MRR 0.799→0.896），不足以作为调优收益，因此**默认策略仍为 `text-baseline`**，`text-balanced` 仅保留为对照候选。
+2. 阈值方案已试但未采用：把 `min_score` 提到 0.12 后，dev 召回从 0.889 降到 0.278、test 从 1.000 降到 0.500——当前语料与 query 规模下词面匹配分数分布很窄，阈值会同时砍掉有效召回。
+3. 无关检测组仍误召：dev 的 1 条与 test 的 2 条无关 query 分别返回 2/2/5 条弱相关候选，说明纯词面匹配缺少可靠的相关性下限；建议语料扩大后用阈值扫描或成员4的重排解决，而不是在本模块伪造过滤阈值。
+
+**已知限制**：
+
+- 仅注册 `question` 任务策略；`job`、`resume` 任务的评估策略需要成员1/3 的正式服务，当前请求返回 400 而非空基线。
+- 全部样本失败时的 503 路径：共享 `api.py` 的错误码映射没有 503，响应信封 `code` 为 `REQUEST_FAILED`；补齐需集成人审核共享契约。
+- 未接 MySQL runner、真实 Embedding、真实模型与浏览器端到端；页面外框 `WorkspaceShell` 的“开发骨架 · 功能待实现”标签属共享组件，本模块未修改。
+
+```acceptance-record
+{
+  "commit": "30f3137 + dirty",
+  "command": "python ci/project_acceptance.py --stage scaffold; python ci/project_acceptance.py --stage complete --module evaluation; python -m django test career_platform.evaluation.tests_metrics --settings=career_platform.test_settings; python -m unittest discover -s ci -p 'test_project*.py'; node --test frontend/tests/*.test.mjs; npm run build --prefix frontend",
+  "result": "passed",
+  "environment": "2026-11-09；Windows；Python 3.12.10 + Django 4.2.7；隔离内存 SQLite；PLATFORM_TEST_MYSQL 未设置；Node 24.20.0",
+  "scope": "question 任务评估闭环：指标与数据集边界单元测试 11 项通过；骨架 7 项通过；固定 evaluation 验收 3 项通过（指标可复现与幂等复用、导出与详情指标一致、未知数据集 400 且零写入、非管理员 403、无关预测五项指标为 0）；ci 目录 project 单元测试 11 项通过；前端 78 项与生产构建通过。另以本地隔离 SQLite 经 API 实跑 dev/test 两套评估集共 4 条记录：列表/详情/导出一致，同 request_id 复用原记录，同键改 K 返回 409，未登记数据集/未注册策略/未知参数均 400 且不落库。",
+  "limitations": "仅离线文本策略，未调用真实模型或 Embedding；job、resume 任务未注册策略（依赖成员1/3 正式服务）；无关检测组仍有 2/2/5 条误召且未启用相关性阈值；全部样本失败时的 503 信封 code 为 REQUEST_FAILED（共享 api.py 未映射 503）；页面外框阶段标签属共享组件未改；未跑 MySQL runner、远端 CI、浏览器端到端与发布。",
+  "evidence": "output/scaffold.json; output/evaluation.json; backend/career_platform/evaluation/tests_metrics.py; backend/career_platform/evaluation/datasets/"
 }
 ```
