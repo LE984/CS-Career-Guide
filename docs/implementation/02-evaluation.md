@@ -244,3 +244,15 @@ Top-K 单变量扫描（text-baseline，其余参数不变）：dev 在 K=3/5/10
 - 仅注册 `question` 任务策略；`job`、`resume` 任务的评估策略需要成员1/3 的正式服务，当前请求返回 400 而非空基线。
 - 全部样本失败时的 503 路径：共享 `api.py` 的错误码映射没有 503，响应信封 `code` 为 `REQUEST_FAILED`；补齐需集成人审核共享契约。
 - 未接 MySQL runner、真实 Embedding、真实模型与浏览器端到端；页面外框 `WorkspaceShell` 的“开发骨架 · 功能待实现”标签属共享组件，本模块未修改。
+
+```acceptance-record
+{
+  "commit": "30f3137 + dirty",
+  "command": "python ci/project_acceptance.py --stage scaffold; python ci/project_acceptance.py --stage complete --module evaluation; python -m django test career_platform.evaluation.tests_metrics --settings=career_platform.test_settings; python -m unittest discover -s ci -p 'test_project*.py'; node --test frontend/tests/*.test.mjs; npm run build --prefix frontend",
+  "result": "passed",
+  "environment": "2026-11-09；Windows；Python 3.12.10 + Django 4.2.7；隔离内存 SQLite；PLATFORM_TEST_MYSQL 未设置；Node 24.20.0",
+  "scope": "question 任务评估闭环：指标与数据集边界单元测试 11 项通过；骨架 7 项通过；固定 evaluation 验收 3 项通过（指标可复现与幂等复用、导出与详情指标一致、未知数据集 400 且零写入、非管理员 403、无关预测五项指标为 0）；ci 目录 project 单元测试 11 项通过；前端 78 项与生产构建通过。另以本地隔离 SQLite 经 API 实跑 dev/test 两套评估集共 4 条记录：列表/详情/导出一致，同 request_id 复用原记录，同键改 K 返回 409，未登记数据集/未注册策略/未知参数均 400 且不落库。",
+  "limitations": "仅离线文本策略，未调用真实模型或 Embedding；job、resume 任务未注册策略（依赖成员1/3 正式服务）；无关检测组仍有 2/2/5 条误召且未启用相关性阈值；全部样本失败时的 503 信封 code 为 REQUEST_FAILED（共享 api.py 未映射 503）；页面外框阶段标签属共享组件未改；未跑 MySQL runner、远端 CI、浏览器端到端与发布。",
+  "evidence": "output/scaffold.json; output/evaluation.json; backend/career_platform/evaluation/tests_metrics.py; backend/career_platform/evaluation/datasets/"
+}
+```
