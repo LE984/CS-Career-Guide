@@ -2,11 +2,12 @@
   <div class="minimal-auth flex items-center justify-center">
     <div class="w-full max-w-md p-8 glass-card relative z-10 animate-fade-in-up">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent mb-2">欢迎回来</h1>
-        <p class="text-base-content/60">登录您的账户以继续</p>
+        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent mb-2">{{ resetting ? '重置密码' : '欢迎回来' }}</h1>
+        <p class="text-base-content/60">{{ resetting ? '演示便捷入口：仅凭用户名即可重置，不验证身份，请勿用于正式账号。' : '登录您的账户以继续' }}</p>
       </div>
       
-      <form @submit.prevent="login" class="space-y-6">
+      <p v-if="success" role="status" class="mb-4 text-primary">{{ success }}</p>
+      <form @submit.prevent="resetting ? resetPassword() : login()" class="space-y-6">
         <div class="form-control">
           <label class="label" for="login-username">
             <span class="label-text font-medium">用户名</span>
@@ -24,19 +25,21 @@
         
         <div class="form-control">
           <label class="label" for="login-password">
-            <span class="label-text font-medium">密码</span>
+            <span class="label-text font-medium">{{ resetting ? '新密码' : '密码' }}</span>
           </label>
           <input
             v-model="form.password"
             id="login-password"
-            autocomplete="current-password"
+            :autocomplete="resetting ? 'new-password' : 'current-password'"
+            :minlength="resetting ? 6 : undefined"
+            :maxlength="resetting ? 128 : undefined"
             type="password"
             class="input input-bordered w-full"
             placeholder="请输入密码"
             required
           />
           <label class="label">
-            <a href="#" class="label-text-alt link link-hover text-primary">忘记密码?</a>
+            <button type="button" :disabled="loading" class="label-text-alt link link-hover text-primary" @click="toggleReset">{{ resetting ? '返回登录' : '忘记密码？重置密码' }}</button>
           </label>
         </div>
 
@@ -46,7 +49,7 @@
           :disabled="loading"
         >
           <span v-if="loading" class="loading loading-spinner loading-sm"></span>
-          {{ loading ? '登录中...' : '登录' }}
+          {{ loading ? (resetting ? '重置中...' : '登录中...') : (resetting ? '重置密码' : '登录') }}
         </button>
 
         <div class="text-center text-sm">
@@ -79,8 +82,38 @@ const form = ref({
 })
 const loading = ref(false)
 const error = ref('')
+const success = ref('')
+const resetting = ref(false)
+
+function toggleReset() {
+  resetting.value = !resetting.value
+  form.value.password = ''
+  error.value = ''
+  success.value = ''
+}
+
+async function resetPassword() {
+  if (loading.value) return
+  loading.value = true
+  error.value = ''
+  success.value = ''
+  try {
+    await authAPI.resetPassword({ username: form.value.username, new_password: form.value.password })
+    clearSession()
+    form.value.password = ''
+    resetting.value = false
+    success.value = '密码已重置，请使用新密码登录。'
+  } catch (err) {
+    const data = err.response?.data
+    error.value = data?.username?.[0] || data?.new_password?.[0] || '重置失败，请检查网络后重试'
+  } finally {
+    loading.value = false
+  }
+}
 
 const login = async () => {
+  if (loading.value) return
+  success.value = ''
   loading.value = true
   error.value = ''
   try {

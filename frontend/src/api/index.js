@@ -26,11 +26,13 @@ export const apiFetch = createApiFetch(apiUrl)
 export const authAPI = {
   login: (data) => api.post('/users/auth/login/', data, { publicAuth: true }),
   register: (data) => api.post('/users/auth/register/', data, { publicAuth: true }),
-  logout: () => api.post('/users/auth/logout/')
+  logout: () => api.post('/users/auth/logout/'),
+  resetPassword: (data) => api.post('/users/auth/reset-password/', data, { publicAuth: true })
 }
 
 export const userAPI = {
   getProfile: (config) => api.get('/users/profile/', config),
+  setPassword: (data) => api.post('/users/profile/set-password/', data),
   updateProfile: (data) => api.put('/users/profile/', data),
   uploadAvatar: (formData) => api.post('/users/profile/', formData, {
     headers: {

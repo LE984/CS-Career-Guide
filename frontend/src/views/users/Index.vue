@@ -11,6 +11,15 @@
           <input ref="avatarInput" type="file" accept="image/*" aria-label="选择个人头像文件" class="sr-only" tabindex="-1" @change="handleAvatarChange" />
           <div class="identity-body"><div class="identity-title"><h2>{{ user?.username || '我的账号' }}</h2><button type="button" class="account-button" @click="openEditModal"><WorkspaceIcon name="edit" />编辑资料</button></div><p class="identity-bio">{{ user?.profile || '写下你的专业方向与兴趣，让个人资料更完整。' }}</p><dl class="identity-facts"><div v-for="field in identityFields" :key="field.key"><dt>{{ field.label }}</dt><dd>{{ user?.[field.key] || '未填写' }}</dd></div></dl><p v-if="uploadingAvatar" class="account-help" role="status">正在上传头像…</p></div>
         </section>
+        <section class="account-panel password-panel" aria-labelledby="set-password-title">
+          <h2 id="set-password-title">设置密码</h2>
+          <p class="account-help">直接为当前账号设置新密码，无需旧密码或重复确认，至少 6 位。</p>
+          <form class="password-form" @submit.prevent="setPassword">
+            <div class="profile-field"><label for="account-new-password">新密码</label><input id="account-new-password" v-model="newPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required /></div>
+            <button type="submit" class="account-button primary" :disabled="savingPassword">{{ savingPassword ? '正在设置…' : '设置密码' }}</button>
+          </form>
+          <p v-if="passwordMessage" :role="passwordFailed ? 'alert' : 'status'" class="account-notice" :class="{ error: passwordFailed }">{{ passwordMessage }}</p>
+        </section>
         <div class="account-layout">
           <div class="account-primary">
             <section class="account-panel"><div class="account-panel-heading"><div><span class="account-kicker">关于我</span><h2>个人信息</h2></div><router-link to="/career-paths/employment/self-introduction" class="account-text-link">完善自我介绍<WorkspaceIcon name="arrow" /></router-link></div>
@@ -48,6 +57,19 @@ const showEditModal = ref(false), editForm = ref({}), message = ref(''), message
 const recommendations = ref([]), selfIntroduction = ref(''), resume = ref(null), resumeLoading = ref(false), resumeError = ref('')
 const interviewReviews = ref([]), loadingReviews = ref(false), reviewsError = ref(''), reviewPage = ref(1)
 const showReviewModal = ref(false), currentReview = ref(null), loadingReviewDetail = ref(false), reviewDetailError = ref(''), reviewSession = ref('')
+const newPassword = ref(''), savingPassword = ref(false), passwordMessage = ref(''), passwordFailed = ref(false)
+async function setPassword() {
+  if (savingPassword.value) return
+  savingPassword.value = true; passwordMessage.value = ''; passwordFailed.value = false
+  try {
+    await userAPI.setPassword({ new_password: newPassword.value })
+    newPassword.value = ''
+    passwordMessage.value = '密码设置成功，下次登录请使用新密码。'
+  } catch (error) {
+    passwordFailed.value = true
+    passwordMessage.value = error?.response?.data?.new_password?.[0] || requestError(error, '设置密码')
+  } finally { savingPassword.value = false }
+}
 const identityFields = [{key:'school',label:'学校'},{key:'major',label:'专业'},{key:'education',label:'学历'},{key:'email',label:'邮箱'},{key:'address',label:'地址'}]
 const styleNames = {gentle:'温和面',technical:'技术面',pressure:'压力面',behavioral:'行为面'}
 const reviewFields = [{key:'strengths',label:'优点'},{key:'weaknesses',label:'待改进'},{key:'suggestions',label:'改进建议'}]
@@ -115,6 +137,10 @@ onBeforeUnmount(()=>{clearTimeout(messageTimer);detailSequence++})
 </script>
 
 <style scoped>
+.password-panel { margin-bottom: 28px; }
+.password-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin-top: 18px; }
+.password-form .profile-field { flex: 1 1 200px; margin: 0; }
+.password-panel .account-notice { margin: 18px 0 0; }
 .account-page { background: var(--career-bg); color: var(--career-text); }
 .account-main { padding-block: 44px 64px; }
 .account-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 30px; }

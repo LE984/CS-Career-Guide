@@ -10,6 +10,7 @@ class ApiTokenRequiredMiddleware:
     public_paths = frozenset({
         '/api/users/auth/login/',
         '/api/users/auth/register/',
+        '/api/users/auth/reset-password/',
     })
 
     def __init__(self, get_response):

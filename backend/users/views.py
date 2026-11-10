@@ -8,7 +8,8 @@ from django.db import transaction
 from django.contrib.auth import authenticate
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
-    UserProfileUpdateSerializer, ChangePasswordSerializer
+    UserProfileUpdateSerializer, ChangePasswordSerializer,
+    SetPasswordSerializer, ResetPasswordSerializer
 )
 from .models import User
 
@@ -95,6 +96,36 @@ class UserProfileView(APIView):
             return Response(UserSerializer(request.user, context={'request': request}).data)
         except Exception as e:
             return Response({'error': '头像上传失败，请重试'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ResetPasswordView(APIView):
+    """演示便利入口：仅凭用户名重置，不提供身份校验。"""
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = User.objects.filter(
+            username=serializer.validated_data['username'], is_active=True
+        ).first()
+        if user is None:
+            return Response({'username': ['用户不存在或已停用']}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        Token.objects.filter(user=user).delete()
+        return Response({'message': '密码已重置，请使用新密码登录'})
+
+
+class SetPasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = SetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(serializer.validated_data['new_password'])
+        request.user.save(update_fields=['password'])
+        return Response({'message': '密码设置成功'})
+
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
