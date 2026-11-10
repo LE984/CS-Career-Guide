@@ -341,9 +341,9 @@ Actions 42776569360 的文档、SQLite/MySQL业务验收及前端镜像成功，
 }
 ```
 
-### 2026-11-10 正式文本检索与统一记录交接复核
+### 2026-11-10 正式文本检索与统一记录交接复核（b127df1历史快照）
 
-当前正式retrieve和answer已接通，demo-retrieve/Practice.vue仍保持独立只读演示。补充receipt、内部认领字段、retry-feedback、错误码、来源透传缺口与进程内缓存限制。原501占位测试已经不适配正式检索实现，本轮仅如实记录失败，不改断言或删测。
+在b127df1上正式retrieve和answer已接通，demo-retrieve/Practice.vue仍保持独立只读演示。补充receipt、内部认领字段、retry-feedback、错误码、来源透传缺口与进程内缓存限制。以下保留合并前原501占位测试失败的实测记录；c117908已迁移该断言，其后续专项结果见上文“合并后 CI 的演示隔离断言修复”，此历史记录不代表合入a4dc576后的当前失败。
 
 ```acceptance-record
 {

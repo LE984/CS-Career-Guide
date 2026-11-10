@@ -40,7 +40,7 @@ Platform documentation 继续以 PR base / push before 的归属表为准检查�
 - 每份要求文档的最后一个acceptance-record必须是有效JSON，包含commit、command、result、environment、scope、limitations、evidence；commit须实际SHA，可加“ + dirty”。非首次骨架result仅允许passed或failed，partial_pass不合法。
 - 只更新正文、复用原结构化验收记录仍失败。专项成功而完整业务失败时，可在scope写清专项通过，并以failed表示整体验收失败，不能用模糊成功覆盖阻塞。
 - b127df1对应Actions 42771897363的Platform documentation失败；本地复现缺01/02/03、00/04记录未更新、05结果枚举不合法。此次文档修订按原规则补齐，不修改CI代码或测试。
-- 同次Backend checks失败步骤为Run configuration tests，平台数据库验收和Backend image被跳过。旧demo测试仍要求正式retrieve返回501的冲突在本地另已复现；文档同步不修复这个独立回归。
+- 同次Backend checks失败步骤为Run configuration tests，平台数据库验收和Backend image被跳过。当时旧demo测试仍要求正式retrieve返回501；后续c117908已修正隔离回归断言，专项结果见04实施文档。原运行的失败仍是历史事实，修复后的远端结果须按对应提交查询。
 - 新的纯文档提交即便检查成功，也不代表旧代码提交的镜像、数据库验收、完整业务或部署已通过；若要验证代码修复，应对包含该修复的候选重新执行对应检查。
 
 2026-11-01 用户明确授权保留并说明此既有业务失败后合并拆分 PR、更新服务器。该授权不改变测试结果或固定规则。首次合并关闭发布与自动激活，服务器操作通过手动 `Split delivery maintenance` workflow 的严格 SSH 核验通道执行；当前 `audit` 只输出镜像/容器/端口/卷等选定元数据，不读取或替换真实 `.env` 内容，不输出展开的 Compose 或容器环境值。

@@ -65,7 +65,7 @@ Linux/macOS 对应 Python 路径通常为 `.venv/bin/python`。ci/sync_runtime_e
 
 以下为初始骨架阶段说明。当前b127df1已有evaluation的question任务、records和正式RAG文本检索/反馈；catalog/resume仍是501。Records页面已接真实历史，Practice页面仍为独立只读演示，不能把旧段落“所有接口501”或“页面都有骨架标签”当作当前事实。最新操作行为见00/04/05实施文档。
 
-2026-11-10文档复核：隔离SQLite组合专项18项通过；完整all固定17项仍有8项失败，且旧检索演示测试1项仍断言正式接口501。修改后的文档门禁记录应只使用passed/failed，并说明实际范围；共享contracts/composition/api/迁移等改动必须同步00至05全部六份文档。仅修改文档不会修复业务/测试失败，也不代表部署通过。
+2026-11-10在b127df1上的历史文档复核：隔离SQLite组合专项18项通过；完整all固定17项有8项失败，旧检索演示测试1项仍断言正式接口501。后续c117908已将该演示测试迁移为正式检索隔离断言；合入a4dc576后，应分别查阅04实施文档中的后续回归记录，不能把早期结果视为当前结果。修改后的文档门禁记录只使用passed/failed，并说明实际范围；共享contracts/composition/api/迁移等改动必须同步00至05全部六份文档。仅修改文档不代表业务或部署通过。
 
 先读 [公共约定](implementation/00-shared-contracts.md) 和本人实施文档。新入口位于 `/career-platform/catalog`、`resume`、`practice`、`records`、`evaluation`；这些页面明确显示开发骨架，新业务有效请求返回501，不能据此演示业务已完成。默认自由面试保持原入口。
 
