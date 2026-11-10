@@ -23,6 +23,16 @@
 
 ## 交接样例与依赖
 
+### 2026-11-10 records/rag 对目录数据的实际依赖
+
+`b127df1` 未实现 CatalogService 的导入、查询或审核流程，catalog 固定验收仍失败；下列是共享组装/迁移变化对成员1的影响，不是目录模块完成声明：
+
+- `DjangoQuestionRetriever` 直接读取托管 `InterviewQuestion` 的 allowed 数据，再复用 `TextRetrievalStrategy` 按 role/topic/difficulty 和 Top-K 排序；当前不调用 CatalogService，不读取 unmanaged `company_info_backup`，也未接 LanceDB 索引。
+- start 可按 question_ids 读取正式题库并校验许可和筛选条件；有 retrieval_id 时固化缓存回执的有序题目、score、evidence 与检索条件。当前回执路径不会重新读取许可变化，成员1调整审核或撤销许可后的即时生效语义仍需集成补齐。
+- Job 的 description 为空时回退 requirements；不存在岗位404，未 allowed 岗位400。检索/创建练习均不接受 job_id 与非空 jd_text 同传。
+- `0003_practice_records_runtime` 只增加练习记录查询字段、题目唯一键、尝试日志和索引，不导入正式题库、不改变 Job/InterviewQuestion schema，不回填 legacy 面试历史。
+- 历史详情读取练习快照；原题/岗位外键 SET_NULL 后仍保留当时内容。正式材料数量、来源审核和向量索引仍由成员1验收，测试 fixture 不算正式数据。
+
 ```json
 {"kind":"questions","dry_run":true,"records":[{"role":"Java后端","category":"Java","topic":"集合","difficulty":"easy","question":"ArrayList适用什么场景","key_points":["随机访问"],"reference_answer":"基于数组，适合随机访问","source":"团队创作：成员1；审核记录见数据说明","permission_status":"pending","is_demo":true,"dedupe_key":"team-java-001"}]}
 ```
@@ -212,6 +222,24 @@
 }
 ```
 
+### 2026-11-10 records/rag 对目录交接的同步验收
+
+同步新增正式题库读取方、岗位JD回退、许可处理、练习快照与迁移边界；未实现或调整CatalogService导入/查询，不增加演示材料或自动提升许可。当前回执许可重验证和完整来源元数据仍有差距，不能以records专项通过代替目录交付。
+
+```acceptance-record
+{
+  "commit": "b127df1 + dirty",
+  "command": "python -m unittest discover -s ci -p 'test_project*.py' -v; python -m django test career_platform.tests.test_scaffold career_platform.tests.accept_records career_platform.tests.accept_rag career_platform.tests.test_records_runtime --settings=career_platform.test_settings --testrunner=career_platform.tests.runner.FixedAcceptanceRunner --verbosity=1; python ci/project_acceptance.py --stage complete --module all --output .runtime/docs-sync-20261110/all.json; python -m unittest discover -s backend/tests -p 'test_retrieval_demo.py' -v",
+  "result": "failed",
+  "environment": "2026-11-10；Windows；Python 3.12 / Django 4.2.7；隔离内存SQLite、Gateway Spy；文档门禁PyYAML位于忽略目录，不调用真实模型",
+  "scope": "本轮完整all固定17项复核中，catalog4项均因501失败；evaluation/rag/records共9项通过，resume3项与integration1项失败。已更新成员1交接说明和结构化记录。",
+  "limitations": "目录功能、30道人审材料和索引通知未完成；正式检索读取托管ORM不代表catalog API已完成。未改数据、导入器、schema或旧企业写权限；无MySQL、真实Embedding或生产验收。",
+  "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
+}
+```
+
+> 上一条 b127df1 记录保留为历史快照；本轮 fe44f2a 已实现 catalog，见下文。
+
 ## 2026-11-10 成员1目录数据实现
 
 本轮实现 `backend/career_platform/catalog/` 的 `CatalogService`、`JsonSourceAdapter` 和 `DjangoCatalogRepository`，并更新 `frontend/src/views/career-platform/Catalog.vue`。`composition.py` 仍以 `CatalogService()` 组装，不需要测试替身。
@@ -243,6 +271,7 @@
 - 新增 `backend/tests/test_catalog_import.py`：6 项导入/查询/索引通知/RAG读取回归通过。
 - `python ci/project_acceptance.py --stage scaffold`：7 项骨架验收通过。
 - 前端 79 项测试和生产构建通过。
+- 合并 `upstream/master` 后复跑：catalog 4 项、导入 6 项、骨架 7 项、文档门禁 11 项、前端 89 项和生产构建仍通过。
 - 未验证：MySQL、真实招聘来源、真实 Embedding、浏览器全流程、远端 CI、发布与部署。30 道题尚未人工复核，不能视为正式题库完成。
 
 ```acceptance-record

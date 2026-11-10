@@ -16,7 +16,15 @@
 
 ## 固定指标与样例
 
-2026-11-09 已提供可独立调用的纯内存 `TextRetrievalStrategy`，输入候选字典、查询条件与 Top-K，输出 `RankedQuestion[]`。默认题干/标签/参考要点/参考答案权重为 `4/3/2/1`，`min_score=0` 且非空查询零匹配必定排除；参数、分词与调用方式见[成员4文本基线说明](04-interview-rag.md#2026-11-09-纯内存文本检索基线)。当前仅完成算法单元测试，虚构测试题不是正式评估集；尚未接入 EvaluationService，也没有正式相关性指标或调优效果结论。
+### 2026-11-10 共享契约与评估边界更新
+
+- `b127df1` 接通 records/rag 生产组装，但没有修改本模块的指标函数、冻结语料、默认权重或实验数据；不重新解释2026-11-09实验为真实模型或线上效果。
+- `api.py` 现按 HTTP 状态将503映射为 `MODEL_UNAVAILABLE`，502/504分别为 `INVALID_MODEL_OUTPUT`/`MODEL_TIMEOUT`。本模块“全部样本失败”的503也受共享映射影响；文末2026-11-09记录中的 `REQUEST_FAILED` 是历史状态，不是当前行为。
+- `WorkspaceShell` 新增可选 stageLabel，默认仍为“开发骨架 · 功能待实现”；Records显式覆盖，Evaluation目前未覆盖。该标签不能代表 evaluation question 任务仍是501，也不能代表 job/resume 已完成。
+- 评估文本策略继续调用公开 `TextRetrievalStrategy`，不直接读取 PracticeSession/AnswerRecord；新增检索回执与重试日志不是评估集，不得从其他用户历史抽取材料来替代冻结数据。
+- evaluation固定3项在本轮完整验收中通过；catalog/resume仍未实现，完整all仍失败。未重跑2026-11-09参数实验，不新增调优收益结论。
+
+2026-11-09 已提供可独立调用的纯内存 `TextRetrievalStrategy`，输入候选字典、查询条件与 Top-K，输出 `RankedQuestion[]`。默认题干/标签/参考要点/参考答案权重为 `4/3/2/1`，`min_score=0` 且非空查询零匹配必定排除；参数、分词与调用方式见[成员4文本基线说明](04-interview-rag.md#2026-11-09-纯内存文本检索基线)。随后已接入 EvaluationService 的 question 任务，具体指标、实验范围和局限见文末2026-11-09实施记录；虚构测试题仍不等于正式生产题库。
 
 设K=5、相关集合R、去重后的前K预测P；Precision@K=命中数/K（不足K的空位算未命中），Recall@K=命中数/|R|，F1为前两者调和均值，HitRate@K为该query是否命中，MRR为首个相关结果名次倒数（无命中0）。逐query宏平均；R为空的样本作为无关检测组单列，不与正常相关样本分母混算。重复ID不能重复计分。非法未知ID记无关并保留诊断。
 
@@ -254,5 +262,22 @@ Top-K 单变量扫描（text-baseline，其余参数不变）：dev 在 K=3/5/10
   "scope": "question 任务评估闭环：指标与数据集边界单元测试 11 项通过；骨架 7 项通过；固定 evaluation 验收 3 项通过（指标可复现与幂等复用、导出与详情指标一致、未知数据集 400 且零写入、非管理员 403、无关预测五项指标为 0）；ci 目录 project 单元测试 11 项通过；前端 78 项与生产构建通过。另以本地隔离 SQLite 经 API 实跑 dev/test 两套评估集共 4 条记录：列表/详情/导出一致，同 request_id 复用原记录，同键改 K 返回 409，未登记数据集/未注册策略/未知参数均 400 且不落库。",
   "limitations": "仅离线文本策略，未调用真实模型或 Embedding；job、resume 任务未注册策略（依赖成员1/3 正式服务）；无关检测组仍有 2/2/5 条误召且未启用相关性阈值；全部样本失败时的 503 信封 code 为 REQUEST_FAILED（共享 api.py 未映射 503）；页面外框阶段标签属共享组件未改；未跑 MySQL runner、远端 CI、浏览器端到端与发布。",
   "evidence": "output/scaffold.json; output/evaluation.json; backend/career_platform/evaluation/tests_metrics.py; backend/career_platform/evaluation/datasets/"
+}
+```
+
+
+### 2026-11-10 records/rag 共享变更对评估的回归记录
+
+共享503映射现为MODEL_UNAVAILABLE，Evaluation的历史REQUEST_FAILED限制应按当时记录理解。question评估仍复用原公开文本策略，不从用户练习历史构造新评估集；旧实验数值保留，未重跑或重新包装成真实模型效果。
+
+```acceptance-record
+{
+  "commit": "b127df1 + dirty",
+  "command": "python -m unittest discover -s ci -p 'test_project*.py' -v; python -m django test career_platform.tests.test_scaffold career_platform.tests.accept_records career_platform.tests.accept_rag career_platform.tests.test_records_runtime --settings=career_platform.test_settings --testrunner=career_platform.tests.runner.FixedAcceptanceRunner --verbosity=1; python ci/project_acceptance.py --stage complete --module all --output .runtime/docs-sync-20261110/all.json; python -m unittest discover -s backend/tests -p 'test_retrieval_demo.py' -v",
+  "result": "passed",
+  "environment": "2026-11-10；Windows；Python 3.12 / Django 4.2.7；隔离内存SQLite、Gateway Spy；文档门禁PyYAML位于忽略目录，不调用真实模型",
+  "scope": "本轮完整all固定17项中的evaluation3项通过；其余模块失败不改写evaluation专项结论。指标、冻结数据、权重、默认策略和实验结果未修改；更新共享错误码、阶段标签和记录读取边界说明。",
+  "limitations": "passed仅指evaluation固定专项，完整all仍8项失败，GitHub总CI未通过。未复跑参数实验与metrics扩展单元，job/resume策略仍未实现；无真实模型、Embedding、MySQL、浏览器或发布验收。",
+  "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
 ```

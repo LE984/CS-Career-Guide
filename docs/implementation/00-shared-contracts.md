@@ -4,7 +4,7 @@
 
 ## 团队开工入口
 
-本批准备内容首先交付在本fork的 `codex/team-scaffold` 分支。尚未合入master时，请从该分支拉取统一骨架，再各自新建短期功能分支；不要从旧master重复搭建接口。先读本文，再读本人01至05文档。当前有效请求返回501是预留业务，需成员实现。最终补丁未追加本地验收，CI和保护规则状态以GitHub实际结果为准。
+以下分支命令是最初骨架交付说明，保留用于追溯，不是当前开工基线。当前从最新 `origin/master` 继续开发，先读本文及本人01至05文档；截至 `b127df1`，catalog/resume 仍是 501 骨架，evaluation 的 question 任务和 records/rag 已有实现，不可将五模块统一描述为未实现或全部完成。
 
 ```bash
 git fetch origin
@@ -37,7 +37,7 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 
 ## 生产组装与替身
 
-`contracts.py` 定义端口，`composition.py:build_services()` 是唯一生产组装点。未实现操作继续继承 `UnavailableService` 并抛 `FeatureNotImplemented`，有效请求返回 HTTP 501；catalog 已实现四个公开操作，resume 仍整体不可用：
+`contracts.py` 定义端口，`composition.py:build_services()` 是唯一生产组装点。当前显式组装 `JsonModelGateway`、`DjangoPracticeRepository`、`PracticeService`、`DjangoQuestionRetriever` 和 `InterviewRagService`；resume 虽注入同一网关，但分析/应用仍未实现。evaluation 继续使用自身离线文本策略，不依赖 records 历史。catalog 已实现四个公开操作；catalog/resume 中仍未实现的操作继续返回 HTTP 501：
 
 ```json
 {"code":"FEATURE_NOT_IMPLEMENTED","message":"功能待实现","details":{"detail":"功能待实现"}}
@@ -47,7 +47,7 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 
 ## HTTP 与数据契约 v1
 
-命名空间 `/api/career-platform/`，Token 鉴权。所有列表目标格式为 `{count,page,page_size,results}`，页从1开始，默认20、最大100；稳定按 `created_at,id` 或明确排序。骨架尚无业务成功响应，以下成功结构是实现必须遵循的约定。所有时间为 UTC ISO8601，私有新记录 ID 为 UUID，既有 Company/Job/Resume ID 保留整数；禁止把两种 ID 混用。
+命名空间 `/api/career-platform/`，Token 鉴权。列表格式为 `{count,page,page_size,results}`，页从1开始，默认20、最大100；稳定按 `created_at,id` 或明确排序。下表区分已实现接口与仍未完成模块，不能把路由存在当作业务完成。所有时间为 UTC ISO8601，私有新记录 ID 为 UUID，既有 Company/Job/Resume ID 保留整数；禁止把两种 ID 混用。
 
 | 路径 | 方法、输入和责任 |
 | --- | --- |
@@ -64,7 +64,17 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 
 文本 JD/回答上限20000字符，role/topic上限100。未知字段400，客户端传 user/owner 一律拒绝。记录所有者由登录身份指定，服务端再次按 user 过滤；管理员也不因身份自动读取其他用户私有记录，越权与不存在均404。
 
-错误恒为 `{code,message,details}`。400 VALIDATION_ERROR、401 UNAUTHENTICATED、403 FORBIDDEN、404 NOT_FOUND、409 CONFLICT、502 INVALID_MODEL_OUTPUT、503 MODEL_UNAVAILABLE、504 MODEL_TIMEOUT、501 FEATURE_NOT_IMPLEMENTED。502/503/504 用于逐题反馈接口；finish 将同类失败保存到 summary 并返回 HTTP 200 的会话结果。任何错误均不得泄露原始供应商异常、提示词中的私人数据或凭据。
+错误恒为 `{code,message,details}`。400 VALIDATION_ERROR、401 UNAUTHENTICATED、403 FORBIDDEN、404 NOT_FOUND、409 CONFLICT、502 INVALID_MODEL_OUTPUT、503 MODEL_UNAVAILABLE、504 MODEL_TIMEOUT、501 FEATURE_NOT_IMPLEMENTED。`api.py` 按 HTTP 状态进行共享映射，因此这些 code 也影响 evaluation 等调用方的同状态异常；不是仅对反馈接口生效。finish 将模型失败保存到 summary 并返回 HTTP 200 的会话结果。任何错误均不得泄露原始供应商异常、提示词中的私人数据或凭据。
+
+### records/rag 已实现接口细节（2026-11-10）
+
+- start 的 `question_ids` 为1至20个不重复 UUID；Serializer 允许省略，但 Service 会以400拒绝缺省列表。`job_id` 与非空 `jd_text` 同传为400。无 job_id 时可用输入 JD 或仅 role；有岗位时使用 description，空时回退 requirements。来源不存在404，未 allowed 或题目筛选不符400。
+- retrieve 返回 `{count,results,retrieval_id}`。回执按当前用户缓存，TTL 由 `PRACTICE_RETRIEVAL_TTL` 控制；start 的同键重放先读取原会话，不因回执已过期而重复创建。新 start 的回执失效/用户不匹配为409，题目不在回执中为400。仅传 question_ids 时保存显式选择快照、score=null。
+- records 列表支持 page/page_size/q/role/topic/difficulty；q 查岗位标题或 role，按 created_at、id 倒序，越界页当前返回200空 results。详情包含 filters、job_snapshot、resume_snapshot、presented_questions、summary、answers；不返回尝试日志及 request_payload。
+- `record_answer` 内部返回回答项及 `feedback_request_id`、`should_generate_feedback`；只有创建者可生成首次反馈。`begin_feedback_retry` 用新的 request_id 认领原 AnswerRecord；`record_feedback` 按当前尝试键写回。HTTP 结果移除这两个内部字段，不接收 status/owner。
+- 普通 finish 无论同键或新键都不重复模型；首次同步尝试后返回 succeeded/failed，并发重放可观察 pending。空会话结束为 failed/NO_ANSWERS且不调用模型。显式重试须新键，failed或超过 `LLM_TIMEOUT + PRACTICE_ATTEMPT_GRACE_SECONDS` 的 pending才可认领；上限由 `PRACTICE_MAX_MODEL_ATTEMPTS` 控制，超限409。
+- summary 为 `{status,strengths,gaps,next_steps,failure_code,prompt_version}`。未结束的新会话也可能显示 summary pending，不能据此判断模型已开始；应结合 session.status。
+- 当前默认 LocMemCache 不跨进程共享；多 worker 的回执复用、真实并发锁和模型超时分类仍需专项验证。字段白名单不是对任意嵌套文本的全面脱敏证明；真实隐私与证据验证不能用单个字段测试代替。
 
 ## 快照和交接结构
 
@@ -284,5 +294,24 @@ CI 在 PR 使用 base SHA，在 push 使用 before SHA；不能用 HEAD^ 代替 
   "scope": "仅统一课程导航和切换样式。78项前端测试、生产构建通过；1440/390px各点击五个入口，共10次切换均为同名同序五项导航、一个当前项、无横向溢出，导航纵向位置同尺寸一致；减少动态效果时动画为none。",
   "limitations": "不改变五模块正式业务、API、鉴权或数据；passed仅指此次前端专项，不代表五模块complete成功。未调用真实模型；线上发布及服务器运行版本另验收。用户要求验证后直接上线，仅发布前端，沿用既有半成品演示发布流程，不修改门禁。",
   "evidence": "output/playwright/course-nav-tests.log；output/playwright/course-nav-build.log；output/playwright/course-nav-check.js；output/playwright/course-nav-1440.png；output/playwright/course-nav-390.png"
+}
+```
+
+
+### 2026-11-10 records/rag 共享变更与文档门禁复核
+
+本次仅同步文档，代码基线为b127df1。原提交共享contracts/composition/api/serializers/urls/迁移与前端组件，按ci/project_modules.json必须同步00至05全部六份文档；原缺01/02/03，00/04最新验收记录未更新，05的partial_pass也不符合门禁枚举。现补齐各成员实际影响与记录，不修改门禁规则。
+
+Actions 42771897363已确认：Platform documentation与Backend checks失败，Frontend image成功；平台数据库验收、Backend image、集成持久化和发布部署均skipped。Backend checks失败步骤是Run configuration tests；本地另复现旧演示测试仍要求正式检索501的冲突，不能推断补文档即可修复该失败。后续纯文档CI即便通过，也只覆盖此次文档提交，不会追溯重跑或证明b127df1业务发布成功。
+
+```acceptance-record
+{
+  "commit": "b127df1 + dirty",
+  "command": "python -m unittest discover -s ci -p 'test_project*.py' -v; python -m django test career_platform.tests.test_scaffold career_platform.tests.accept_records career_platform.tests.accept_rag career_platform.tests.test_records_runtime --settings=career_platform.test_settings --testrunner=career_platform.tests.runner.FixedAcceptanceRunner --verbosity=1; python ci/project_acceptance.py --stage complete --module all --output .runtime/docs-sync-20261110/all.json; python -m unittest discover -s backend/tests -p 'test_retrieval_demo.py' -v",
+  "result": "failed",
+  "environment": "2026-11-10；Windows；Python 3.12 / Django 4.2.7；隔离内存SQLite、Gateway Spy；文档门禁PyYAML位于忽略目录，不调用真实模型",
+  "scope": "共享接口、组装、快照、迁移和页面说明已与b127df1对齐。文档门禁自测11/11通过，records/rag/runtime/scaffold组合专项18/18通过。完整all固定17项为9通过、8失败；旧demo测试6项为5通过、1失败。",
+  "limitations": "result=failed表示完整业务与CI仍失败，不否定专项通过。catalog4、resume3、integration1仍因501失败；Backend配置测试另有阻塞。未运行MySQL、真实模型、浏览器、发布或部署；不修改任何固定测试、CI规则或业务代码。",
+  "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
 ```

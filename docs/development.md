@@ -63,6 +63,10 @@ Linux/macOS 对应 Python 路径通常为 `.venv/bin/python`。ci/sync_runtime_e
 
 ## 五人课程模块开发准备（2026-10-28）
 
+以下为初始骨架阶段说明。当前 b127df1 已有 evaluation 的 question 任务、records 和正式 RAG 文本检索/反馈；catalog 已由成员1实现，resume 仍未完成并返回 501。Records 页面已接真实历史，Practice 页面仍为独立只读演示，不能把旧段落“所有接口 501”或“页面都有骨架标签”当作当前事实。最新操作行为见 00/04/05 实施文档。
+
+2026-11-10 在 b127df1 上的历史文档复核：隔离SQLite组合专项18项通过；完整all固定17项有8项失败，旧检索演示测试1项仍断言正式接口501。后续 c117908 已将该演示测试迁移为正式检索隔离断言；合入 a4dc576 后，应分别查阅 04 实施文档中的后续回归记录，不能把早期结果视为当前结果。修改后的文档门禁记录只使用 passed/failed，并说明实际范围；共享 contracts/composition/api/迁移等改动必须同步 00 至 05 全部六份文档。仅修改文档不代表业务或部署通过。
+
 先读 [公共约定](implementation/00-shared-contracts.md) 和本人实施文档。新入口位于 `/career-platform/catalog`、`resume`、`practice`、`records`、`evaluation`。catalog 已实现企业/岗位/题库查询和 JSON 导入；resume 等模块仍按各自文档显示骨架或本地实现状态，不能据此把整份方案当作已完成。默认自由面试保持原入口。
 
 隔离命令 `python ci/project_acceptance.py --stage scaffold` 验证路由/鉴权/真实迁移和空实现；`--stage complete --module <catalog|evaluation|resume|rag|records|all>` 运行固定业务验收，catalog 当前应通过，resume 等未实现模块仍应失败。报告区分business_complete、commit、dirty、环境和real_model。工作树可复用原目录Python，不能误在个人目录执行开发。

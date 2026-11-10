@@ -25,6 +25,16 @@ start 使用 question_ids（1到20个UUID），正式页面同时提交 retrieve
 
 ## 与成员1、2、5的顺序与替身
 
+### 当前生产接线与已知边界（2026-11-10，b127df1）
+
+- `composition.build_services()` 将 `DjangoQuestionRetriever`、共享 `JsonModelGateway` 与唯一 PracticeService 注入 InterviewRagService。正式 `/questions/retrieve/` 已实现，不再以501作为预期；独立 `/questions/demo-retrieve/` 和 Practice.vue 仍保持原来的演示链路，不创建正式练习。
+- 正式查询文本优先用 JD；job_id 读取 allowed Job 的 description/requirements，再回退 topic/role。job_id 与非空 jd_text 同传400；岗位不存在404。底层使用确定性文本基线，不是 LanceDB/Embedding 完成声明。
+- retrieval_id 是当前用户缓存回执的UUID，TTL默认900秒；回执保存有序候选、证据、score和查询条件。当前 start 接受候选子集并按客户端 question_ids 顺序落库，不验证相对排名是否被重排。默认进程内缓存不适合跨worker回执共享，重启或换worker可能导致409并要求重新检索。
+- 正式 HTTP 输出过滤 `reference_answer` 证据项，保留参考要点和其他证据；当前 source/source_url 从证据提取，collected_at 在正式组装结果中为null。完整采集时间与来源元数据透传尚未补齐，不宣称“所有来源字段均已保存完整”。
+- `record_answer` 返回 record id/status/failure_code及内部 `should_generate_feedback`、`feedback_request_id`；仅认领者生成反馈，同请求重放不自动重试。成员4校验answer_quote来自真实回答、evidence属于题目快照后，调用record_feedback；HTTP不返回两个内部控制字段。
+- 独立 `retry-feedback` 接口只传新request_id，复用原回答。失败持久化后返回502/503/504；超时失效阈值为LLM_TIMEOUT加配置余量，上限默认包含首次尝试共5次。当前实现允许已结束会话中的原回答重试反馈；不会重新开放新作答，也不会自动重生成已有总结。
+- 本地复现旧 `test_regular_retrieval_still_explicitly_unimplemented` 仍断言501而实际为500：该 SimpleTestCase 禁止数据库查询，正式检索已读取ORM。它是与新实现不一致的历史测试；本轮仅记录，不修改测试或测试门禁。CI Backend checks 仍需单独修复并重跑。
+
 成员1审核数据→独立索引 `career_platform_questions_v1`→retrieve→成员5创建/关联会话与题目快照→answer→PracticeStore.record_answer→ModelGateway.generate→PracticeStore.record_feedback→成员5finish。Service构造时通过records依赖调用同一持久化接口，不直接建AnswerRecord。
 
 测试注入固定RankedQuestion（Java/集合/easy）、固定向量、失败模型和记录Spy；能断言调用顺序与真实payload。固定向量只能证明适配/过滤，不证明真实Embedding相关性；上线前少量真实检索与模型另验收。
@@ -327,6 +337,22 @@ Actions 42776569360 的文档、SQLite/MySQL业务验收及前端镜像成功，
   "environment": "Windows；本地.venv；隔离SQLite；real_model=false",
   "scope": "复跑CI配置测试步骤的全部7组共65项通过；RAG固定完整验收3项通过。仅更新正式检索已实现后的演示隔离回归，不降低来源或鉴权断言。",
   "limitations": "本地通过不代表修复提交的远端CI、镜像发布或部署已成功；未操作真实模型、数据库或服务器。",
-  "evidence": "Actions 42776569360 / Backend checks；backend/tests/test_retrieval_demo.py；output/ci-retrieval-fix/rag.json"
+  "evidence": "Actions 42776569360 / Backend checks；backend/tests/test_retrieval_demo.py; output/ci-retrieval-fix/rag.json"
+}
+```
+
+### 2026-11-10 正式文本检索与统一记录交接复核（b127df1历史快照）
+
+在b127df1上正式retrieve和answer已接通，demo-retrieve/Practice.vue仍保持独立只读演示。补充receipt、内部认领字段、retry-feedback、错误码、来源透传缺口与进程内缓存限制。以下保留合并前原501占位测试失败的实测记录；c117908已迁移该断言，其后续专项结果见上文“合并后 CI 的演示隔离断言修复”，此历史记录不代表合入a4dc576后的当前失败。
+
+```acceptance-record
+{
+  "commit": "b127df1 + dirty",
+  "command": "python -m unittest discover -s ci -p 'test_project*.py' -v; python -m django test career_platform.tests.test_scaffold career_platform.tests.accept_records career_platform.tests.accept_rag career_platform.tests.test_records_runtime --settings=career_platform.test_settings --testrunner=career_platform.tests.runner.FixedAcceptanceRunner --verbosity=1; python ci/project_acceptance.py --stage complete --module all --output .runtime/docs-sync-20261110/all.json; python -m unittest discover -s backend/tests -p 'test_retrieval_demo.py' -v",
+  "result": "failed",
+  "environment": "2026-11-10；Windows；Python 3.12 / Django 4.2.7；隔离内存SQLite、Gateway Spy；文档门禁PyYAML位于忽略目录，不调用真实模型",
+  "scope": "records/rag/runtime/scaffold组合18项通过（rag固定3项通过）；旧backend/tests/test_retrieval_demo.py为5通过、1失败，原因是test_regular_retrieval_still_explicitly_unimplemented仍要求501，SimpleTestCase中正式ORM访问产生500。完整all为9通过8失败。",
+  "limitations": "result=failed表示RAG固定专项以外仍有回归/CI阻塞。未接正式Practice页面闭环、LanceDB或真实模型；collected_at透传、多worker回执、许可撤销语义及真实并发仍未验收。不得以删除501测试或关闭CI来代替正确的测试迁移。",
+  "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
 ```

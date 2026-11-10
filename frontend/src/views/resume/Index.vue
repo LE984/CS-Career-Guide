@@ -7,7 +7,7 @@
           <div class="resume-actions">
             <button type="button" @click="saveResume" class="career-button" :disabled="isSaving"><WorkspaceIcon name="save" />{{ isSaving ? '同步中…' : '保存简历' }}</button>
             <button type="button" @click="exportPDF" class="career-button career-button-primary"><WorkspaceIcon name="download" />导出 PDF</button>
-            <button type="button" @click="goToInterview" class="career-button">模拟面试<WorkspaceIcon name="arrow" /></button>
+            <button type="button" @click="goToInterview" class="career-button" :disabled="isOpeningInterview">{{ isOpeningInterview ? '正在进入…' : '模拟面试' }}<WorkspaceIcon name="arrow" /></button>
           </div>
         </div>
         <p v-if="saveNotice" role="status" class="resume-save-notice" :class="{ 'is-error': saveFailed }">{{ saveNotice }}</p>
@@ -28,7 +28,7 @@
       <div class="resume-workspace-bar">
         <div><WorkspaceIcon name="file" /><span>整理简历</span><small>内容以你的真实经历为准</small></div>
         <div class="resume-mobile-switch" role="group" aria-label="简历视图"><button type="button" :aria-pressed="mobilePane === 'edit'" @click="mobilePane = 'edit'"><WorkspaceIcon name="edit" />编辑</button><button type="button" :aria-pressed="mobilePane === 'preview'" @click="mobilePane = 'preview'"><WorkspaceIcon name="eye" />预览</button></div>
-        <span class="resume-preview-hint"><WorkspaceIcon name="eye" />实时预览</span>
+        <button type="button" class="resume-preview-hint" aria-controls="resume-live-preview" @click="showPreview"><WorkspaceIcon name="eye" />查看实时预览</button>
       </div>
       <nav class="resume-section-nav" aria-label="简历章节"><button v-for="section in resumeSections" :key="section.id" type="button" @click="navigateSection(section.id)">{{ section.label }}</button></nav>
       <!-- 左右分栏布局 -->
@@ -355,7 +355,7 @@
         </div>
 
         <!-- 右侧预览区域 -->
-        <div class="resume-preview" aria-label="简历预览">
+        <div id="resume-live-preview" ref="previewRef" class="resume-preview" aria-label="简历预览" tabindex="-1">
           <div class="resume-preview-heading"><strong><WorkspaceIcon name="file" />简历预览</strong><span>与编辑内容实时同步</span></div>
           <div class="resume-preview-scroll">
           <div class="resume-paper">
@@ -485,6 +485,14 @@ import jsPDF from 'jspdf'
 const router = useRouter()
 
 const mobilePane = ref('edit')
+const previewRef = ref(null)
+const isOpeningInterview = ref(false)
+async function showPreview() {
+  mobilePane.value = 'preview'
+  await nextTick()
+  previewRef.value?.scrollIntoView({ block: 'center', behavior: 'instant' })
+  previewRef.value?.focus({ preventScroll: true })
+}
 const resumeSections = [{id:'basic', label:'基本信息'}, {id:'evaluation', label:'个人自评'}, {id:'education', label:'教育背景'}, {id:'experience', label:'实习经历'}, {id:'projects', label:'项目经验'}, {id:'skills', label:'专业技能'}, {id:'certificates', label:'证书认证'}]
 async function navigateSection(id) {
   mobilePane.value = 'edit'
@@ -1194,8 +1202,20 @@ const exportPDF = async () => {
 }
 
 // 模拟面试
-const goToInterview = () => {
-  router.push('/interview')
+const goToInterview = async () => {
+  if (isOpeningInterview.value) return
+  isOpeningInterview.value = true
+  saveNotice.value = '正在进入模拟面试…'
+  saveFailed.value = false
+  try {
+    const failure = await router.push('/interview')
+    if (failure) throw failure
+  } catch {
+    saveNotice.value = '暂时无法进入模拟面试，请检查网络后重试。'
+    saveFailed.value = true
+  } finally {
+    isOpeningInterview.value = false
+  }
 }
 
 // 语音输入相关函数
@@ -1526,7 +1546,9 @@ onMounted(async () => {
 .resume-workspace-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--career-border); padding-top: 24px; margin-top: 30px; }
 .resume-workspace-bar > div:first-child, .resume-preview-hint { display: flex; gap: 9px; align-items: center; font-size: 14px; }
 .resume-workspace-bar small, .resume-preview-hint { color: var(--career-muted); font-size: 12px; }
-.resume-preview-hint { display: inline-flex; }
+.resume-preview-hint { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--career-border); border-radius: 8px; background: #fff; cursor: pointer; }
+.resume-preview-hint:hover { background: #f0f3e9; }
+.resume-preview:focus { outline: 2px solid #687c53; outline-offset: 3px; }
 .resume-mobile-switch { display: none; }
 .resume-section-nav { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 16px 22px; }
 .resume-section-nav button { min-height: 38px; padding: 7px 13px; background: #f0f3e9; color: #526349; border: 1px solid transparent; border-radius: 7px; font-size: 12px; white-space: nowrap; }
