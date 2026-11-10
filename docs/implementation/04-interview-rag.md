@@ -281,3 +281,19 @@ results = retriever.retrieve(
   "evidence": "output/playwright/course-nav-tests.log；output/playwright/course-nav-build.log；output/playwright/course-nav-check.js；output/playwright/course-nav-1440.png；output/playwright/course-nav-390.png"
 }
 ```
+
+### RAG 检索与反馈校验最新验收记录
+
+补充本轮实际复跑结果至文档末尾，供文档门禁读取；前文历史记录保留。检索编排与反馈纯函数的单测通过不代表 answer 编排完成，不修改固定验收或门禁规则。
+
+```acceptance-record
+{
+  "commit": "f7c66c320ae5a8324c9a11aa81f14b2137c34799 + dirty",
+  "command": "python -m unittest discover -s backend/tests -p 'test_rag_*.py' -v; python ci/project_acceptance.py --stage complete --module rag --output output/rag-record-fix/complete.json",
+  "result": "failed",
+  "environment": "Windows；本地 .venv；隔离内存 SQLite；real_model=false",
+  "scope": "反馈证据校验11项、检索编排10项单测通过；RAG固定完整验收3项中检索1项通过，反馈2项因answer返回501失败。覆盖97e4c8a检索编排、091f3cd反馈校验和f7c66c3交接说明。",
+  "limitations": "answer编排、生产检索器与成员五记录交接尚未接通；business_complete=false。未执行真实模型、Embedding、MySQL、浏览器、发布或部署验收。修复文档记录位置不代表完整业务门禁通过。",
+  "evidence": "backend/tests/test_rag_retrieve.py; backend/tests/test_rag_feedback.py; backend/career_platform/tests/accept_rag.py; output/rag-record-fix/complete.json"
+}
+```
