@@ -20,6 +20,7 @@
 - [成员3：简历优化](docs/implementation/03-resume-optimization.md)：证据、编辑确认和版本冲突。
 - [成员4：面试RAG](docs/implementation/04-interview-rag.md)：检索、来源、反馈和记录交接。
 - [成员5：练习记录](docs/implementation/05-practice-records.md)：快照、幂等、总结与重试。
+- [成员5实施方案](docs/implementation/05-practice-records-plan.md)：练习记录模块的分层设计、状态机、迁移、集成步骤与验收计划。
 
 | 文档 | 内容与边界 |
 | --- | --- |

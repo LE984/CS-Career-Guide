@@ -119,3 +119,17 @@ class TextRetrievalStrategy:
             ))
         results.sort(key=lambda result: (-result.score, result.question_id))
         return results[:top_k]
+
+
+class DjangoQuestionRetriever:
+    """Build the deterministic text baseline from the current allowed catalog."""
+
+    def retrieve(self, **query):
+        from ..models import InterviewQuestion
+
+        rows = InterviewQuestion.objects.filter(permission_status='allowed').values(
+            'id', 'category', 'role', 'topic', 'difficulty', 'question', 'key_points',
+            'reference_answer', 'tags', 'source', 'source_url', 'permission_status',
+            'collected_at', 'dedupe_key', 'is_demo',
+        )
+        return TextRetrievalStrategy(rows).retrieve(**query)

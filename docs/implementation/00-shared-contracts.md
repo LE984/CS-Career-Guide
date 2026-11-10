@@ -1,6 +1,6 @@
 # 五人实施公共约定
 
-需求唯一依据是 [当前需求方案](../career_platform_plan.md)。本文固定开发接口与验收方法；五个业务模块目前仍是返回 501 的骨架，不代表 MVP 完成。日期：2026-10-28。集成人：`@vacontinuejatotired`。
+需求唯一依据是 [当前需求方案](../career_platform_plan.md)。本文固定开发接口与验收方法；catalog、resume 等未完成模块仍可能返回 501。records/rag 已有本地实现补丁和离线专项验收，但完整 MVP、真实模型、MySQL、远端 CI 与部署仍需独立确认。日期：2026-11-10。集成人：`@vacontinuejatotired`。
 
 ## 团队开工入口
 
@@ -55,15 +55,16 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 | `catalog/imports/` | POST：kind=companies/jobs/questions、records[1..1000]、dry_run默认true；仅staff，成员1 |
 | `resume-analyses/` | GET列表；POST jd_text、可选job_id、resume_revision、request_id；成员3 |
 | `resume-analyses/{id}/`、`{id}/apply/` | GET详情；POST base_revision、accepted_suggestion_ids、suggestion_edits（建议UUID到编辑文本字典）、request_id；成员3 |
-| `questions/retrieve/` | POST role、可选job_id/jd_text/topic、difficulty默认easy、top_k默认5上限20、request_id；成员4 |
-| `practice-sessions/`、`{id}/` | GET列表/详情；POST创建 role、可选job_id/jd_text/topic、difficulty、可选question_ids、request_id；成员5 |
+| `questions/retrieve/` | POST role、可选job_id/jd_text/topic、difficulty默认easy、top_k默认5上限20、request_id；返回有序结果及短期、用户绑定的 retrieval_id；成员4 |
+| `practice-sessions/`、`{id}/` | GET列表/详情；POST创建 role、可选job_id/jd_text/topic、difficulty、question_ids、可选retrieval_id、request_id；成员5 |
 | `practice-sessions/{id}/answers/` | POST question_id、answer、request_id；成员4编排、成员5保存 |
+| `practice-sessions/{id}/answers/{answer_id}/retry-feedback/` | POST request_id；复用原回答并显式重试反馈，不新增 AnswerRecord；成员4编排、成员5认领尝试 |
 | `practice-sessions/{id}/finish/` | POST request_id、retry_summary默认false；成员5 |
 | `evaluation-runs/`、`{id}/`、`{id}/export/` | GET列表/详情/JSON导出；POST task=job/resume/question、dataset_version、strategy、parameters、request_id；仅staff，成员2 |
 
 文本 JD/回答上限20000字符，role/topic上限100。未知字段400，客户端传 user/owner 一律拒绝。记录所有者由登录身份指定，服务端再次按 user 过滤；管理员也不因身份自动读取其他用户私有记录，越权与不存在均404。
 
-错误恒为 `{code,message,details}`。400 VALIDATION_ERROR、401 UNAUTHENTICATED、403 FORBIDDEN、404 NOT_FOUND、409 CONFLICT、501 FEATURE_NOT_IMPLEMENTED；业务增加安全的 MODEL_UNAVAILABLE/INVALID_MODEL_OUTPUT 等错误时先同步本文和客户端，不能泄露原始供应商异常、提示词中的私人数据或凭据。
+错误恒为 `{code,message,details}`。400 VALIDATION_ERROR、401 UNAUTHENTICATED、403 FORBIDDEN、404 NOT_FOUND、409 CONFLICT、502 INVALID_MODEL_OUTPUT、503 MODEL_UNAVAILABLE、504 MODEL_TIMEOUT、501 FEATURE_NOT_IMPLEMENTED。502/503/504 用于逐题反馈接口；finish 将同类失败保存到 summary 并返回 HTTP 200 的会话结果。任何错误均不得泄露原始供应商异常、提示词中的私人数据或凭据。
 
 ## 快照和交接结构
 
@@ -89,7 +90,7 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 
 简历当前 `edit_revision` 从0开始，旧保存入口每次更新递增；成员3在事务中锁定 Resume、检查 base_revision，再原子更新内容和回执。模型调用在锁外，旧分析不能覆盖新版本。QuerySet.update/bulk_update 或直接修改子记录不得绕过版本维护。
 
-会话目标状态 active → ended；总结状态由 summary 内容携带 pending/succeeded/failed，结束后不可继续回答。回答 received → succeeded/failed；先通过成员5保存用户真实回答，再生成反馈，模型失败保留回答并标注失败，不显示固定报告。分析在生成与校验成功后保存，失败原简历不变；骨架501不产生这些过程记录。结束失败仍保留原回答与结束时间，用户明确重试才再次调用总结。
+会话目标状态 active → ended；总结状态由 summary 内容携带 pending/succeeded/failed，结束后不可继续回答。回答 received → succeeded/failed；创建回答的事务同时认领首次反馈尝试，只有认领者调用模型。相同 answer request_id 的重放不重复模型；失败后使用独立 retry-feedback request_id 原地更新同一 AnswerRecord。结束失败仍保留原回答与结束时间，用户明确 retry_summary 才再次调用总结；旧尝试键和迟到结果不得覆盖当前尝试。
 
 ## 模块集成顺序
 

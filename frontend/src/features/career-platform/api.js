@@ -7,6 +7,12 @@ export function newRequestId() {
 }
 export function createPlatformAPI(client) {
   const base = '/career-platform/'
+  const sessions = (params = {}, signal) => {
+    if (params && typeof params === 'object' && 'aborted' in params && signal === undefined) {
+      signal = params; params = {}
+    }
+    return client.get(base + 'practice-sessions/', {params,signal})
+  }
   return {
     catalog: (kind, params = {}, signal) => client.get(base + `catalog/${kind}/`, {params,signal}),
     importBatch: data => client.post(base + 'catalog/imports/', data),
@@ -15,11 +21,14 @@ export function createPlatformAPI(client) {
     analysis: id => client.get(base + `resume-analyses/${encodeURIComponent(id)}/`),
     apply: (id,data) => client.post(base + `resume-analyses/${encodeURIComponent(id)}/apply/`,data),
     retrieve: data => client.post(base + 'questions/retrieve/',data),
-    sessions: signal => client.get(base + 'practice-sessions/',{signal}),
+    sessions,
     start: data => client.post(base + 'practice-sessions/',data),
-    session: id => client.get(base + `practice-sessions/${encodeURIComponent(id)}/`),
-    answer: (id,data) => client.post(base + `practice-sessions/${encodeURIComponent(id)}/answers/`,data),
-    finish: (id,data) => client.post(base + `practice-sessions/${encodeURIComponent(id)}/finish/`,data),
+    session: (id,signal) => client.get(base + `practice-sessions/${encodeURIComponent(id)}/`,{signal}),
+    answer: (id,data,signal) => client.post(base + `practice-sessions/${encodeURIComponent(id)}/answers/`,data,{signal}),
+    retryFeedback: (sessionId,answerId,data,signal) => client.post(
+      base + `practice-sessions/${encodeURIComponent(sessionId)}/answers/${encodeURIComponent(answerId)}/retry-feedback/`,data,{signal}
+    ),
+    finish: (id,data,signal) => client.post(base + `practice-sessions/${encodeURIComponent(id)}/finish/`,data,{signal}),
     evaluations: signal => client.get(base + 'evaluation-runs/',{signal}),
     evaluate: data => client.post(base + 'evaluation-runs/',data),
     evaluation: id => client.get(base + `evaluation-runs/${encodeURIComponent(id)}/`),

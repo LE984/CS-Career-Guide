@@ -48,9 +48,16 @@ class StartPractice(StrictSerializer):
     difficulty = serializers.ChoiceField(choices=['easy', 'medium', 'hard'], default='easy')
     request_id = serializers.UUIDField()
     question_ids = serializers.ListField(child=serializers.UUIDField(), min_length=1, max_length=20, required=False)
+    retrieval_id = serializers.UUIDField(required=False)
 
 
-class RetrieveQuestions(StartPractice):
+class RetrieveQuestions(StrictSerializer):
+    job_id = serializers.IntegerField(min_value=1, required=False)
+    jd_text = serializers.CharField(max_length=20000, required=False, allow_blank=True)
+    role = serializers.CharField(max_length=100)
+    topic = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    difficulty = serializers.ChoiceField(choices=['easy', 'medium', 'hard'], default='easy')
+    request_id = serializers.UUIDField()
     top_k = serializers.IntegerField(min_value=1, max_value=20, default=5)
 
 
@@ -63,6 +70,10 @@ class SubmitAnswer(StrictSerializer):
 class FinishPractice(StrictSerializer):
     request_id = serializers.UUIDField()
     retry_summary = serializers.BooleanField(default=False)
+
+
+class RetryFeedback(StrictSerializer):
+    request_id = serializers.UUIDField()
 
 
 class RunEvaluation(StrictSerializer):

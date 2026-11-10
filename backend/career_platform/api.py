@@ -25,7 +25,9 @@ class PlatformView(APIView):
         response = super().handle_exception(exc)
         code = ('FEATURE_NOT_IMPLEMENTED' if isinstance(exc, FeatureNotImplemented) else
                 {400: 'VALIDATION_ERROR', 401: 'UNAUTHENTICATED', 403: 'FORBIDDEN',
-                 404: 'NOT_FOUND', 405: 'METHOD_NOT_ALLOWED', 409: 'CONFLICT'}.get(response.status_code, 'REQUEST_FAILED'))
+                 404: 'NOT_FOUND', 405: 'METHOD_NOT_ALLOWED', 409: 'CONFLICT',
+                 502: 'INVALID_MODEL_OUTPUT', 503: 'MODEL_UNAVAILABLE',
+                 504: 'MODEL_TIMEOUT'}.get(response.status_code, 'REQUEST_FAILED'))
         details = response.data
         response.data = {'code': code, 'message': '功能待实现' if response.status_code == 501 else str(getattr(exc, 'default_detail', '请求失败')), 'details': details}
         return response
