@@ -527,12 +527,25 @@ jobs:
               output.write('digest=' + digest + '\n')
           PY
       - name: Upload publication record
+        id: publication-upload
         if: always()
+        continue-on-error: true
+        timeout-minutes: 5
         uses: actions/upload-artifact@v4
         with:
           name: published-backend-${{ github.run_id }}
           path: ${{ runner.temp }}/published-images.json
           if-no-files-found: warn
+          retention-days: 30
+          overwrite: true
+      - name: Retry publication record upload
+        if: always() && steps.publication-upload.outcome == 'failure'
+        timeout-minutes: 5
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-backend-${{ github.run_id }}
+          path: ${{ runner.temp }}/published-images.json
+          if-no-files-found: error
           retention-days: 30
           overwrite: true
     outputs:
@@ -596,12 +609,25 @@ jobs:
               output.write('digest=' + digest + '\n')
           PY
       - name: Upload publication record
+        id: publication-upload
         if: always()
+        continue-on-error: true
+        timeout-minutes: 5
         uses: actions/upload-artifact@v4
         with:
           name: published-frontend-${{ github.run_id }}
           path: ${{ runner.temp }}/published-images.json
           if-no-files-found: warn
+          retention-days: 30
+          overwrite: true
+      - name: Retry publication record upload
+        if: always() && steps.publication-upload.outcome == 'failure'
+        timeout-minutes: 5
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-frontend-${{ github.run_id }}
+          path: ${{ runner.temp }}/published-images.json
+          if-no-files-found: error
           retention-days: 30
           overwrite: true
     outputs:

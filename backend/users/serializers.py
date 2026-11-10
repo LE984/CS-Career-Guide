@@ -51,6 +51,14 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("新密码和确认密码不匹配")
         return data
 
+class SetPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, min_length=6, max_length=128, trim_whitespace=False)
+
+
+class ResetPasswordSerializer(SetPasswordSerializer):
+    username = serializers.CharField(max_length=150)
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)

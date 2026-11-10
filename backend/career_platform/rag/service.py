@@ -25,7 +25,9 @@ class InterviewRagService:
             raise ModelUnavailable('题库检索服务暂时不可用')
         if data.get('job_id') and data.get('jd_text'):
             raise ValidationError({'jd_text': 'job_id 与 jd_text 不能同时提供'})
-        query = data.get('jd_text') or ''
+        role = data.get('role', '').strip()
+        topic = data.get('topic', '').strip()
+        query = (data.get('jd_text') or '').strip()
         if data.get('job_id'):
             job = Job.objects.filter(pk=data['job_id']).first()
             if job is None:
@@ -33,10 +35,10 @@ class InterviewRagService:
             if job.permission_status != 'allowed':
                 raise ValidationError({'job_id': '岗位来源未获允许'})
             query = job.description or job.requirements or ''
-        query = query or data.get('topic') or data.get('role') or ''
+        query = query.strip() or topic or role
         try:
             rows = self.retriever.retrieve(
-                query=query, role=data.get('role', ''), topic=data.get('topic', ''),
+                query=query, role=role, topic=topic,
                 difficulty=data.get('difficulty', 'easy'), top_k=data.get('top_k', 5),
             )
         except ValueError as exc:
@@ -44,7 +46,7 @@ class InterviewRagService:
         results = [self._ranked_question(item) for item in rows]
         retrieval_id = str(uuid.uuid4())
         context = {
-            'query': query, 'role': data.get('role', ''), 'topic': data.get('topic', ''),
+            'query': query, 'role': role, 'topic': topic,
             'difficulty': data.get('difficulty', 'easy'), 'top_k': data.get('top_k', 5),
             'request_id': str(data.get('request_id')),
         }
@@ -61,7 +63,10 @@ class InterviewRagService:
                  role=context['role'], topic=context['topic'], difficulty=context['difficulty']),
             timeout=int(getattr(settings, 'PRACTICE_RETRIEVAL_TTL', 900)),
         )
-        return {'count': len(results), 'results': results, 'retrieval_id': retrieval_id}
+        return {
+            'count': len(results), 'results': results, 'retrieval_id': retrieval_id,
+            'message': '' if results else '没有符合当前条件及相关性要求的题目，请调整条件。',
+        }
 
     def answer(self, *, user, data: dict) -> dict:
         if self.records is None:

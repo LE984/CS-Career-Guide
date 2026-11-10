@@ -7,12 +7,22 @@
 - 前端仅 `/login`、`/register` 公开，其他页面默认要求登录。职业详情和自我介绍的匿名例外已移除。
 - 业务路由每次进入前调用 `/api/users/profile/` 校验真实 Token；校验失败不进入业务页。401 清理登录态；网络或服务错误保留 Token，返回登录页以便重试。
 - 登录和注册后回到原业务路径，保留查询参数和 hash。回跳只接受站内路径，拒绝外部地址、反斜杠、畸形编码及登录/注册循环；无匹配路由时回首页。
-- 后端 `/api` 和 `/api/` 下的全部入口默认要求 DRF Token。公开白名单仅 `/api/users/auth/login/`、`/api/users/auth/register/`，按完整路径匹配。
+- 后端 `/api` 和 `/api/` 下的全部入口默认要求 DRF Token。公开白名单为 `/api/users/auth/login/`、`/api/users/auth/register/`、`/api/users/auth/reset-password/`，按完整路径匹配；重置入口是下述明确的演示安全例外。
 - 缺失、伪造、撤销、禁用用户的 Token 及畸形认证头返回 401，包含 `WWW-Authenticate: Token`。普通 Django view 与 DRF view 均受保护。
 - CORS 预检保留；普通 OPTIONS 返回 204，不执行业务视图。Django `/admin/` 保留原有登录机制。
 - 登录和注册请求不发送旧 Token，后端这两个视图也禁用 Token 认证，保证旧凭据不阻止重新登录。
 - 登录、注册页不挂载全局 AI 浮窗，导航栏不主动同步旧用户资料。
 - 静态资源和现有媒体访问方式保留。第三方定位、地理编码和媒体下载继续使用原生 fetch，不附加用户 Token。
+
+## 演示密码便捷功能
+
+- 登录页点击“忘记密码？重置密码”在原页切换表单，输入用户名和新密码后直接提交，不增加公开页面或改变原有回跳目标；成功返回登录表单，不自动登录。
+- `POST /api/users/auth/reset-password/` 公开接收 `{username, new_password}`，不验证旧密码、手机号、邮箱或验证码，不要求重复输入或二次确认。仅处理启用的已有账号；成功返回 200 和 `message`，同时撤销该用户已有 Token，前端清理本浏览器会话。未知或停用账号返回 400 和 `username` 错误。
+- **这是用户要求的演示便利例外，不是安全的账号找回：任何知道用户名的人都能改其密码。仅适合隔离演示，不适合正式账号或真实敏感数据。登录页有显式风险提示。**
+- 个人中心 `/users` 的“设置密码”直接提交 `POST /api/users/profile/set-password/`，仅接收 `{new_password}`，必须有有效 Token，只修改当前登录用户，无需旧密码、重复密码或二次确认；成功返回 200 和 `message`，保持当前 Token 可用。
+- 两个入口的新密码均为 6–128 字符，保留首尾空格；缺失、空值或长度不符返回 400 和 `new_password` 错误。密码用 Django `set_password` 哈希保存，不记录明文，不写浏览器存储；表单成功后清空密码。
+- 原 `/api/users/profile/change-password/` 旧密码/确认密码契约保留兼容，本次入口不调用它。无新增环境变量、数据库字段或迁移，不增加并发处理机制。
+- 本地隔离验证：`python -m django test tests.test_password tests.test_auth --settings=tests.auth_settings` 21 项通过（内存 SQLite）；既有前端 78 项测试及生产构建通过，随后含新增密码用例的 API 契约测试 7 项通过，`git diff --check` 通过。未操作真实用户、真实数据库、服务器或部署；尚未完成本次浏览器交互验收。
 
 ## 本次文件范围
 

@@ -12,8 +12,24 @@ const apiSource = (await readFile(new URL('../src/api/index.js', import.meta.url
   .replace("from 'axios'", `from '${pathToFileURL(require.resolve('axios/unsafe/axios.js')).href}'`)
   .replace("from '../config'", `from '${dataModule(configSource)}'`)
   .replace("from './transport.js'", `from '${new URL('../src/api/transport.js', import.meta.url).href}'`)
-const { default: api, resumeAPI, interviewAPI, companyInfoAPI, aiAPI, computerCareerAPI, jobFairAPI, seniorAdviceAPI } = await import(dataModule(apiSource))
+const { default: api, authAPI, userAPI, resumeAPI, interviewAPI, companyInfoAPI, aiAPI, computerCareerAPI, jobFairAPI, seniorAdviceAPI } = await import(dataModule(apiSource))
 globalThis.localStorage = { getItem: () => 'contract-test-token' }
+
+test('password reset is public while setting a password authenticates the current user', async () => {
+  const requests = []
+  api.defaults.adapter = async config => {
+    requests.push(config)
+    return { data: { message: 'ok' }, status: 200, statusText: 'OK', headers: {}, config }
+  }
+  await authAPI.resetPassword({ username: 'demo', new_password: 'new-password' })
+  await userAPI.setPassword({ new_password: 'new-password' })
+  assert.equal(requests[0].url, '/users/auth/reset-password/')
+  assert.equal(requests[0].headers.get('Authorization'), undefined)
+  assert.deepEqual(JSON.parse(requests[0].data), { username: 'demo', new_password: 'new-password' })
+  assert.equal(requests[1].url, '/users/profile/set-password/')
+  assert.equal(requests[1].headers.get('Authorization'), 'Token contract-test-token')
+  assert.deepEqual(JSON.parse(requests[1].data), { new_password: 'new-password' })
+})
 
 test('streaming chat requires explicit voice opt-in and forwards cancellation', async () => {
   const oldFetch = globalThis.fetch
