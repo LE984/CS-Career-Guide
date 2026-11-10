@@ -314,3 +314,19 @@ results = retriever.retrieve(
   "evidence": "output/merge-conflict/rag.json; output/merge-conflict/records.json; output/merge-conflict/scaffold.json; backend/tests/test_rag_retrieve.py; backend/career_platform/tests/test_records_runtime.py"
 }
 ```
+
+### 合并后 CI 的演示隔离断言修复
+
+Actions 42776569360 的文档、SQLite/MySQL业务验收及前端镜像成功，但后端配置测试中的旧演示用例仍要求正式检索返回501，导致后端镜像及发布跳过。改为注入空检索器并验证正式HTTP接口返回空结果和retrieval_id、不混入演示标记或演示题；同一测试确认独立演示仍返回原材料。SimpleTestCase继续禁止数据库访问，不修改固定complete验收或workflow。
+
+```acceptance-record
+{
+  "commit": "6cd1bfe + dirty",
+  "command": "python -m unittest discover -s backend/tests -p test_env_config.py -q; python -m unittest discover -s backend/tests -p test_deploy_runtime.py -q; python -m unittest discover -s backend/tests -p test_interview.py -q; python -m unittest discover -s backend/tests -p test_text_retrieval.py -q; python -m unittest discover -s backend/tests -p test_retrieval_demo.py -q; python -m unittest discover -s backend/tests -p test_asr.py -q; python -m unittest discover -s backend/tests -p test_career_path_migrations.py -q; python ci/project_acceptance.py --stage complete --module rag --output output/ci-retrieval-fix/rag.json",
+  "result": "passed",
+  "environment": "Windows；本地.venv；隔离SQLite；real_model=false",
+  "scope": "复跑CI配置测试步骤的全部7组共65项通过；RAG固定完整验收3项通过。仅更新正式检索已实现后的演示隔离回归，不降低来源或鉴权断言。",
+  "limitations": "本地通过不代表修复提交的远端CI、镜像发布或部署已成功；未操作真实模型、数据库或服务器。",
+  "evidence": "Actions 42776569360 / Backend checks；backend/tests/test_retrieval_demo.py；output/ci-retrieval-fix/rag.json"
+}
+```
