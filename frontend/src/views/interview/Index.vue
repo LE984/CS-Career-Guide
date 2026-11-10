@@ -48,8 +48,8 @@
         <aside class="interview-aside"><section><h2>这次，试着把这些讲清楚</h2><ol><li><span>01</span><div><h3>具体做了什么</h3><p>从项目背景开始，说明自己负责的部分。</p></div></li><li><span>02</span><div><h3>为什么这样做</h3><p>解释选择依据，比较考虑过的其他方案。</p></div></li><li><span>03</span><div><h3>结果如何验证</h3><p>说清测试方式和观察结果，不确定的地方如实说明。</p></div></li></ol></section><section class="interview-help"><h2>开始前的小检查</h2><p>已保存最新简历<br />找一个适合说话的环境<br />语音回答时允许麦克风权限</p><router-link to="/resume" class="career-link">查看并完善简历 →</router-link></section><details class="interview-tips"><summary>回答问题的小提示</summary><p>按“背景 → 任务 → 行动 → 结果”组织经历。不会的问题可以说明思路，不需要编造经历和数字。</p></details></aside>
       </div>
     </main>
-    <WorkspaceDialog :open="showReview" title="面试复盘报告" title-id="interview-review-title" caption="回顾这次练习，找到下一步" @close="showReview = false">
-      <div class="interview-review-body"><div v-if="!reviewContent" class="review-loading" role="status"><span class="loading loading-spinner loading-md"></span>正在生成整场复盘，请稍候…</div><p v-else><StreamingText :text="interviewPlainText(reviewContent)" :active="isReviewLoading" /></p></div>
+    <WorkspaceDialog class="interview-review-modal" :open="showReview" title="面试复盘报告" title-id="interview-review-title" caption="回顾这次练习，找到下一步" @close="showReview = false">
+      <div class="interview-review-body"><div v-if="!reviewContent" class="review-loading" role="status"><span class="loading loading-spinner loading-md"></span>正在生成整场复盘，请稍候…</div><p v-else><StreamingText :text="interviewPlainText(reviewContent)" :active="isReviewLoading" mode="line" /></p></div>
       <template #footer><router-link to="/users" class="career-button">查看练习记录<WorkspaceIcon name="arrow" /></router-link><button type="button" class="career-button career-button-primary" @click="showReview = false">关闭报告</button></template>
     </WorkspaceDialog>
   </div>
@@ -383,6 +383,7 @@ async function generateReview() {
       if (event.type === 'chunk' && event.content) reviewContent.value += event.content
     })
     reviewContent.value = interviewPlainText(review.content)
+    isReviewLoading.value = false
     if (!review.skipped) await saveReviewRecord(reviewContent.value)
   } catch (error) {
     console.error('生成复盘失败:', error)
@@ -1181,7 +1182,10 @@ const interviewStyleOptions = [
 .interview-resume { background: #f6f8f0; }
 .is-expanded .interview-input, .is-expanded .interview-chat-toolbar { border-radius: 0; }
 .is-expanded .interview-main { border-radius: 0; }
-.interview-review-body { padding: 0; max-height: none; }
+.interview-review-modal { height: calc(100dvh - 48px); }
+.interview-review-modal :deep(.workspace-dialog-body) { flex: 1 1 0; scrollbar-gutter: stable; overflow-wrap: anywhere; }
+.interview-review-body { padding: 0; max-height: none; overflow: visible; }
+@media(max-width:760px) { .interview-review-modal { height: calc(100dvh - 24px); } }
 @media(max-width:1100px) {
  .interview-heading { flex-direction: row; align-items: flex-start; }
  .interview-layout { grid-template-columns: minmax(0,1fr); }

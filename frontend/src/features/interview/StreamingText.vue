@@ -3,18 +3,20 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { createTextReveal } from './text-reveal.js'
-const props = defineProps({ text: { type: String, default: '' }, active: Boolean })
+import { createLineReveal } from './line-reveal.js'
+const props = defineProps({ text: { type: String, default: '' }, active: Boolean, mode: { type: String, default: 'character' } })
 const emit = defineEmits(['reveal'])
 const visible = ref(''), pending = ref(false)
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
-const reveal = createTextReveal((text, busy) => {
+const createReveal = props.mode === 'line' ? createLineReveal : createTextReveal
+const reveal = createReveal((text, busy) => {
   visible.value = text; pending.value = busy; emit('reveal')
 }, { immediate: () => reducedMotion.matches || document.hidden })
 const segmenter = new Intl.Segmenter('zh', { granularity: 'grapheme' })
 const characters = computed(() => Array.from(segmenter.segment(visible.value), part => part.segment))
-const head = computed(() => pending.value ? characters.value.slice(0, -6).join('') : visible.value)
-const tail = computed(() => pending.value ? characters.value.slice(-6).join('') : '')
-watch(() => props.text, text => reveal.set(text), { immediate: true })
+const head = computed(() => pending.value && props.mode !== 'line' ? characters.value.slice(0, -6).join('') : visible.value)
+const tail = computed(() => pending.value && props.mode !== 'line' ? characters.value.slice(-6).join('') : '')
+watch(() => [props.text, props.active], ([text, active]) => reveal.set(text, { complete: !active }), { immediate: true })
 const flushWhenHidden = () => { if (document.hidden || reducedMotion.matches) reveal.flush() }
 document.addEventListener('visibilitychange', flushWhenHidden)
 reducedMotion.addEventListener('change', flushWhenHidden)
