@@ -1,8 +1,778 @@
 {
-  "status": "scaffold",
-  "dataset_version": "pending-review",
+  "status": "demo-pending-review",
+  "dataset_version": "java-demo-2026-11-10",
   "reviewed_by": "",
-  "companies": [],
-  "jobs": [],
-  "questions": []
+  "review_notes": "企业/岗位为虚构演示数据并标记 is_demo=true；30 道题为团队自编，permission_status=pending，须由集成人逐题复核后再改为 allowed。",
+  "companies": [
+    {
+      "name": "杭州云帆科技有限公司（演示）",
+      "city": "杭州",
+      "scale": "medium",
+      "nature": "private",
+      "ranking": "normal",
+      "industry": "互联网",
+      "website": "https://example.com/yunfan",
+      "public_profile": "虚构的演示企业，用于展示岗位与企业数据结构。",
+      "description": "仅用于课程演示的虚构企业，不是真实招聘单位。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "allowed",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "is_demo": true,
+      "dedupe_key": "demo-company-001"
+    },
+    {
+      "name": "上海星桥软件有限公司（演示）",
+      "city": "上海",
+      "scale": "large",
+      "nature": "private",
+      "ranking": "normal",
+      "industry": "企业服务",
+      "website": "https://example.com/xingqiao",
+      "public_profile": "虚构的演示企业，用于展示校招岗位字段。",
+      "description": "仅用于课程演示的虚构企业，不是真实招聘单位。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "allowed",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "is_demo": true,
+      "dedupe_key": "demo-company-002"
+    }
+  ],
+  "jobs": [
+    {
+      "company": "杭州云帆科技有限公司（演示）",
+      "title": "Java后端开发工程师",
+      "salary_min": 12000,
+      "salary_max": 20000,
+      "city": "杭州",
+      "experience": "1-3年",
+      "education": "本科",
+      "description": "负责业务服务的设计与开发，参与接口联调、性能优化和线上问题排查。",
+      "requirements": "熟悉 Java 基础、Spring Boot、MySQL；了解 Redis 和常见并发工具；具备良好的沟通与文档习惯。",
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "MySQL",
+        "Redis"
+      ],
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "allowed",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "valid_until": "2027-06-30T00:00:00Z",
+      "is_demo": true,
+      "dedupe_key": "demo-job-001"
+    },
+    {
+      "company": "上海星桥软件有限公司（演示）",
+      "title": "后端开发工程师（校招）",
+      "salary_min": 10000,
+      "salary_max": 16000,
+      "city": "上海",
+      "experience": "应届",
+      "education": "本科",
+      "description": "参与企业服务产品的后端开发，完成需求分析、编码、测试和上线支持。",
+      "requirements": "掌握 Java 或 Go 中至少一门语言；理解数据库基础和 HTTP 接口；有课程项目或实习经历。",
+      "skills": [
+        "Java",
+        "Spring",
+        "MySQL"
+      ],
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "allowed",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "valid_until": "2027-06-30T00:00:00Z",
+      "is_demo": true,
+      "dedupe_key": "demo-job-002"
+    },
+    {
+      "company": "杭州云帆科技有限公司（演示）",
+      "title": "数据平台开发工程师",
+      "salary_min": 15000,
+      "salary_max": 25000,
+      "city": "杭州",
+      "experience": "3-5年",
+      "education": "本科",
+      "description": "建设数据采集、清洗和服务化链路，支撑业务分析与报表需求。",
+      "requirements": "熟悉 Java、SQL 和消息队列；理解数据仓库基础；有数据质量治理经验优先。",
+      "skills": [
+        "Java",
+        "SQL",
+        "Kafka",
+        "数据仓库"
+      ],
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "allowed",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "valid_until": "2027-06-30T00:00:00Z",
+      "is_demo": true,
+      "dedupe_key": "demo-job-003"
+    }
+  ],
+  "questions": [
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "equals 与 hashCode 需要遵守什么约定？",
+      "key_points": [
+        "相等对象必须具有相同的 hashCode",
+        "hashCode 相同不保证对象相等"
+      ],
+      "reference_answer": "如果两个对象通过 equals 判断相等，那么它们的 hashCode 必须相同；反之 hashCode 相同只说明可能落在同一哈希桶，不能据此判断相等。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Java基础"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-001"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "String 为什么设计为不可变对象？",
+      "key_points": [
+        "不可变保证哈希值稳定",
+        "便于安全共享和常量池复用"
+      ],
+      "reference_answer": "String 不可变使哈希值可以缓存，适合作为 HashMap 的键；同时避免共享引用被意外修改，也便于字符串常量池和安全敏感场景复用。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Java基础"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-002"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "接口和抽象类的主要区别是什么？",
+      "key_points": [
+        "接口支持多实现",
+        "抽象类可以保存实例状态和共享实现"
+      ],
+      "reference_answer": "接口侧重定义能力，一个类可以实现多个接口；抽象类可以有构造器、实例字段和部分实现，更适合表达同一族类型的共享骨架。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Java基础"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-003"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "easy",
+      "question": "受检异常和非受检异常有什么区别？",
+      "key_points": [
+        "受检异常要求调用方处理或声明",
+        "非受检异常通常表示编程错误"
+      ],
+      "reference_answer": "受检异常继承 Exception 但不继承 RuntimeException，编译器要求捕获或声明；非受检异常继承 RuntimeException，通常用于参数错误、空指针等编程问题。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Java基础"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-004"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "medium",
+      "question": "Java 泛型类型擦除会带来哪些限制？",
+      "key_points": [
+        "运行时无法获得具体类型参数",
+        "不能直接创建泛型数组或对基本类型使用泛型"
+      ],
+      "reference_answer": "泛型信息在编译后被擦除，运行时通常只剩原始类型或上界；因此不能依赖运行时类型判断，也不能直接 new T()、创建泛型数组或用基本类型作为类型参数。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Java基础"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-005"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Java基础",
+      "difficulty": "medium",
+      "question": "final、finally 和 finalize 分别是什么？",
+      "key_points": [
+        "final 修饰不可变约束",
+        "finally 用于清理代码",
+        "finalize 已不推荐依赖"
+      ],
+      "reference_answer": "final 可修饰类、方法和变量，表示不可继承、不可重写或不可重新赋值；finally 是异常处理中的清理块；finalize 是旧的对象回收钩子，行为不可靠，不应作为资源释放手段。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Java基础"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-006"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "easy",
+      "question": "ArrayList 和 LinkedList 应该如何选择？",
+      "key_points": [
+        "ArrayList 适合随机访问",
+        "LinkedList 适合频繁头尾插入但访问开销大"
+      ],
+      "reference_answer": "ArrayList 基于动态数组，随机访问快、尾部追加摊销成本低；LinkedList 基于链表，头尾插入删除方便，但按下标访问需要遍历，通常还要考虑额外节点开销。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "集合"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-007"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "HashMap 的负载因子和扩容过程是什么？",
+      "key_points": [
+        "默认负载因子 0.75",
+        "容量翻倍并重新分布桶"
+      ],
+      "reference_answer": "HashMap 在元素数量超过容量乘以负载因子时触发扩容，通常把容量翻倍并重新计算元素所在的桶；扩容会带来额外开销，必要时可预估容量减少扩容次数。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "集合"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-008"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "作为 HashMap 的键需要满足哪些条件？",
+      "key_points": [
+        "正确实现 equals 与 hashCode",
+        "键在使用期间保持哈希值稳定"
+      ],
+      "reference_answer": "键的 equals 和 hashCode 必须保持一致；如果键在放入后修改了参与哈希计算的字段，会导致无法按原位置查找，因此通常使用不可变对象作为键。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "集合"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-009"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "ConcurrentHashMap 与同步包装的 HashMap 有什么区别？",
+      "key_points": [
+        "ConcurrentHashMap 支持更细粒度并发",
+        "同步包装通常锁住整个映射"
+      ],
+      "reference_answer": "ConcurrentHashMap 通过分段或桶级并发控制提高并发读写能力；Collections.synchronizedMap 通常用同一把锁保护整个映射，吞吐量更容易成为瓶颈。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "集合"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-010"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "什么是 fail-fast 迭代器？",
+      "key_points": [
+        "结构修改可能触发 ConcurrentModificationException",
+        "并发修改应使用迭代器自身方法或并发集合"
+      ],
+      "reference_answer": "大多数非并发集合的迭代器在检测到结构性修改时会快速失败，抛出 ConcurrentModificationException；单线程中应使用 iterator.remove，多线程场景应考虑并发集合或显式同步。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "集合"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-011"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "集合",
+      "difficulty": "medium",
+      "question": "TreeMap 如何确定元素顺序？",
+      "key_points": [
+        "自然顺序或 Comparator",
+        "要求键之间可比较"
+      ],
+      "reference_answer": "TreeMap 基于红黑树，按键的自然顺序或构造时提供的 Comparator 排序；键必须能够相互比较，否则插入时会抛出异常。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "集合"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-012"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "JVM",
+      "difficulty": "easy",
+      "question": "JVM 运行时数据区主要有哪些？",
+      "key_points": [
+        "线程私有：程序计数器、虚拟机栈、本地方法栈",
+        "线程共享：堆、方法区"
+      ],
+      "reference_answer": "JVM 运行时数据区包括程序计数器、虚拟机栈、本地方法栈、堆和方法区；其中堆和方法区通常由线程共享，栈和程序计数器按线程私有。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "JVM"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-013"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "JVM",
+      "difficulty": "easy",
+      "question": "可达性分析如何判断对象可以回收？",
+      "key_points": [
+        "从 GC Roots 出发标记可达对象",
+        "不可达对象才可能被回收"
+      ],
+      "reference_answer": "垃圾收集器从 GC Roots（如栈帧引用、静态字段、常量等）出发遍历引用链，无法到达的对象才可能被判定为可回收；可达对象不会被回收。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "JVM"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-014"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "JVM",
+      "difficulty": "medium",
+      "question": "双亲委派模型的作用是什么？",
+      "key_points": [
+        "优先由父加载器加载",
+        "避免核心类被同名类替换"
+      ],
+      "reference_answer": "类加载请求先交给父加载器，父加载器无法完成时才由子加载器尝试；这样可以保证核心类库的一致性，降低同名类被自定义加载器替换的风险。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "JVM"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-015"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "JVM",
+      "difficulty": "medium",
+      "question": "Minor GC 和 Full GC 有什么区别？",
+      "key_points": [
+        "Minor GC 主要回收年轻代",
+        "Full GC 通常涉及更多区域且停顿更长"
+      ],
+      "reference_answer": "Minor GC 主要发生在年轻代，频率较高但通常停顿较短；Full GC 通常回收整个堆和方法区，停顿更长，频繁发生往往需要检查内存泄漏或参数配置。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "JVM"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-016"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "JVM",
+      "difficulty": "medium",
+      "question": "解释器和即时编译如何协作？",
+      "key_points": [
+        "解释执行启动快",
+        "热点代码编译为本地代码提升性能"
+      ],
+      "reference_answer": "JVM 先通过解释器执行字节码，启动快；运行期间统计热点代码并交给 JIT 编译为本地机器码，后续执行更快。解释器也作为编译失败或去优化时的后备路径。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "JVM"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-017"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Spring",
+      "difficulty": "easy",
+      "question": "什么是 IoC 和依赖注入？",
+      "key_points": [
+        "容器负责创建和管理对象",
+        "依赖通过构造器、字段或方法注入"
+      ],
+      "reference_answer": "IoC 把对象的创建和依赖管理交给容器；依赖注入是 IoC 的一种实现方式，通过构造器、字段或 setter 把依赖传入对象，降低组件之间的耦合。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Spring"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-018"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Spring",
+      "difficulty": "medium",
+      "question": "Spring Bean 的常见生命周期阶段有哪些？",
+      "key_points": [
+        "实例化、属性填充、初始化",
+        "销毁前可执行清理逻辑"
+      ],
+      "reference_answer": "典型流程包括实例化、依赖注入、BeanPostProcessor 前置处理、初始化方法（如 @PostConstruct）、BeanPostProcessor 后置处理，以及容器关闭时的销毁回调。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Spring"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-019"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Spring",
+      "difficulty": "medium",
+      "question": "@Transactional 的传播行为用来解决什么问题？",
+      "key_points": [
+        "控制事务方法之间如何加入或新建事务",
+        "不同传播级别影响回滚和连接复用"
+      ],
+      "reference_answer": "传播行为决定当前事务方法被另一个事务方法调用时如何行事，例如 REQUIRED 会加入现有事务，REQUIRES_NEW 会挂起当前事务并新建事务；选择不当会导致回滚范围与预期不符。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Spring"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-020"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Spring",
+      "difficulty": "medium",
+      "question": "为什么同类方法内部调用 @Transactional 可能失效？",
+      "key_points": [
+        "默认代理模式下内部调用不经过代理",
+        "应拆分组件或通过代理调用"
+      ],
+      "reference_answer": "Spring 默认使用代理实现事务增强，同类方法通过 this 调用不会经过代理，因此事务注解可能不生效；可以把方法拆到另一个 Bean，或通过注入的代理调用。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Spring"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-021"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "Spring",
+      "difficulty": "medium",
+      "question": "Spring Boot 自动配置的基本思路是什么？",
+      "key_points": [
+        "根据类路径和条件注解决定是否装配",
+        "通过 starter 提供默认依赖"
+      ],
+      "reference_answer": "Spring Boot 读取自动配置导入项，结合 @Conditional 系列条件、类路径依赖和配置属性决定是否创建 Bean；starter 把常用依赖和默认配置打包，减少手动装配。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "Spring"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-022"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "数据库",
+      "difficulty": "easy",
+      "question": "数据库索引带来哪些收益和代价？",
+      "key_points": [
+        "加速等值或范围查询",
+        "增加写入和存储开销"
+      ],
+      "reference_answer": "索引可以减少扫描行数、加速查询和排序，但会占用存储空间，并让插入、更新、删除维护额外结构；索引过多还会增加优化器选择成本。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "数据库"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-023"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "数据库",
+      "difficulty": "medium",
+      "question": "常见的事务隔离级别有哪些？",
+      "key_points": [
+        "读未提交、读已提交、可重复读、串行化",
+        "隔离级别越高并发副作用越少但并发度可能下降"
+      ],
+      "reference_answer": "常见隔离级别包括读未提交、读已提交、可重复读和串行化；级别越高越能避免脏读、不可重复读和幻读，但通常需要更强的锁或冲突检测。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "数据库"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-024"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "数据库",
+      "difficulty": "medium",
+      "question": "乐观锁和悲观锁分别适合什么场景？",
+      "key_points": [
+        "乐观锁适合冲突较少的场景",
+        "悲观锁适合冲突频繁且必须及时阻塞的场景"
+      ],
+      "reference_answer": "乐观锁通过版本号或条件更新检测冲突，冲突少时开销低；悲观锁在读取或修改前加锁，适合冲突频繁、需要严格串行的场景，但可能降低并发。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "数据库"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-025"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "数据库",
+      "difficulty": "medium",
+      "question": "内连接、左连接和右连接有什么区别？",
+      "key_points": [
+        "内连接只保留匹配行",
+        "外连接保留一侧未匹配行"
+      ],
+      "reference_answer": "内连接只返回两表都匹配的行；左连接保留左表全部行，右表无匹配时补空；右连接反之。选择取决于是否需要保留未匹配记录。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "数据库"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-026"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "并发",
+      "difficulty": "medium",
+      "question": "synchronized 和 ReentrantLock 有什么区别？",
+      "key_points": [
+        "synchronized 由 JVM 管理且自动释放",
+        "ReentrantLock 提供可中断、超时和公平锁等能力"
+      ],
+      "reference_answer": "synchronized 使用简单，异常时自动释放监视器；ReentrantLock 需要显式 unlock，但支持可中断获取、超时、公平锁和多个条件队列，适合更复杂的同步需求。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "并发"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-027"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "并发",
+      "difficulty": "medium",
+      "question": "volatile 能保证什么？不能保证什么？",
+      "key_points": [
+        "保证可见性和一定的有序性",
+        "不能保证复合操作的原子性"
+      ],
+      "reference_answer": "volatile 让写入对其他线程可见，并限制部分重排序；但它不能保证 i++ 这类读改写复合操作的原子性，需要原子类或加锁。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "并发"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-028"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "并发",
+      "difficulty": "medium",
+      "question": "线程池的核心参数如何影响任务执行？",
+      "key_points": [
+        "核心线程数、最大线程数、队列和拒绝策略共同决定行为",
+        "队列过大会推迟扩容和拒绝"
+      ],
+      "reference_answer": "任务先使用核心线程，队列未满时进入队列，队列满后再扩容到最大线程数，仍无法处理时触发拒绝策略；队列容量和线程数需要结合任务类型与延迟目标调整。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "并发"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-029"
+    },
+    {
+      "category": "Java",
+      "role": "Java后端",
+      "topic": "并发",
+      "difficulty": "medium",
+      "question": "死锁产生的必要条件有哪些？如何避免？",
+      "key_points": [
+        "互斥、持有并等待、不可剥夺、循环等待",
+        "固定加锁顺序或使用超时尝试"
+      ],
+      "reference_answer": "死锁通常需要互斥、持有并等待、不可剥夺和循环等待同时成立；工程上可通过统一加锁顺序、缩小锁范围、使用带超时的尝试锁或减少共享状态来降低风险。",
+      "source": "团队创作：成员1（AI辅助整理，待集成人复核）",
+      "source_url": "",
+      "permission_status": "pending",
+      "collected_at": "2026-11-10T00:00:00Z",
+      "tags": [
+        "Java",
+        "并发"
+      ],
+      "is_demo": true,
+      "dedupe_key": "demo-java-q-030"
+    }
+  ]
 }
