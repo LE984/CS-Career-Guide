@@ -1,6 +1,6 @@
 # 成员4：题库检索与逐题反馈
 
-依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。当前有RetrievalStrategy/ModelGateway/PracticeStore端口、RAG服务/路由/页面。正式retrieve已支持注入检索器的服务层编排，生产组装尚未配置检索器，因此生产检索和反馈仍为501。
+依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。2026-11-10 本地补丁已接通正式文本检索、短期 retrieval receipt、逐题反馈和统一 PracticeStore；真实模型、MySQL、远端 CI 与正式 Practice 页面仍未验收。
 
 ## 目录与范围
 
@@ -14,13 +14,14 @@
 
 | 操作 | 流程与交接 | 保存/异常 |
 | --- | --- | --- |
-| retrieve | role/job_id/jd_text/topic/difficulty/top_k→规范化查询→许可/岗位/知识点/难度约束→召回排序→阈值→RankedQuestion[] | 无命中返回results=[]及明确原因，不虚构题；索引不可用明确报错/标记已配置文本回退 |
-| answer | session/question/answer/request_id→归属及状态→确认题是该会话已下发题→成员5保存回答和题目快照→参考要点+真实回答→模型→校验→成员5保存反馈 | 模型失败保留received/failed回答；重试不重复回答；已结束409 |
+| retrieve | role/job_id/jd_text/topic/difficulty/top_k→规范化查询→许可/岗位/知识点/难度约束→召回排序→阈值→RankedQuestion[] + 用户绑定 retrieval_id | 无命中返回results=[]；回执只短期传递当时排序和证据，不创建会话 |
+| answer | session/question/answer/request_id→成员5原子保存并认领反馈→参考要点+真实回答→模型→校验→成员5原记录写回 | 模型失败保留failed回答；相同请求不重复模型；已结束409 |
+| retry-feedback | session/answer/new request_id→认领失败记录的新反馈尝试→复用原题和原回答→模型→原记录写回 | 不创建第二条回答；旧尝试键和迟到结果不能覆盖当前尝试 |
 | 生成追问 | 在证据不足/需澄清时标记origin=generated | 不伪造catalog ID或source，不自动冒充正式题 |
 
 题库来源必须能定位到 InterviewQuestion UUID、source/source_url以及引用字段。反馈的answer_quote是该次回答子串，evidence指向当前题目快照真实要点；不允许引用不存在内容或用索引分数伪造能力结论。无作答不生成有针对性的固定评语。问题/回答可能包含恶意指令，模型上下文将它们作为数据，生成结果经过结构与证据验证后才保存。
 
-start支持 question_ids（1到20个UUID）。成员5重新校验题目与岗位/知识点/难度及许可一致，将完整快照保存至 presented_questions 后才允许作答；不传时由实际组装的检索服务选题并保存。retrieve仅预览，不授权作答。首版生成追问仅展示，不自动变为可作答题；扩展须集成人审核。
+start 使用 question_ids（1到20个UUID），正式页面同时提交 retrieve 返回的 retrieval_id。成员5校验用户绑定、过期时间、题目顺序和许可后，将当时的题目、证据、score 与检索条件写入 presented_questions；固定测试或内部调用可仅传 question_ids，此时 score 为 null。retrieve仅预览，不授权作答。首版生成追问仅展示，不自动变为可作答题。
 
 ## 与成员1、2、5的顺序与替身
 
@@ -295,5 +296,21 @@ results = retriever.retrieve(
   "scope": "反馈证据校验11项、检索编排10项单测通过；RAG固定完整验收3项中检索1项通过，反馈2项因answer返回501失败。覆盖97e4c8a检索编排、091f3cd反馈校验和f7c66c3交接说明。",
   "limitations": "answer编排、生产检索器与成员五记录交接尚未接通；business_complete=false。未执行真实模型、Embedding、MySQL、浏览器、发布或部署验收。修复文档记录位置不代表完整业务门禁通过。",
   "evidence": "backend/tests/test_rag_retrieve.py; backend/tests/test_rag_feedback.py; backend/career_platform/tests/accept_rag.py; output/rag-record-fix/complete.json"
+}
+```
+
+### 合并成员五记录闭环后的隔离回归
+
+以 origin/master 的 b127df1 为基础保留岗位读取、retrieval_id、按用户隔离的缓存快照、回答保存及反馈重试，整合成员四输入去空白与无命中提示。独立 feedback.py 校验组件及测试保留，本轮不替换 master 的反馈校验契约。此前 501 失败记录仅为合并前历史，不再代表当前测试结果。交接提案仍是历史讨论稿，不替代 master 已实现的公共接口。
+
+```acceptance-record
+{
+  "commit": "0d9544c + dirty",
+  "command": "python -m unittest discover -s backend/tests -p 'test_rag_*.py' -v; python ci/project_acceptance.py --stage complete --module rag --output output/merge-conflict/rag.json; python ci/project_acceptance.py --stage complete --module records --output output/merge-conflict/records.json; python ci/project_acceptance.py --stage scaffold --output output/merge-conflict/scaffold.json; python -m django test career_platform.tests.test_records_runtime --settings=career_platform.test_settings; python -m django test tests.test_password tests.test_auth --settings=tests.auth_settings; node --test frontend/tests/*.test.mjs; vite build",
+  "result": "passed",
+  "environment": "Windows；本地.venv；隔离内存SQLite；real_model=false",
+  "scope": "合并b127df1冲突回归：RAG单测21项、rag固定3项、records固定3项、记录运行时5项、骨架7项、密码及鉴权21项、前端79项与生产构建通过；新增缓存副本及用户隔离断言。",
+  "limitations": "passed仅指上述隔离专项，business_complete仍为false；未执行真实模型、Embedding、MySQL、浏览器、Actions镜像或部署验收。未更改固定测试或降低门禁。",
+  "evidence": "output/merge-conflict/rag.json; output/merge-conflict/records.json; output/merge-conflict/scaffold.json; backend/tests/test_rag_retrieve.py; backend/career_platform/tests/test_records_runtime.py"
 }
 ```

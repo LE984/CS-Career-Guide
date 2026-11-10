@@ -21,6 +21,7 @@
 - [成员4：面试RAG](docs/implementation/04-interview-rag.md)：检索、来源、反馈和记录交接。
 - [成员5：练习记录](docs/implementation/05-practice-records.md)：快照、幂等、总结与重试。
 - [成员4/5逐题回答交接待确认清单](docs/implementation/04-05-answer-handoff-proposal.md)：未生效讨论稿；用于确认保存返回值、可信快照、并发领取和失败重试，不替代公共契约。
+- [成员5实施方案](docs/implementation/05-practice-records-plan.md)：练习记录模块的分层设计、状态机、迁移、集成步骤与验收计划。
 
 | 文档 | 内容与边界 |
 | --- | --- |

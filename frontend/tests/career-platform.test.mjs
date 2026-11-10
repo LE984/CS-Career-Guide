@@ -11,7 +11,7 @@ test('platform API preserves every request body, UUID and cancellation', async()
   await api.importBatch(body);await api.analyses(signal);await api.analyze(body)
   await api.analysis('id');await api.apply('id',body);await api.retrieve(body)
   await api.sessions(signal);await api.start(body);await api.session('id')
-  await api.answer('id',body);await api.finish('id',body)
+  await api.answer('id',body);await api.retryFeedback('id','answer',body);await api.finish('id',body)
   await api.evaluations(signal);await api.evaluate(body);await api.evaluation('id');await api.exportEvaluation('id')
   assert.deepEqual(calls.map(c=>c.slice(0,2)),[
     ['GET','/career-platform/catalog/questions/'],['POST','/career-platform/catalog/imports/'],
@@ -19,7 +19,9 @@ test('platform API preserves every request body, UUID and cancellation', async()
     ['GET','/career-platform/resume-analyses/id/'],['POST','/career-platform/resume-analyses/id/apply/'],
     ['POST','/career-platform/questions/retrieve/'],['GET','/career-platform/practice-sessions/'],
     ['POST','/career-platform/practice-sessions/'],['GET','/career-platform/practice-sessions/id/'],
-    ['POST','/career-platform/practice-sessions/id/answers/'],['POST','/career-platform/practice-sessions/id/finish/'],
+    ['POST','/career-platform/practice-sessions/id/answers/'],
+    ['POST','/career-platform/practice-sessions/id/answers/answer/retry-feedback/'],
+    ['POST','/career-platform/practice-sessions/id/finish/'],
     ['GET','/career-platform/evaluation-runs/'],['POST','/career-platform/evaluation-runs/'],
     ['GET','/career-platform/evaluation-runs/id/'],['GET','/career-platform/evaluation-runs/id/export/'],
   ])

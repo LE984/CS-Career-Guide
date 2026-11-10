@@ -1,6 +1,6 @@
 # 成员5：练习记录、结束总结与历史
 
-先读 [公共约定](00-shared-contracts.md) 与 [当前方案](../career_platform_plan.md)。已有legacy复盘表不包含本期逐题契约。当前新PracticeSession/AnswerRecord受管理模型、唯一约束、路由及历史页面骨架已建，所有业务仍501。
+先读 [公共约定](00-shared-contracts.md) 与 [当前方案](../career_platform_plan.md)。已有legacy复盘表不包含本期逐题契约。2026-11-10 本地补丁已实现 PracticeSession/AnswerRecord Repository、状态机、迁移、RAG 交接和 Records 页面；专项离线验收通过，但真实模型、MySQL、远端 CI、浏览器和完整五模块链路仍未完成。
 
 ## 目标、目录与不做范围
 
@@ -212,5 +212,21 @@
   "scope": "仅统一课程导航和切换样式。78项前端测试、生产构建通过；1440/390px各点击五个入口，共10次切换均为同名同序五项导航、一个当前项、无横向溢出，导航纵向位置同尺寸一致；减少动态效果时动画为none。",
   "limitations": "不改变五模块正式业务、API、鉴权或数据；passed仅指此次前端专项，不代表五模块complete成功。未调用真实模型；线上发布及服务器运行版本另验收。用户要求验证后直接上线，仅发布前端，沿用既有半成品演示发布流程，不修改门禁。",
   "evidence": "output/playwright/course-nav-tests.log；output/playwright/course-nav-build.log；output/playwright/course-nav-check.js；output/playwright/course-nav-1440.png；output/playwright/course-nav-390.png"
+}
+```
+
+### 2026-11-10 练习记录与逐题反馈本地实现
+
+本次实现唯一 PracticeStore：创建会话时保存岗位、简历、题目和检索上下文快照；回答先落库并原子认领反馈尝试；结束时先写 ended/ended_at，再在事务外生成总结。新增同题唯一约束、反馈/总结尝试日志、短期 retrieval_id、独立 retry-feedback 接口、历史分页详情和真实失败状态。HTTP 白名单不返回参考答案、尝试日志或私人简历字段。
+
+```acceptance-record
+{
+  "commit": "d1e521d891d5b7f9161acb3125b4fdf57ec766b1 + dirty",
+  "command": "python ci/project_acceptance.py --stage complete --module records; python ci/project_acceptance.py --stage complete --module rag; python -m django test career_platform.tests.test_records_runtime; python -m unittest backend/tests/test_text_retrieval.py -v; node --test frontend/tests/*.test.mjs; vite build; python ci/project_acceptance.py --stage complete --module all",
+  "result": "partial_pass",
+  "environment": "2026-11-10；Windows；隔离内存 SQLite；本地 Node 24；离线 Gateway Spy",
+  "scope": "records 固定3项、rag 固定3项、新增 records runtime 5项、scaffold 7项、组合专项18项、文本检索17项、前端78项和生产构建通过。迁移 --check 无差异。",
+  "limitations": "完整 all 17项仍有8项失败，均来自 catalog/resume 501 及其 integration 前置步骤；不代表 records/rag 专项失败。未执行 MySQL、真实模型、远端 CI、真实浏览器、发布或部署。生产 ModelGateway 仅完成 Adapter 与配置接线，未调用真实供应商。",
+  "evidence": "backend/career_platform/tests/test_records_runtime.py; backend/career_platform/tests/accept_records.py; backend/career_platform/tests/accept_rag.py; frontend/tests/career-platform.test.mjs; local command output"
 }
 ```

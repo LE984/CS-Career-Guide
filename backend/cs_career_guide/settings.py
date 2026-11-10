@@ -136,6 +136,9 @@ LLM_BASE_URL = env('LLM_BASE_URL', '', aliases=('base_url',))
 LLM_MODEL = env('LLM_MODEL', '')
 CAREER_REPORT_MODEL = env('CAREER_REPORT_MODEL', '', aliases=('career_report_model',)) or LLM_MODEL
 LLM_TIMEOUT = env_int('LLM_TIMEOUT', 120, minimum=1)
+PRACTICE_RETRIEVAL_TTL = env_int('PRACTICE_RETRIEVAL_TTL', 900, minimum=60)
+PRACTICE_MAX_MODEL_ATTEMPTS = env_int('PRACTICE_MAX_MODEL_ATTEMPTS', 5, minimum=1)
+PRACTICE_ATTEMPT_GRACE_SECONDS = env_int('PRACTICE_ATTEMPT_GRACE_SECONDS', 30, minimum=0)
 
 ENABLE_TTS = env_bool('ENABLE_TTS', False)
 ASR_API_KEY = env('ASR_API_KEY', '') or LLM_API_KEY

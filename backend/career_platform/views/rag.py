@@ -3,6 +3,7 @@ from .. import serializers as s
 from ..models import ResumeAnalysisRun, EvaluationRun, PracticeSession
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import serializers
+from rest_framework.response import Response
 
 
 class DemoQuery(s.StrictSerializer):
@@ -30,4 +31,20 @@ class Answers(PlatformView):
     operations = {'POST': 'answer'}
     input_serializers = {'POST': s.SubmitAnswer}
     model = PracticeSession
+
+
+class RetryAnswerFeedback(PlatformView):
+    module = 'rag'
+
+    def post(self, request, session_pk=None, pk=None):
+        serializer = s.RetryFeedback(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data, session_id=session_pk, id=pk)
+        result = self.get_service().retry_feedback(user=request.user, data=data)
+        return Response(result)
+
+    @staticmethod
+    def get_service():
+        from .. import composition
+        return composition.services['rag']
 

@@ -46,6 +46,9 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 | `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | 所有 ChatOpenAI 调用统一读取；调用 AI 时必填；模型需由你的服务支持 |
 | `CAREER_REPORT_MODEL` | 可选，为职业报告单独选模型；留空时使用 LLM_MODEL |
 | `LLM_TIMEOUT` | 模型请求超时，单位秒，默认 120 |
+| `PRACTICE_RETRIEVAL_TTL` | 正式题目检索回执的有效期，单位秒，默认 900；过期后需重新检索 |
+| `PRACTICE_MAX_MODEL_ATTEMPTS` | 单次回答反馈或会话总结允许记录的最大模型尝试数，默认 5 |
+| `PRACTICE_ATTEMPT_GRACE_SECONDS` | 模型硬超时后的安全余量，单位秒，默认 30；超过后 pending 尝试才可失效重试 |
 | `ASR_API_KEY` / `ASR_WSS_URL` / `ASR_MODEL` | 语音识别的凭据、WebSocket 地址和模型；使用该功能时必填，空 key 复用 LLM_API_KEY |
 | `ENABLE_TTS` | 默认 False；启用后会调用语音合成服务 |
 | `TTS_API_KEY` / `TTS_WSS_URL` / `TTS_MODEL` / `TTS_VOICE` | 语音合成配置；空 key 复用 LLM_API_KEY；前端也需要 VITE_ENABLE_TTS=True |

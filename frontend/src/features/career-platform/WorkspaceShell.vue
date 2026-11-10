@@ -1,13 +1,17 @@
 <template>
   <main class="career-container platform-workspace">
     <CourseNav />
-    <header class="course-content-enter"><p class="career-eyebrow">课程项目 / 功能开发</p><h1>{{ title }}</h1><p>{{ description }}</p><span class="stage-label">开发骨架 · 功能待实现</span></header>
+    <header class="course-content-enter"><p class="career-eyebrow">课程项目 / 功能开发</p><h1>{{ title }}</h1><p>{{ description }}</p><span class="stage-label">{{ stageLabel }}</span></header>
     <section class="platform-panel course-content-enter"><slot /></section>
   </main>
 </template>
 <script setup>
 import CourseNav from './CourseNav.vue'
-defineProps({ title:String, description:String })
+defineProps({
+  title:String,
+  description:String,
+  stageLabel:{type:String,default:'开发骨架 · 功能待实现'},
+})
 </script>
 <style>
 .platform-workspace { padding-top:32px; padding-bottom:48px; font-family:inherit; font-size:14px; line-height:1.8; }

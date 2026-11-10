@@ -10,6 +10,7 @@ urlpatterns = [
     path('questions/demo-retrieve/', rag.DemoRetrieve.as_view()),
     path('practice-sessions/', p.PracticeSessions.as_view()), path('practice-sessions/<uuid:pk>/', p.PracticeDetail.as_view()),
     path('practice-sessions/<uuid:pk>/answers/', rag.Answers.as_view()), path('practice-sessions/<uuid:pk>/finish/', p.PracticeFinish.as_view()),
+    path('practice-sessions/<uuid:session_pk>/answers/<uuid:pk>/retry-feedback/', rag.RetryAnswerFeedback.as_view()),
     path('evaluation-runs/', e.EvaluationRuns.as_view()), path('evaluation-runs/<uuid:pk>/', e.EvaluationDetail.as_view()),
     path('evaluation-runs/<uuid:pk>/export/', e.EvaluationExport.as_view()),
 ]
