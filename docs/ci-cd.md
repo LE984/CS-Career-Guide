@@ -56,6 +56,8 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 
 `ci/release_images.py verify/publish --component frontend` 或 backend 只需要对应归档；不指定组件的旧 CLI 保持双组件兼容。可重复 --component，但空/未知/重复选择会拒绝。每组件先推 sha-<7位SHA> 和可选版本标签，再推 latest；核对每次 manifest digest 一致。
 
+发布记录上传增加一次独立重试：首次 `actions/upload-artifact` 失败后才执行第二次上传，两次各限制 5 分钟；使用相同名称和 `overwrite=true`，不重新推送镜像。首次失败可恢复，但第二次失败仍阻止 publisher 成功与自动部署，不能将记录归档改成可选。digest 输出继续来自本地 `complete=true` 发布记录的严格核验。此调整应对 Actions 42777621647 中镜像已推送、Artifact 服务超时导致的发布任务失败，不保证外部服务故障一定恢复。对应离线结构回归为 `python -m unittest discover -s ci -p test_publication_upload.py -v`；真实上传恢复需由 Actions 验证。
+
 `published-frontend-<run-id>` / `published-backend-<run-id>` 各自保存 `published-images.json`，含 components、compatibility（component-contracts / candidate-integration / not-recorded）、完整 commit、image ID、标签、digest/reference 与 complete。complete=false 是部分失败，不可部署；latest/SHA tag 可改写，精确恢复用 digest。两个 publisher 相互独立，不承诺两端发布原子性。
 
 归档保留 1 天，普通日志 7 天，发布记录 30 天；不上传真实环境/凭据。一个 ref 的 push 发布不取消旧运行，PR 可取消旧运行；服务器激活共用独立 concurrency group 和远端文件锁。Actions 并发组不替代手工回滚协调。
