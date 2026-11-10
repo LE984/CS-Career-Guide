@@ -1,6 +1,6 @@
 # 成员4：题库检索与逐题反馈
 
-依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。当前有RetrievalStrategy/ModelGateway/PracticeStore端口、RAG服务/路由/页面，检索和反馈501。
+依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。当前有RetrievalStrategy/ModelGateway/PracticeStore端口、RAG服务/路由/页面。正式retrieve已支持注入检索器的服务层编排，生产组装尚未配置检索器，因此生产检索和反馈仍为501。
 
 ## 目录与范围
 
@@ -29,6 +29,26 @@ start支持 question_ids（1到20个UUID）。成员5重新校验题目与岗位
 测试注入固定RankedQuestion（Java/集合/easy）、固定向量、失败模型和记录Spy；能断言调用顺序与真实payload。固定向量只能证明适配/过滤，不证明真实Embedding相关性；上线前少量真实检索与模型另验收。
 
 ## 分步开发与验收
+
+### 正式检索编排（基于 d1e521d 的本地补丁）
+
+`InterviewRagService.retrieve()` 已支持注入可信 `RetrievalStrategy`，不更改公共契约、生产组装、页面或 legacy。服务接收序列化器校验后的数据：去除 role/topic/jd_text 首尾空白，以非空 JD、知识点、岗位的顺序选取查询文本；difficulty 默认 easy，top_k 默认5。条件与 Top-K 原样交给检索策略，许可过滤、来源真实性和排序由可信候选适配层及策略负责，不因编排成功宣称正式题库已经审核。
+
+响应为 `{count,results,message}`；results 沿用 RankedQuestion 字段，key_points/evidence 转为 JSON 数组，保留原文证据、相关度和 origin。无命中时返回空数组及中文原因；依赖缺失仍返回501，检索器异常不吞成空结果。尚无岗位解析依赖，携带 job_id 明确返回501（retrieve_by_job），不静默忽略岗位约束。question_ids 不用于预览选题或授权；request_id 不创建记录。检索预览不调用记录服务或模型、不保存已下发题，不引入正式演示数据。
+
+本地验证：新增 `python -m unittest discover -s backend/tests -p test_rag_retrieve.py -v` 的10项通过；既有文本策略17项、演示6项、legacy面试6项通过；隔离SQLite骨架7项、evaluation固定验收3项通过。rag固定验收3项中检索1项通过，反馈2项因 answer 仍501失败；未改固定用例。生产HTTP仍因缺少检索器保持501，未验证真实题库、MySQL、Embedding、模型、浏览器、远端CI或部署。
+
+```acceptance-record
+{
+  "commit": "d1e521d + dirty",
+  "command": "python -m unittest discover -s backend/tests -p test_rag_retrieve.py -v; python ci/project_acceptance.py --stage scaffold --output output/rag-retrieve/scaffold.json; python ci/project_acceptance.py --stage complete --module rag --output output/rag-retrieve/complete.json; python ci/project_acceptance.py --stage complete --module evaluation --output output/rag-retrieve/evaluation.json",
+  "result": "failed",
+  "environment": "Windows；本地.venv；隔离内存SQLite",
+  "scope": "检索编排10项、文本策略17项、演示6项、legacy面试6项、骨架7项、评估固定3项通过；rag固定检索1项通过，反馈2项失败。",
+  "limitations": "仅注入依赖的正式检索编排；生产检索器和岗位ID解析未接入，answer未实现。无真实模型、索引、MySQL、浏览器、CI或部署验收。",
+  "evidence": "backend/tests/test_rag_retrieve.py; output/rag-retrieve/scaffold.json; output/rag-retrieve/complete.json; output/rag-retrieve/evaluation.json"
+}
+```
 
 ### 2026-11-09 纯内存文本检索基线
 

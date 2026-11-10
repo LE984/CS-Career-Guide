@@ -1,4 +1,6 @@
-"""成员四的编排入口；独立演示可用，正式检索与逐题反馈仍未实现。"""
+"""成员四的编排入口；检索支持依赖注入，生产题库和逐题反馈待接入。"""
+from dataclasses import asdict
+
 from ..composition_base import UnavailableService
 from ..errors import FeatureNotImplemented
 
@@ -15,13 +17,31 @@ class InterviewRagService(UnavailableService):
         return retrieve_demo(data)
 
     def retrieve(self, *, user, data: dict) -> dict:
-        """预览候选题；实现后调用 RetrievalStrategy 并返回来源证据。"""
-        # TODO(成员4)：TextRetrievalStrategy 已完成离线检索，正式数据就绪后接本入口。
-        # 1. 规范化岗位/JD、知识点、难度、top_k；许可与条件过滤不能遗漏。
-        # 2. 调用 self.retriever.retrieve，组装 RankedQuestion 和真实引用来源。
-        # 3. 区分“真实无命中”和“检索未实现/不可用”；不能用空列表冒充成功。
-        # 本入口仅预览，不创建会话，也不把候选题标记为已下发。
-        raise FeatureNotImplemented(self.module, 'retrieve')
+        """只读预览；data 由 HTTP 序列化器校验，候选许可由可信检索适配器筛选。"""
+        if self.retriever is None:
+            raise FeatureNotImplemented(self.module, 'retrieve')
+        # 尚无岗位目录依赖，不能静默忽略 job_id 或冒称核验过岗位。
+        if data.get('job_id') is not None:
+            raise FeatureNotImplemented(self.module, 'retrieve_by_job')
+        role = data['role'].strip()
+        topic = data.get('topic', '').strip()
+        jd_text = data.get('jd_text', '').strip()
+        # JD 优先作为自由文本；无 JD 时按知识点检索，无知识点则使用岗位。
+        query = jd_text or topic or role
+        rows = self.retriever.retrieve(
+            query=query, role=role, topic=topic,
+            difficulty=data.get('difficulty', 'easy'), top_k=data.get('top_k', 5),
+        )
+        results = [dict(
+            question_id=row.question_id, question=row.question,
+            key_points=list(row.key_points),
+            evidence=[asdict(item) for item in row.evidence],
+            score=row.score, origin=row.origin,
+        ) for row in rows]
+        return {
+            'count': len(results), 'results': results,
+            'message': '' if results else '没有符合当前条件及相关性要求的题目，请调整条件。',
+        }
 
     def answer(self, *, user, data: dict) -> dict:
         """预留逐题反馈编排；待检索基线及成员五的保存接口就绪后实现。"""
