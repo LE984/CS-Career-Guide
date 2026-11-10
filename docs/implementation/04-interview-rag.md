@@ -30,6 +30,14 @@ start支持 question_ids（1到20个UUID）。成员5重新校验题目与岗位
 
 ## 分步开发与验收
 
+### 逐题反馈证据校验（基于 d1e521d 的本地补丁）
+
+新增纯函数 `rag/feedback.py:validate_feedback(answer, snapshot, feedback)`（关键字参数），供后续 answer 编排使用，目前尚未接入 HTTP 或模型调用。snapshot 必须来自服务端已下发题，不接受客户端自行提交的依据。校验 answer_quote 为实际回答非空子串；covered/missing 仅允许快照已有要点、不得重复或交叉；每个声称的要点必须有原始快照证据，证据必须精确对应当前 question_id 的 key_points[i]。来源说明不能代替要点依据，未知字段和错误类型拒绝。输出深拷贝，异常不回显回答或模型内容。校验不证明语义判断正确，也不执行模型指令。生成追问结构尚未固定，本组件首版仅接受 follow_up=null，不自行扩展公共契约。
+
+成员5现有文档只约定 record_answer 返回记录ID，尚未固定返回快照、状态及并发重试的具体结构；因此本次不猜测返回字段，不实现平行记录表，不修改 PracticeStore，不冒称 answer 完成。下一步需共同固定记录返回值、已下发题快照读取与模型调用的原子领取/重复请求处理方式，再接先保存回答、模型生成、校验、保存成功或失败状态。
+
+本地实际执行 `python -m unittest discover -s backend/tests -p 'test_rag_*.py' -v` 共21项通过（反馈11、检索10）；文本策略17项、演示6项、legacy面试6项均通过，合计50项。`git diff --check` 通过。未接真实模型/数据库或运行浏览器；本轮未重跑固定complete，answer仍501，后文记录的rag完整验收失败不变。
+
 ### 正式检索编排（基于 d1e521d 的本地补丁）
 
 `InterviewRagService.retrieve()` 已支持注入可信 `RetrievalStrategy`，不更改公共契约、生产组装、页面或 legacy。服务接收序列化器校验后的数据：去除 role/topic/jd_text 首尾空白，以非空 JD、知识点、岗位的顺序选取查询文本；difficulty 默认 easy，top_k 默认5。条件与 Top-K 原样交给检索策略，许可过滤、来源真实性和排序由可信候选适配层及策略负责，不因编排成功宣称正式题库已经审核。
