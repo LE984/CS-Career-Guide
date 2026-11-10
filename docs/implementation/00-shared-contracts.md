@@ -1,6 +1,6 @@
 # 五人实施公共约定
 
-需求唯一依据是 [当前需求方案](../career_platform_plan.md)。本文固定开发接口与验收方法；catalog、resume 等未完成模块仍可能返回 501。records/rag 已有本地实现补丁和离线专项验收，但完整 MVP、真实模型、MySQL、远端 CI 与部署仍需独立确认。日期：2026-11-10。集成人：`@vacontinuejatotired`。
+需求唯一依据是 [当前需求方案](../career_platform_plan.md)。本文固定开发接口与验收方法。catalog 的企业/岗位/题库查询与 JSON 导入已实现并通过本地固定验收；evaluation、records、rag 已有本地实现；resume 仍未完成并继续返回 501。完整 MVP、真实模型、MySQL、远端 CI 与部署仍需独立确认。日期：2026-11-10。集成人：`@vacontinuejatotired`。
 
 ## 团队开工入口
 
@@ -37,7 +37,7 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 
 ## 生产组装与替身
 
-`contracts.py` 定义端口，`composition.py:build_services()` 是唯一生产组装点。五个 Service 当前继承 `UnavailableService`，公开操作抛 `FeatureNotImplemented`；有效请求返回 HTTP 501：
+`contracts.py` 定义端口，`composition.py:build_services()` 是唯一生产组装点。未实现操作继续继承 `UnavailableService` 并抛 `FeatureNotImplemented`，有效请求返回 HTTP 501；catalog 已实现四个公开操作，resume 仍整体不可用：
 
 ```json
 {"code":"FEATURE_NOT_IMPLEMENTED","message":"功能待实现","details":{"detail":"功能待实现"}}
@@ -96,7 +96,7 @@ Vue 页面 → `features/career-platform/api.js` → 视图/序列化器 → 应
 
 成员1先提供可追溯正式数据及查询；成员2并行冻结独立评估集。成员5先提供 PracticeStore 保存接口；成员3使用 ModelGateway/匹配替身开发，成员4使用 RetrievalStrategy/ModelGateway/PracticeStore 替身开发。随后在唯一 composition 注入实际适配器，最后执行“导入→选岗→分析→确认→练习→反馈→复盘”的整体验收。成员4不能直接新建另一套历史表。
 
-Java演示覆盖基础、集合/JVM、Spring、数据库、并发。`tests/fixtures` 仅用于测试，不是正式题库或真实招聘。正式材料至少30道人审题，逐题记录来源或团队创作说明；虚构岗位/企业 is_demo=true。独立索引名 `career_platform_questions_v1`，只包含 allowed 且审核通过的数据。
+Java演示覆盖基础、集合/JVM、Spring、数据库、并发。`tests/fixtures` 仅用于测试，不是正式题库或真实招聘。`data/career-platform/java-backend.json` 已提供2家虚构企业、3个虚构岗位和30道团队自编题，题目保持 `pending`，须集成人逐题复核并记录来源或团队创作说明后改为 `allowed`；虚构岗位/企业 is_demo=true。独立索引名 `career_platform_questions_v1`，只包含 allowed 且审核通过的数据。
 
 ## 验收命令与门禁
 

@@ -63,13 +63,13 @@ Linux/macOS 对应 Python 路径通常为 `.venv/bin/python`。ci/sync_runtime_e
 
 ## 五人课程模块开发准备（2026-10-28）
 
-先读 [公共约定](implementation/00-shared-contracts.md) 和本人实施文档。新入口位于 `/career-platform/catalog`、`resume`、`practice`、`records`、`evaluation`；这些页面明确显示开发骨架，新业务有效请求返回501，不能据此演示业务已完成。默认自由面试保持原入口。
+先读 [公共约定](implementation/00-shared-contracts.md) 和本人实施文档。新入口位于 `/career-platform/catalog`、`resume`、`practice`、`records`、`evaluation`。catalog 已实现企业/岗位/题库查询和 JSON 导入；resume 等模块仍按各自文档显示骨架或本地实现状态，不能据此把整份方案当作已完成。默认自由面试保持原入口。
 
-隔离命令 `python ci/project_acceptance.py --stage scaffold` 验证路由/鉴权/真实迁移和空实现；`--stage complete --module <catalog|evaluation|resume|rag|records|all>` 运行固定业务验收，当前空实现应失败。报告区分business_complete、commit、dirty、环境和real_model。工作树可复用原目录Python，不能误在个人目录执行开发。
+隔离命令 `python ci/project_acceptance.py --stage scaffold` 验证路由/鉴权/真实迁移和空实现；`--stage complete --module <catalog|evaluation|resume|rag|records|all>` 运行固定业务验收，catalog 当前应通过，resume 等未实现模块仍应失败。报告区分business_complete、commit、dirty、环境和real_model。工作树可复用原目录Python，不能误在个人目录执行开发。
 
 服务端从应用服务实现，依赖通过 contracts.py 端口注入，唯一生产组装点 composition.py。测试替身仅在tests内。Company/Job来源字段默认pending，既有数据不会自动视为已审核；新增托管题库/分析/练习/评估表，简历增加edit_revision。迁移本地仅隔离SQLite，MySQL迁移/读写由Actions验证；本阶段不切线上数据库或导入服务器数据。
 
-正式题库材料说明见 `data/career-platform/README.md`，fixture不是30道正式人审演示题。CI和审阅见 [CI/CD](ci-cd.md) 及公共约定，不能用修改状态标记跳过complete。
+正式题库材料说明见 `data/career-platform/README.md`。当前 `java-backend.json` 有2家虚构企业、3个虚构岗位和30道团队自编题，30道题保持 `pending`，尚需集成人逐题复核；fixture 不是正式人审演示题。CI和审阅见 [CI/CD](ci-cd.md) 及公共约定，不能用修改状态标记跳过complete。
 
 ## 独立交付与客户端边界
 
