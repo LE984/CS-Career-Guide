@@ -46,9 +46,9 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 | `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | 所有 ChatOpenAI 调用统一读取；调用 AI 时必填；模型需由你的服务支持 |
 | `CAREER_REPORT_MODEL` | 可选，为职业报告单独选模型；留空时使用 LLM_MODEL |
 | `LLM_TIMEOUT` | 模型请求超时，单位秒，默认 120 |
-| `PRACTICE_RETRIEVAL_TTL` | 正式题目检索回执的有效期，单位秒，默认 900；过期后需重新检索 |
-| `PRACTICE_MAX_MODEL_ATTEMPTS` | 单次回答反馈或会话总结允许记录的最大模型尝试数，默认 5 |
-| `PRACTICE_ATTEMPT_GRACE_SECONDS` | 模型硬超时后的安全余量，单位秒，默认 30；超过后 pending 尝试才可失效重试 |
+| `PRACTICE_RETRIEVAL_TTL` | 后端非敏感变量，检索回执有效期，秒，默认900、最小60；过期后新建会话需重新检索 |
+| `PRACTICE_MAX_MODEL_ATTEMPTS` | 后端非敏感变量，单条回答反馈/会话总结的Service尝试次数上限，包含首次，默认5、最小1；不统计SDK内部重试 |
+| `PRACTICE_ATTEMPT_GRACE_SECONDS` | 后端非敏感变量，pending失效安全余量，秒，默认30、最小0；判定阈值为LLM_TIMEOUT加该值，不等于已证明模型调用硬截止 |
 | `ASR_API_KEY` / `ASR_WSS_URL` / `ASR_MODEL` | 语音识别的凭据、WebSocket 地址和模型；使用该功能时必填，空 key 复用 LLM_API_KEY |
 | `ENABLE_TTS` | 默认 False；启用后会调用语音合成服务 |
 | `TTS_API_KEY` / `TTS_WSS_URL` / `TTS_MODEL` / `TTS_VOICE` | 语音合成配置；空 key 复用 LLM_API_KEY；前端也需要 VITE_ENABLE_TTS=True |
@@ -68,6 +68,8 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 | `RESET_PASSWORD_USERNAME` / `RESET_PASSWORD_PASSWORD` | 仅密码重置工具需要；不再内置管理员账号或密码，也不会输出密码 |
 
 数据目录支持绝对路径；相对路径基于 `backend/`，不依赖启动命令的当前目录。模型目录支持 `~` 和操作系统环境变量展开。
+
+练习的三项PRACTICE_*配置在Django启动时读取，修改后需重启后端；不会自动改变已部署容器，本次未增加Actions同步白名单或部署配置映射。检索回执显式使用PRACTICE_RETRIEVAL_TTL，不由CACHE_TIMEOUT覆盖。默认LocMemCache不跨worker共享，重启也会丢回执；多进程使用前需单独配置并验证共享缓存，当前 `settings_sqlite` 固定为进程内缓存。缓存不是历史记录：成功创建后的会话和题目快照保存在数据库。
 
 兼容旧变量 `api_key`、`base_url`、`career_report_model`、`WSS_URL`。优先使用新的规范变量名；`WSS_URL` 可兼容旧的共享语音地址，新的 ASR_WSS_URL/TTS_WSS_URL 支持分开设置。
 

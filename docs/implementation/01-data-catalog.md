@@ -23,6 +23,16 @@
 
 ## 交接样例与依赖
 
+### 2026-11-10 records/rag 对目录数据的实际依赖
+
+`b127df1` 未实现 CatalogService 的导入、查询或审核流程，catalog 固定验收仍失败；下列是共享组装/迁移变化对成员1的影响，不是目录模块完成声明：
+
+- `DjangoQuestionRetriever` 直接读取托管 `InterviewQuestion` 的 allowed 数据，再复用 `TextRetrievalStrategy` 按 role/topic/difficulty 和 Top-K 排序；当前不调用 CatalogService，不读取 unmanaged `company_info_backup`，也未接 LanceDB 索引。
+- start 可按 question_ids 读取正式题库并校验许可和筛选条件；有 retrieval_id 时固化缓存回执的有序题目、score、evidence 与检索条件。当前回执路径不会重新读取许可变化，成员1调整审核或撤销许可后的即时生效语义仍需集成补齐。
+- Job 的 description 为空时回退 requirements；不存在岗位404，未 allowed 岗位400。检索/创建练习均不接受 job_id 与非空 jd_text 同传。
+- `0003_practice_records_runtime` 只增加练习记录查询字段、题目唯一键、尝试日志和索引，不导入正式题库、不改变 Job/InterviewQuestion schema，不回填 legacy 面试历史。
+- 历史详情读取练习快照；原题/岗位外键 SET_NULL 后仍保留当时内容。正式材料数量、来源审核和向量索引仍由成员1验收，测试 fixture 不算正式数据。
+
 ```json
 {"kind":"questions","dry_run":true,"records":[{"role":"Java后端","category":"Java","topic":"集合","difficulty":"easy","question":"ArrayList适用什么场景","key_points":["随机访问"],"reference_answer":"基于数组，适合随机访问","source":"团队创作：成员1；审核记录见数据说明","permission_status":"pending","is_demo":true,"dedupe_key":"team-java-001"}]}
 ```
@@ -209,5 +219,22 @@
   "scope": "仅统一课程导航和切换样式。78项前端测试、生产构建通过；1440/390px各点击五个入口，共10次切换均为同名同序五项导航、一个当前项、无横向溢出，导航纵向位置同尺寸一致；减少动态效果时动画为none。",
   "limitations": "不改变五模块正式业务、API、鉴权或数据；passed仅指此次前端专项，不代表五模块complete成功。未调用真实模型；线上发布及服务器运行版本另验收。用户要求验证后直接上线，仅发布前端，沿用既有半成品演示发布流程，不修改门禁。",
   "evidence": "output/playwright/course-nav-tests.log；output/playwright/course-nav-build.log；output/playwright/course-nav-check.js；output/playwright/course-nav-1440.png；output/playwright/course-nav-390.png"
+}
+```
+
+
+### 2026-11-10 records/rag 对目录交接的同步验收
+
+同步新增正式题库读取方、岗位JD回退、许可处理、练习快照与迁移边界；未实现或调整CatalogService导入/查询，不增加演示材料或自动提升许可。当前回执许可重验证和完整来源元数据仍有差距，不能以records专项通过代替目录交付。
+
+```acceptance-record
+{
+  "commit": "b127df1 + dirty",
+  "command": "python -m unittest discover -s ci -p 'test_project*.py' -v; python -m django test career_platform.tests.test_scaffold career_platform.tests.accept_records career_platform.tests.accept_rag career_platform.tests.test_records_runtime --settings=career_platform.test_settings --testrunner=career_platform.tests.runner.FixedAcceptanceRunner --verbosity=1; python ci/project_acceptance.py --stage complete --module all --output .runtime/docs-sync-20261110/all.json; python -m unittest discover -s backend/tests -p 'test_retrieval_demo.py' -v",
+  "result": "failed",
+  "environment": "2026-11-10；Windows；Python 3.12 / Django 4.2.7；隔离内存SQLite、Gateway Spy；文档门禁PyYAML位于忽略目录，不调用真实模型",
+  "scope": "本轮完整all固定17项复核中，catalog4项均因501失败；evaluation/rag/records共9项通过，resume3项与integration1项失败。已更新成员1交接说明和结构化记录。",
+  "limitations": "目录功能、30道人审材料和索引通知未完成；正式检索读取托管ORM不代表catalog API已完成。未改数据、导入器、schema或旧企业写权限；无MySQL、真实Embedding或生产验收。",
+  "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
 ```
