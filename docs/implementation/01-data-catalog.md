@@ -55,7 +55,7 @@
 
 | 提交号 | 执行命令 | 结果 | 环境 | 模拟/真实范围 | 已知限制 | 证据位置 |
 | --- | --- | --- | --- | --- | --- | --- |
-| a4dc576 + dirty（codex/personal） | `python ci/project_acceptance.py --stage complete --module catalog`；新增 `test_catalog_import`；骨架/文档门禁；前端测试与构建 | 通过 | Windows；隔离内存 SQLite；Django 4.2.7/DRF 3.14.0；2026-11-10 | 4项固定catalog验收、6项导入回归、7项骨架、11项文档门禁、79项前端测试和生产构建；无真实招聘来源、真实Embedding或真实模型 | 30道题仍为pending，未做人审；未跑MySQL、远端CI、浏览器或部署 | 本地临时环境输出；`backend/tests/test_catalog_import.py` |
+| a4dc576 + dirty | `python ci/project_acceptance.py --stage complete --module catalog`；新增 `test_catalog_import`；骨架/文档门禁；前端测试与构建 | 通过 | Windows；隔离内存 SQLite；Django 4.2.7/DRF 3.14.0；2026-11-10 | 4项固定catalog验收、6项导入回归、7项骨架、11项文档门禁、79项前端测试和生产构建；无真实招聘来源、真实Embedding或真实模型 | 30道题仍为pending，未做人审；未跑MySQL、远端CI、浏览器或部署 | 本地临时环境输出；`backend/tests/test_catalog_import.py` |
 
 ## 文档更新与 PR 检查表
 
@@ -276,7 +276,7 @@
 
 ```acceptance-record
 {
-  "commit": "a4dc576 + dirty（codex/personal）",
+  "commit": "a4dc576 + dirty",
   "command": "python ci/project_acceptance.py --stage complete --module catalog; python -m django test tests.test_catalog_import --settings=career_platform.test_settings; python ci/project_acceptance.py --stage scaffold; python -m unittest discover -s ci -p 'test_project*.py'; node --test frontend/tests/*.test.mjs; npm run build (cwd=frontend)",
   "result": "passed",
   "environment": "2026-11-10；Windows；隔离内存 SQLite；Django 4.2.7 / DRF 3.14.0；无 MySQL、无真实模型",
