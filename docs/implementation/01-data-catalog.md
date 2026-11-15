@@ -6,9 +6,20 @@
 
 先读 [公共约定](00-shared-contracts.md)。需求依据为 [当前方案](../career_platform_plan.md)。成员1的 `catalog/companies/`、`catalog/jobs/`、`catalog/questions/` 查询和 `catalog/imports/` JSON 导入已在本地隔离环境实现；企业/岗位查询读取现有 Company/Job，题库查询读取托管 InterviewQuestion。示例数据中的 30 道题为团队自编且保持 `pending`，尚需集成人逐题复核后才能进入正式检索。
 
+## 2026-11-15 小林coding 授权题库采集
+
+新增 `data/career-platform/xiaolincoding-questions.json`，包含 943 道 Java 后端相关面试题，来源为 xiaolincoding.com/interview/ 的 16 个公开主题页。成员1声明已获原作者授权，记录标记 `permission_status=allowed`、`is_demo=false`；书面凭证由成员1保存，未随公开仓库提交，集成人合并前须核对授权范围与凭证。`source_url` 只是定位信息，不单独构成许可证明。
+
+- 范围：Java、集合、JVM、并发、Spring、数据库、Redis、计算机网络、操作系统、消息队列、分布式、数据结构与算法、Docker、Git、Linux、系统设计。排除 C++/Go/Python、测试开发、性能测试、广告页和学习路径页；java2top.cn 因本机 80/443 不可达且其源仓库无许可证未采集。
+- 采集：离线读取公开页面，遵守 robots.txt，使用项目标识 UA 和 2 秒/页限速；不登录、不处理验证码、不绕过访问控制。原始 HTML 不进入仓库，交付物是清洗后的 JSON。
+- 清洗与字段：移除导航、图片、广告和公众号推广，保留代码块、列表和表格文本；字段遵循现有 `catalog/imports/` 契约。`topic` 使用 16 个规范主题，`difficulty` 为 `rule-based-v1` 规则分类，需人工复核；`key_points` 从原文要点、列表和首句提取，`reference_answer` 保留清洗后的参考答案。
+- 去重：规范化题干 SHA-256 生成 `dedupe_key`；跨页面重复保留答案更长者，并在 `tags` 写 `另见:<url>`。943 条记录无重复 key、无重复题干。逐页数量、跳过项和跨页重复见 `xiaolincoding-questions-report.json`。
+- 验证：943/943 通过项目 `catalog/source.py` 的字段校验原语（必填、长度、枚举、URL、时间、数组、未知字段）；未导入实际数据库，未运行 MySQL、浏览器、真实 Embedding 或模型。导入时先 `dry_run=true`，再 `dry_run=false`；`records` 取文件中的 `questions` 数组。
+- 影响：943 条 `allowed` 题会进入成员4的正式检索候选，成员2的评估与成员4的 Top-K/分数基线需在导入后重跑，不能沿用旧结果。难度、主题和答案是自动整理，仍需人工抽检，不能把规则分类当作人审证据。
+
 ## 目标、目录和边界
 
-负责 `backend/career_platform/catalog/`、`views/catalog.py`、`models/catalog.py`、`backend/company_reviews/`、`frontend/src/views/career-platform/Catalog.vue`、`data/career-platform/`。公共序列化器、端口、组装、迁移须由集成人审核。不能新建平行岗位表、接 unmanaged company_info_backup、改成员4检索协议或绕过管理员权限。首版支持 JSON/人工整理，不做爬虫、外部实时招聘同步。
+负责 `backend/career_platform/catalog/`、`views/catalog.py`、`models/catalog.py`、`backend/company_reviews/`、`frontend/src/views/career-platform/Catalog.vue`、`data/career-platform/`。公共序列化器、端口、组装、迁移须由集成人审核。不能新建平行岗位表、接 unmanaged company_info_backup、改成员4检索协议或绕过管理员权限。首版支持 JSON/人工整理，不做运行时爬虫、外部实时招聘同步；2026-11-15 的授权题库为离线采集后清洗成 JSON 交付，不改变服务端运行时边界。
 
 ## 设计与逐项实现
 
@@ -41,7 +52,7 @@
 {"kind":"questions","dry_run":true,"records":[{"role":"Java后端","category":"Java","topic":"集合","difficulty":"easy","question":"ArrayList适用什么场景","key_points":["随机访问"],"reference_answer":"基于数组，适合随机访问","source":"团队创作：成员1；审核记录见数据说明","permission_status":"pending","is_demo":true,"dedupe_key":"team-java-001"}]}
 ```
 
-测试注入 source_adapter/index_notifier，通知替身记录调用次数，失败替身抛异常；生产默认不得指向它们。成员4只读取 allowed 题库并使用 `career_platform_questions_v1`；成员2消费同一目录接口，不复制清洗逻辑。`data/career-platform/java-backend.json` 现提供2家虚构企业、3个虚构岗位和30道团队自编Java题，覆盖Java基础、集合、JVM、Spring、数据库和并发。企业/岗位标记 `is_demo=true` 且为 allowed；30道题保持 `pending`，须由集成人复核来源、参考要点和授权状态后改为 `allowed`。6道契约 fixture 仍只用于测试，不能算正式题库。
+测试注入 source_adapter/index_notifier，通知替身记录调用次数，失败替身抛异常；生产默认不得指向它们。成员4只读取 allowed 题库并使用 `career_platform_questions_v1`；成员2消费同一目录接口，不复制清洗逻辑。`data/career-platform/java-backend.json` 现提供2家虚构企业、3个虚构岗位和30道团队自编Java题，覆盖Java基础、集合、JVM、Spring、数据库和并发。企业/岗位标记 `is_demo=true` 且为 allowed；30道题保持 `pending`，须由集成人复核来源、参考要点和授权状态后改为 `allowed`。6道契约 fixture 仍只用于测试，不能算正式题库。`data/career-platform/xiaolincoding-questions.json` 另提供 943 道经成员1声明授权的公开面试题，标记 `allowed`，用于扩充正式检索候选；其来源、清洗、去重和复核要求见本文 2026-11-15 小节。
 
 ## 开发步骤与固定验收
 
@@ -70,7 +81,7 @@
 | 验收完成 | 上表填写实际提交、命令、范围、证据，列出未通过项 |
 
 - [ ] 固定catalog用例、旧企业读写回归、页面及构建通过。
-- [ ] 无秘密/真实私人材料；数据许可与30道人审题证据完整。
+- [ ] 无秘密/真实私人材料；30 道团队题的审核证据与 943 道授权题的授权凭证完整。
 - [ ] 未修改固定期望/skip掩盖失败，公共变更有CODEOWNER审核。
 - [ ] 提交实现、专项测试、本文和验收证据索引后提PR。
 
