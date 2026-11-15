@@ -1,5 +1,9 @@
 # 五人实施公共约定
 
+## 2026-11-15 导航与内置自练调整
+
+简历优化入口移入 `/resume?tab=optimize`，旧 `/career-platform/resume` 重定向并保留查询参数；课程导航移除重复入口。简历分析仍返回501，不能将入口整合当成业务实现。岗位练习增加9道项目自编本地自练题，既不进入正式检索/会话，也不保存历史或调用模型；正式题库与记录接口不变。共享导航/路由变更按原门禁运行全部模块，不降低验收要求。
+
 需求唯一依据是 [当前需求方案](../career_platform_plan.md)。本文固定开发接口与验收方法。catalog 的企业/岗位/题库查询与 JSON 导入已实现并通过本地固定验收；evaluation、records、rag 已有本地实现；resume 仍未完成并继续返回 501。完整 MVP、真实模型、MySQL、远端 CI 与部署仍需独立确认。日期：2026-11-10。集成人：`@vacontinuejatotired`。
 
 ## 团队开工入口
@@ -314,4 +318,8 @@ Actions 42771897363已确认：Platform documentation与Backend checks失败，F
   "limitations": "result=failed表示完整业务与CI仍失败，不否定专项通过。catalog4、resume3、integration1仍因501失败；Backend配置测试另有阻塞。未运行MySQL、真实模型、浏览器、发布或部署；不修改任何固定测试、CI规则或业务代码。",
   "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
+```
+
+```acceptance-record
+{"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项与构建通过；浏览器12视图无溢出、无pageerror，验证旧路由跳转与编辑草稿保留、本地题组无API请求。完整业务17项13通过4失败，resume3与integration1仍因501失败。","limitations":"未改固定测试或门禁，未实现简历优化后端，未导入正式题库；无真实模型、MySQL、CI或部署验收。","evidence":"frontend/tests/default-questions.test.mjs; output/resume-default-tests.log; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
 ```

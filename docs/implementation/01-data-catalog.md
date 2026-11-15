@@ -1,5 +1,9 @@
 # 成员1：岗位、企业和题库数据
 
+## 2026-11-15 内置自练与正式目录边界
+
+练习页新增9道项目自编入门题，仅在浏览器本地自练；不复制测试fixture、不写InterviewQuestion、不修改现有30道pending题的审核状态。正式目录查询、导入、许可要求不变。课程导航不再重复显示简历优化，统一在简历工作台使用。
+
 先读 [公共约定](00-shared-contracts.md)。需求依据为 [当前方案](../career_platform_plan.md)。成员1的 `catalog/companies/`、`catalog/jobs/`、`catalog/questions/` 查询和 `catalog/imports/` JSON 导入已在本地隔离环境实现；企业/岗位查询读取现有 Company/Job，题库查询读取托管 InterviewQuestion。示例数据中的 30 道题为团队自编且保持 `pending`，尚需集成人逐题复核后才能进入正式检索。
 
 ## 目标、目录和边界
@@ -284,4 +288,8 @@
   "limitations": "仅本地隔离SQLite和虚构样例；30道题仍为pending，未做人审；未验证MySQL、真实来源、真实Embedding、浏览器、远端CI、发布或部署。",
   "evidence": "backend/career_platform/catalog/source.py; backend/career_platform/catalog/repository.py; backend/career_platform/catalog/service.py; backend/tests/test_catalog_import.py; data/career-platform/java-backend.json; frontend/src/views/career-platform/Catalog.vue"
 }
+```
+
+```acceptance-record
+{"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项与构建通过；浏览器12视图无溢出、无pageerror。完整17项13通过4失败，catalog4项通过，resume3与integration1因501失败。","limitations":"result为共享改动整体结果，不否定catalog专项通过；未审核或导入正式题库，无真实模型、MySQL、CI或部署验收。","evidence":"frontend/tests/default-questions.test.mjs; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
 ```

@@ -1,5 +1,13 @@
 # 成员3：简历 NLP 与有依据的建议
 
+## 2026-11-15 优化入口并入简历工作台
+
+- `/resume` 新增“编辑与预览 / 岗位对照与优化”切换；优化URL为 `/resume?tab=optimize`。编辑区使用v-show保留未保存内容，切换不重新创建编辑器。
+- 旧 `/career-platform/resume` 兼容重定向，保留其他query/hash；课程导航移除重复入口。
+- `views/resume/OptimizationPanel.vue` 提供JD输入与真实服务状态；分析前读取已保存简历的edit_revision，不让用户手填版本或建议ID。未保存编辑不自动上传，分析不等于应用，不写原简历。
+- 后端仍501，页面明确“开发中”，不生成固定建议或虚假成功。原保存/导出/预览不改。旧Resume.vue骨架保留但不再由路由加载。
+
+
 先读 [公共约定](00-shared-contracts.md) 与 [当前方案](../career_platform_plan.md)。已有简历CRUD、只读观览；准备阶段增加 edit_revision、分析/应用回执表、路由及页面。当前分析/确认应用业务501，尚无事实校验或乐观并发应用实现。
 
 ## 修改边界与目标
@@ -236,4 +244,8 @@ Resume 子项统一输出名为 educations/experiences/projects/certificates/awa
   "limitations": "网关注入不等于NLP分析、事实校验或版本应用完成；自由文本仍可含私人数据，不宣称全量脱敏。未修改用户资料或简历数据库，未执行MySQL、真实模型、浏览器或部署。",
   "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
+```
+
+```acceptance-record
+{"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项、构建通过。浏览器验证旧入口重定向、501明确提示和编辑草稿跨页签保留，三种状态四种尺寸12视图无溢出。完整业务17项13通过4失败，resume3与integration1仍因501失败。","limitations":"只整合入口，不代表NLP、建议或应用实现；未真实写简历、调用模型或迁移数据库；无MySQL、CI、发布部署验收。","evidence":"frontend/src/views/resume/OptimizationPanel.vue; frontend/tests/default-questions.test.mjs; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
 ```

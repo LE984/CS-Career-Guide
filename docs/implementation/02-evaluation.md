@@ -1,5 +1,9 @@
 # 成员2：评估与参数调优
 
+## 2026-11-15 共享导航调整
+
+简历优化统一从简历工作台进入，课程导航保留目录、练习、记录和评估。新增9道浏览器本地自练题不加入冻结评估集、不产生评分、不作为调优结果；既有指标、策略和实验数据不变。
+
 依照 [当前方案](../career_platform_plan.md) 和 [公共约定](00-shared-contracts.md)。已有职业评估页面不能视为本模块完成；骨架阶段 EvaluationRun、staff 路由和页面可启动，评估执行/查询/导出均 501。2026-11-09 起，`question` 任务的评估运行、查询与导出已实现（见文末实施与实验记录）；岗位匹配与简历匹配策略仍依赖成员1/3 的正式服务。
 
 ## 目标、目录和不做范围
@@ -280,4 +284,8 @@ Top-K 单变量扫描（text-baseline，其余参数不变）：dev 在 K=3/5/10
   "limitations": "passed仅指evaluation固定专项，完整all仍8项失败，GitHub总CI未通过。未复跑参数实验与metrics扩展单元，job/resume策略仍未实现；无真实模型、Embedding、MySQL、浏览器或发布验收。",
   "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
+```
+
+```acceptance-record
+{"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项与构建通过，浏览器12视图无溢出。完整业务17项13通过4失败，evaluation3项通过，resume3与integration1因501失败。","limitations":"共享改动整体仍failed；未重新调优，job/resume评估缺口不变，无真实模型、MySQL、CI或部署验收。","evidence":"frontend/tests/default-questions.test.mjs; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
 ```
