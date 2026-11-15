@@ -258,7 +258,11 @@ class WorkflowGateTests(unittest.TestCase):
     def test_image_jobs_build_their_own_context_without_registry_credentials(self):
         for component in ('backend', 'frontend'):
             job = self.workflow['jobs'][component + '-image']
-            self.assertEqual(job['needs'], ['changes', component + '-test'])
+            self.assertEqual(job['needs'], ['changes'])
+            self.assertEqual(job['if'], f"needs.changes.outputs.{component} == 'true'")
+            # Speculative image success cannot authorize a release if tests fail.
+            for quality in ('failure', 'cancelled', 'skipped'):
+                self.assertFalse(self.allowed(component, quality=quality))
             builds = [s for s in job['steps'] if s.get('uses', '').startswith('docker/build-push-action@')]
             self.assertEqual(len(builds), 1)
             self.assertEqual(builds[0]['with']['context'], './' + component)
@@ -275,6 +279,10 @@ class WorkflowGateTests(unittest.TestCase):
         self.assertIn("outputs.backend == 'true'", integration['if'])
         self.assertIn("outputs.frontend == 'true'", integration['if'])
         self.assertIn('ci/gateway_smoke.py', str(integration['steps']))
+        self.assertTrue({'backend-image', 'frontend-image', 'delivery-checks'}.issubset(integration['needs']))
+        for component in ('backend', 'frontend'):
+            self.assertNotIn(component + '-test', integration['needs'])
+            self.assertIn(component + '-test', self.workflow['jobs']['release-summary']['needs'])
         build_args = next(s['with']['build-args'] for s in self.workflow['jobs']['frontend-image']['steps']
                           if s.get('uses', '').startswith('docker/build-push-action@'))
         self.assertIn("VITE_COMPANY_API_BASE_URL=${{ vars.VITE_COMPANY_API_BASE_URL || '/company-api' }}", build_args)
