@@ -2,7 +2,7 @@ FROM node:24-bookworm-slim AS builder
 
 WORKDIR /build/frontend
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline --no-audit --no-fund
 COPY . ./
 ARG VITE_API_BASE_URL=/api
 ARG VITE_COMPANY_API_BASE_URL=/company-api
@@ -10,10 +10,13 @@ ARG VITE_ENABLE_TTS=False
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_COMPANY_API_BASE_URL=${VITE_COMPANY_API_BASE_URL} \
     VITE_ENABLE_TTS=${VITE_ENABLE_TTS}
-RUN npm run build
+RUN npm run build && rm -rf dist/models
 
 FROM nginx:1.27-alpine
 
+# Stable public models have their own layer, independent of the Vue build.
+# Keep this before frequently changing config/application files.
+COPY public/models /usr/share/nginx/html/models
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /build/frontend/dist /usr/share/nginx/html
 RUN mkdir -p /var/cache/nginx \
