@@ -1,0 +1,149 @@
+{
+ "dataset_version": "xiaolincoding-interview-2026-11-15",
+ "collected_at": "2026-11-15T13:32:18Z",
+ "pages": [
+  {
+   "page": "java",
+   "topic": "Java基础",
+   "headings_used": 79,
+   "skipped": 0
+  },
+  {
+   "page": "collections",
+   "topic": "集合",
+   "headings_used": 69,
+   "skipped": 0
+  },
+  {
+   "page": "jvm",
+   "topic": "JVM",
+   "headings_used": 60,
+   "skipped": 0
+  },
+  {
+   "page": "juc",
+   "topic": "并发",
+   "headings_used": 73,
+   "skipped": 0
+  },
+  {
+   "page": "spring",
+   "topic": "Spring",
+   "headings_used": 84,
+   "skipped": 0
+  },
+  {
+   "page": "mysql",
+   "topic": "数据库",
+   "headings_used": 115,
+   "skipped": 0
+  },
+  {
+   "page": "redis",
+   "topic": "Redis",
+   "headings_used": 69,
+   "skipped": 0
+  },
+  {
+   "page": "network",
+   "topic": "计算机网络",
+   "headings_used": 95,
+   "skipped": 1
+  },
+  {
+   "page": "os",
+   "topic": "操作系统",
+   "headings_used": 75,
+   "skipped": 0
+  },
+  {
+   "page": "mq",
+   "topic": "消息队列",
+   "headings_used": 53,
+   "skipped": 0
+  },
+  {
+   "page": "cap",
+   "topic": "分布式",
+   "headings_used": 34,
+   "skipped": 0
+  },
+  {
+   "page": "data",
+   "topic": "数据结构与算法",
+   "headings_used": 53,
+   "skipped": 0
+  },
+  {
+   "page": "docker",
+   "topic": "Docker",
+   "headings_used": 22,
+   "skipped": 0
+  },
+  {
+   "page": "git",
+   "topic": "Git",
+   "headings_used": 23,
+   "skipped": 1
+  },
+  {
+   "page": "linux",
+   "topic": "Linux",
+   "headings_used": 21,
+   "skipped": 0
+  },
+  {
+   "page": "systemdesign",
+   "topic": "系统设计",
+   "headings_used": 19,
+   "skipped": 0
+  }
+ ],
+ "counts": {
+  "records": 943,
+  "duplicates_removed": 1,
+  "skipped": 2,
+  "difficulty": {
+   "easy": 274,
+   "medium": 382,
+   "hard": 287
+  },
+  "topics": {
+   "Docker": 22,
+   "Git": 23,
+   "JVM": 60,
+   "Java基础": 79,
+   "Linux": 21,
+   "Redis": 69,
+   "Spring": 83,
+   "分布式": 34,
+   "并发": 73,
+   "操作系统": 75,
+   "数据库": 115,
+   "数据结构与算法": 53,
+   "消息队列": 53,
+   "系统设计": 19,
+   "计算机网络": 95,
+   "集合": 69
+  }
+ },
+ "duplicates": [
+  {
+   "question": "限流、熔断和降级有什么区别？",
+   "kept_page": "spring",
+   "dropped_page": "cap"
+  }
+ ],
+ "skipped": [
+  {
+   "page": "network",
+   "question": "DNS的端口是多少？",
+   "reason": "empty/short answer"
+  },
+  {
+   "page": "git",
+   "question": "推荐学习",
+   "reason": "section-like heading"
+  }
+ ]
+}
