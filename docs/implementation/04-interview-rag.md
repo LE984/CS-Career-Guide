@@ -1,5 +1,12 @@
 # 成员4：题库检索与逐题反馈
 
+## 2026-11-15 内置默认自练题组
+
+练习页顶部新增Java后端、Python开发、前端开发三组共9道项目自编题，每题附3条参考要点，来源明确为“项目自编 · 入门自练材料（非真实面经）”。无需检索即可选择、写回答和对照参考；草稿只在内存，离开/刷新提示，不调用模型或API、不自动评分、不保存正式记录。题目使用本地字符串ID，不能提交正式会话接口；与下方正式检索/记录流程明确分区，不是正式题库无命中时的静默回退。现有pending题仍需人工审核，未操作服务器数据库。
+
+共享课程导航同时将简历优化归并到简历工作台，旧链接兼容跳转。
+
+
 依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。2026-11-10 后端已接通正式文本检索、短期 retrieval receipt、逐题反馈和统一 PracticeStore。2026-11-15 本地网页接入正式练习流程并完成隔离模拟浏览器验证，见下节；真实模型、MySQL、前后端真实联调、远端 CI 和部署仍须独立验收。
 
 ## 2026-11-15 正式岗位练习前端
@@ -392,4 +399,8 @@ Actions 42776569360 的文档、SQLite/MySQL业务验收及前端镜像成功，
   "limitations": "未调用真实模型或写真实业务数据库；无MySQL、真实前后端联调、远端CI或部署结论。固定RAG通过不等于全模块MVP完成。",
   "evidence": "frontend/tests/practice.test.mjs; output/practice-tests.log; output/practice-build.log; output/practice-rag-final.json; output/practice-scaffold-final.json; output/practice-browser.log（output均为本机产物）"
 }
+```
+
+```acceptance-record
+{"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项和构建通过。浏览器三组自练填写/查看要点无额外API调用；题库、优化、编辑三种状态四种尺寸12视图无溢出和pageerror。完整17项13通过4失败，rag3项通过，resume3与integration1因501失败。","limitations":"共享改动整体仍failed；默认题仅本地自练，不冒充正式题库/模型反馈。未调用真实模型、导入题库或执行MySQL/CI/发布部署。","evidence":"frontend/src/views/career-platform/default-questions.js; frontend/tests/default-questions.test.mjs; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
 ```

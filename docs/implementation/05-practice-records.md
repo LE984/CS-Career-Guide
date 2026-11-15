@@ -1,5 +1,10 @@
 # 成员5：练习记录、结束总结与历史
 
+## 2026-11-15 默认自练与记录边界
+
+练习页新增9道内置自练题，仅在页面内存保留回答，不创建PracticeSession/AnswerRecord、不生成总结，历史列表不会出现这些自练内容。下方正式题库流程继续使用现有记录接口，未改变幂等或权限。简历优化从课程导航迁到简历工作台；记录页入口不变。
+
+
 先读 [公共约定](00-shared-contracts.md) 与 [当前方案](../career_platform_plan.md)。已有legacy复盘表不包含本期逐题契约。2026-11-10 本地补丁已实现 PracticeSession/AnswerRecord Repository、状态机、迁移、RAG 交接和 Records 页面；专项离线验收通过，但真实模型、MySQL、远端 CI、浏览器和完整五模块链路仍未完成。
 
 ## 目标、目录与不做范围
@@ -259,4 +264,8 @@
   "limitations": "旧检索演示测试仍1失败；Actions 42771897363文档与Backend检查失败，平台数据库验收/后端镜像/部署跳过。本次只同步文档，不补业务或测试代码；MySQL并发、真实模型、浏览器端到端、正式Practice页面交接和部署仍未完成。",
   "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
 }
+```
+
+```acceptance-record
+{"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项和构建通过；浏览器确认本地自练不调用记录接口。完整17项13通过4失败，records3项通过，resume3与integration1仍因501失败。","limitations":"共享整体failed不否定records专项通过；未修改记录接口，不包含真实模型、并发、MySQL、远端CI或部署验收。","evidence":"frontend/tests/default-questions.test.mjs; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
 ```

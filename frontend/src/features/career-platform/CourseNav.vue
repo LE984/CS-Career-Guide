@@ -6,7 +6,6 @@
 <script setup>
 const modules = [
   { path: 'catalog', title: '岗位与题库' },
-  { path: 'resume', title: '简历优化' },
   { path: 'practice', title: '岗位题库练习' },
   { path: 'records', title: '练习记录' },
   { path: 'evaluation', title: '评估与调优（管理员）' },

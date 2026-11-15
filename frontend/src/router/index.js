@@ -4,7 +4,7 @@ import { createAuthGuard } from './guard.js'
 
 const routes = [
   {path:'/career-platform/catalog',name:'PlatformCatalog',component:()=>import('../views/career-platform/Catalog.vue')},
-  {path:'/career-platform/resume',name:'PlatformResume',component:()=>import('../views/career-platform/Resume.vue')},
+  {path:'/career-platform/resume',name:'PlatformResume',redirect:to=>({path:'/resume',query:{...to.query,tab:'optimize'},hash:to.hash})},
   {path:'/career-platform/practice',name:'PlatformPractice',component:()=>import('../views/career-platform/Practice.vue')},
   {path:'/career-platform/records',name:'PlatformRecords',component:()=>import('../views/career-platform/Records.vue')},
   {path:'/career-platform/evaluation',name:'PlatformEvaluation',component:()=>import('../views/career-platform/Evaluation.vue')},
