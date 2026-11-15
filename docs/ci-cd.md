@@ -11,18 +11,21 @@ push 覆盖所有分支，PR 目标为本 fork master。主题分支和 PR 仅 b
 ## Job 依赖
 
 ```text
-changes -> frontend-test -> frontend-image -> publish-frontend -> deploy-frontend
-        -> backend-test  -> backend-image  -> publish-backend  -> deploy-backend
-        -> delivery-checks --------------------^                 ^
-        -> platform-gates ---------------------^                 |
-两端均选中 -> integration（两个候选归档、真实网关/持久化、合成 SSE/IP）--^
+changes -> frontend-test --------------------> publish-frontend -> deploy-frontend
+        -> frontend-image -------------------^
+        -> backend-test ---------------------> publish-backend  -> deploy-backend
+        -> backend-image --------------------^
+        -> delivery-checks ------------------^（两个publisher均要求）
+        -> platform-gates -------------------^（两个publisher均要求）
+两端均选中 -> integration（等待双image + delivery-checks；真实网关/持久化、合成SSE/IP）
+                         两个publisher均要求integration成功
 全部结果 -> release-summary（always；严格区分 required、skipped 与 failure）
 ```
 
 - frontend-test：Node 24、npm ci、全部 tests/*.test.mjs、Vite 构建与 GLB/VAD 资源检查。
 - backend-test：Python 3.11、backend/requirements.txt 的 UTF-16 临时转码、原鉴权、配置、面试/ASR、迁移隔离回归与 Django check。
 - delivery-checks：无应用/模型依赖的 ci 单元测试；runner 解析默认/updates/MySQL/digest Compose，验证端口、用户、只读挂载、资源与 CORS 接线。
-- 各 image：自身目录上下文，多阶段构建，push=false/load=true；单镜像冒烟、导出和再次加载身份验证。前端冒烟不提供后端/DNS。后端 image 不等待前端。
+- 各 image：仅等待changes，与自身test并行；自身目录上下文，多阶段构建，push=false/load=true；单镜像冒烟、导出和再次加载身份验证。前端冒烟不提供后端/DNS。后端 image 不等待前端。
 - integration：仅两端同时选中时要求成功；下载两份已测试归档，无 ACR Secrets。`demo_smoke.py` 验证真实 gateway/frontend/Django、注册登录/401、static、资料、SQLite 持久化及独立重建；`gateway_smoke.py` 用合成上游验证头/query、media、SSE 首事件及两端换 IP。仅 runner 可启动 Docker。
 - publish-frontend/backend：只依赖自身测试/image、delivery-checks、业务门禁及所需 integration，不等待另一 publisher。只下载对应归档，确认 commit、image ID、平台后推送同一镜像，不重新构建。共享所需 integration 被跳过/失败时不得发布。
 - deploy-frontend/backend：仅对应 publisher 成功、fork/master、非 PR、总开关与对应分端开关同时为 true 时执行。输入是该次发布 digest；前端不接收模型字段。细节见[AI 同步](ai-env-sync.md)。
@@ -90,6 +93,14 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 历史对照：运行43707331495已完成前端镜像build步骤98秒、后端依赖安装75秒、后端镜像build21秒、真实网关联调169秒；前端发布长期停在无实时输出的Docker阶段，尚无精确网络/层级吞吐证据，不把跨境带宽推测当已证实根因。新日志和超时仅适用于包含修改后的提交，不会改变已运行任务。
 
 本地验证（10a43e3 + dirty，Windows隔离测试）：`python -m unittest discover -s ci -p 'test_*.py' -q` 共97项，83通过、14项POSIX环境测试跳过；其中发布工具/门禁18项与新增镜像层结构2项通过，覆盖心跳脱敏、超时终止回收、非零返回、load失败回执、身份/digest/组件边界。`git diff --check`通过。未执行本机Docker、真实ACR、Actions或部署；日志在本机忽略路径 `output/delivery-optimization-tests.log`，提速效果尚未实测。
+
+## 2026-11-15 测试与镜像并行（候选，远程待验证）
+
+本地验证（5139334 + dirty）：交付工具97项，83通过、14项Windows不支持的POSIX测试跳过；另与HEAD解析后逐Job对比，除两个image Job外其他Job完全一致，既有workflow_delivery_only判定通过，git diff --check通过。日志：本机忽略路径output/parallel-build-tests.log。本机未运行Docker或部署。
+
+前后端image不再等待对应test，测试Job的命令、条件、依赖和全部检查不变。镜像构建/冒烟/归档无注册表凭据、push=false；属于提前计算，测试失败可能浪费构建与联调资源，但不能发布。两个publisher仍显式等待自身test/image、delivery-checks、platform-gates及双端场景的integration；失败、取消或跳过测试均拒绝发布，release-summary仍要求测试结果正确。没有修改业务门禁、部署锁或健康条件。
+
+对照master运行43710381354（5139334）：后端test126秒后才开始image185秒，integration207秒，总墙钟736秒。并行可去掉其中一部分串行等待，理论上限接近测试耗时，但受runner容量、冷缓存、归档和网络影响，不承诺固定提速；GitHub各job/step开始结束时间是后续实测依据。测试失败时预构建镜像的归档只代表镜像冒烟通过，不等于整个版本已通过验收。远程CI/发布证据需分别确认，不能用旧运行的绿色替代候选验证。
 
 ## 缓存与耗时定位
 
