@@ -17,6 +17,13 @@
 - 验证：运行 `python data/career-platform/validate_xiaolincoding.py data/career-platform/xiaolincoding-questions.json`，943/943 通过项目 `catalog/source.py` 的字段校验原语（必填、长度、枚举、URL、时间、数组、未知字段）；未导入实际数据库，未运行 MySQL、浏览器、真实 Embedding 或模型。导入时先 `dry_run=true`，再 `dry_run=false`；`records` 取文件中的 `questions` 数组。
 - 影响：943 条 `allowed` 题会进入成员4的正式检索候选，成员2的评估与成员4的 Top-K/分数基线需在导入后重跑，不能沿用旧结果。难度、主题和答案是自动整理，仍需人工抽检，不能把规则分类当作人审证据。
 
+### 导入运行入口
+
+- 管理命令：`python backend/manage.py import_catalog data/career-platform/xiaolincoding-questions.json --dry-run`，确认后 `--commit`。命令复用 `CatalogService`，整批校验、事务写入、按 `dedupe_key` 幂等，单批最多 1000 条；默认 dry-run。
+- 线上 API：`data/career-platform/import_catalog_via_api.py` 从 `CATALOG_IMPORT_TOKEN` 读取 staff Token，默认 dry-run，`--commit` 才写；不打印 Token、不跟随重定向。
+- 未配置 `index_notifier` 时返回 `index_notification=not_configured`；正式检索由 `DjangoQuestionRetriever` 读取数据库 `allowed` 记录，不依赖 LanceDB。
+- 导入后由 `catalog/questions/`、练习页正式检索、成员4逐题反馈和成员2评估共同消费；成员2/4基线需重跑。
+
 ## 目标、目录和边界
 
 负责 `backend/career_platform/catalog/`、`views/catalog.py`、`models/catalog.py`、`backend/company_reviews/`、`frontend/src/views/career-platform/Catalog.vue`、`data/career-platform/`。公共序列化器、端口、组装、迁移须由集成人审核。不能新建平行岗位表、接 unmanaged company_info_backup、改成员4检索协议或绕过管理员权限。首版支持 JSON/人工整理，不做运行时爬虫、外部实时招聘同步；2026-11-15 的授权题库为离线采集后清洗成 JSON 交付，不改变服务端运行时边界。
@@ -314,5 +321,17 @@
   "scope": "离线解析 xiaolincoding.com/interview/ 的 16 个公开主题页并生成 943 条题目记录；943/943 通过 catalog/source.py 字段校验原语；无重复 dedupe_key 或题干；JSON 解析、敏感信息扫描和 git diff --check 通过。",
   "limitations": "难度和主题为 rule-based-v1 自动分类，需人工抽检；授权由成员1声明，书面凭证未入库，待集成人核对；未导入实际数据库，未运行 MySQL、浏览器、真实 Embedding/模型、成员2评估或成员4检索基线；java2top.cn 未采集。",
   "evidence": "data/career-platform/xiaolincoding-questions.json; data/career-platform/xiaolincoding-questions-report.json; data/career-platform/validate_xiaolincoding.py; PR #37"
+}
+```
+
+```acceptance-record
+{
+  "commit": "b22a39a",
+  "command": "python -m django test tests.test_catalog_import --settings=career_platform.test_settings (cwd=backend); python -m py_compile data/career-platform/import_catalog_via_api.py backend/company_reviews/management/commands/import_catalog.py; git diff --check",
+  "result": "passed",
+  "environment": "2026-11-15；Windows 11；临时隔离 venv Django 4.2.7 / DRF 3.14.0；内存 SQLite；无真实数据库或模型",
+  "scope": "新增 import_catalog 管理命令与 HTTP 导入脚本；7 项 catalog 导入测试通过。在隔离 SQLite 导入 943 条 allowed 题目，第二次导入 created=0/unchanged=943；catalog/questions/ 查询和 DjangoQuestionRetriever 检索均命中。",
+  "limitations": "未使用线上 staff Token 或服务器；未运行 MySQL、真实模型、浏览器、发布或部署；授权凭证仍待集成人核对；未实际导入真实数据库。",
+  "evidence": "backend/company_reviews/management/commands/import_catalog.py; backend/tests/test_catalog_import.py; data/career-platform/import_catalog_via_api.py; data/career-platform/README.md"
 }
 ```

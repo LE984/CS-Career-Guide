@@ -73,7 +73,7 @@ Linux/macOS 对应 Python 路径通常为 `.venv/bin/python`。ci/sync_runtime_e
 
 服务端从应用服务实现，依赖通过 contracts.py 端口注入，唯一生产组装点 composition.py。测试替身仅在tests内。Company/Job来源字段默认pending，既有数据不会自动视为已审核；新增托管题库/分析/练习/评估表，简历增加edit_revision。迁移本地仅隔离SQLite，MySQL迁移/读写由Actions验证；本阶段不切线上数据库或导入服务器数据。
 
-正式题库材料说明见 `data/career-platform/README.md`。当前 `java-backend.json` 有2家虚构企业、3个虚构岗位和30道团队自编题，30道题保持 `pending`，尚需集成人逐题复核；fixture 不是正式人审演示题。CI和审阅见 [CI/CD](ci-cd.md) 及公共约定，不能用修改状态标记跳过complete。
+正式题库材料说明见 `data/career-platform/README.md`。当前 `java-backend.json` 有2家虚构企业、3个虚构岗位和30道团队自编题，30道题保持 `pending`，尚需集成人逐题复核；fixture 不是正式人审演示题。`xiaolincoding-questions.json` 的 943 道授权题可用 `python backend/manage.py import_catalog ... --dry-run/--commit` 幂等导入，详见数据目录说明。CI和审阅见 [CI/CD](ci-cd.md) 及公共约定，不能用修改状态标记跳过complete。
 
 ## 独立交付与客户端边界
 
