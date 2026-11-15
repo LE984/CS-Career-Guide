@@ -81,6 +81,16 @@ ACR_REGISTRY/ACR_NAMESPACE 仅 publisher 从 Variables 或同名 Secrets 读取�
 
 常见问题：UTF-16 源改路径后转换失败时检查 backend/requirements.txt；旧 Dockerfile 根路径必须移除；gateway 缺失/前端仍有端口或共享卷时新同步拒绝；只设置旧总同步开关不会触发新分端部署；完整业务 501 失败应作为业务未完成处理，不能改成通过。
 
+## 2026-11-15 发布可观测性与有界等待（本地候选）
+
+`ci/release_images.py` 的Docker调用新增安全阶段日志：操作开始/完成耗时、每15秒心跳，按组件/tag标明load、tag、push和digest阶段并记录归档MiB。不回显命令参数或原始Docker输出（避免注册表/凭据等细节），完整输出仅保存在未命名临时文件供digest解析，不上传。push预算900秒、load/save各300秒、其他调用120秒；超时终止并回收CLI进程，以失败返回，不盲目重试或自动推进latest。终止CLI不能保证远端没有已经接受某层或tag，失败不能当发布完成；Docker daemon后台进度需独立排查。
+
+归档加载/身份校验失败也写complete=false发布记录，后续部署仍严格要求complete=true和digest，标签顺序与身份校验不变。未改测试选择、依赖、跳过条件或发布门禁。本轮前后端分层优化见[镜像说明](docker-images.md)；不删资源或缩减联调。
+
+历史对照：运行43707331495已完成前端镜像build步骤98秒、后端依赖安装75秒、后端镜像build21秒、真实网关联调169秒；前端发布长期停在无实时输出的Docker阶段，尚无精确网络/层级吞吐证据，不把跨境带宽推测当已证实根因。新日志和超时仅适用于包含修改后的提交，不会改变已运行任务。
+
+本地验证（10a43e3 + dirty，Windows隔离测试）：`python -m unittest discover -s ci -p 'test_*.py' -q` 共97项，83通过、14项POSIX环境测试跳过；其中发布工具/门禁18项与新增镜像层结构2项通过，覆盖心跳脱敏、超时终止回收、非零返回、load失败回执、身份/digest/组件边界。`git diff --check`通过。未执行本机Docker、真实ACR、Actions或部署；日志在本机忽略路径 `output/delivery-optimization-tests.log`，提速效果尚未实测。
+
 ## 缓存与耗时定位
 
 当前已启用 `setup-python` 的 pip 下载缓存、`setup-node` 的 npm 下载缓存，以及前后端各自的 BuildKit GHA 层缓存。pip/npm 缓存不会保留安装后的虚拟环境或 node_modules，新的 runner 仍会安装依赖和执行测试；镜像缓存命中也仍需导出、上传归档及运行容器检查。publisher 复用已验证的镜像归档，不重新构建。

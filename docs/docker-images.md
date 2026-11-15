@@ -17,6 +17,13 @@ docker build -f backend/Dockerfile -t cs-career-guide-backend:local backend
 
 前端 Node 24 编译、nginx:1.27-alpine 静态运行，UID/GID 10001、端口 8080、PID 位于 /tmp。只提供 dist、history fallback 和资源缓存；无 backend upstream、无共享后端卷。standalone Nginx 不依赖 backend DNS，单镜像冒烟不创建后端。
 
+## 2026-11-15 镜像分层与安装缓存（本地候选，未发布）
+
+- frontend 将 `public/models` 直接复制为独立运行层，位于Nginx配置和Vue产物之前；builder编译后只从其dist副本移除models，运行镜像仍保留同路径全部模型/WASM/ONNX。源码和媒体文件不删除，正常前端构建仍输出完整dist。普通页面改动不再使约160MiB稳定资源层一起变化；资源本身变更仍须正常上传。首次切换层结构仍会产生一次上传，后续收益需Actions/ACR实测。
+- frontend 的npm ci使用BuildKit npm缓存挂载与prefer-offline，仍依据lockfile完整安装，不升级依赖、不影响npm ci校验。
+- backend wheel构建使用pip缓存挂载；运行阶段以只读BuildKit bind mount安装wheel，不再COPY大wheel层后删除，避免归档/镜像中重复保留安装包。运行依赖、入口、用户和健康检查不变。
+- BuildKit缓存挂载只在可复用builder中有效，临时runner不保证跨次命中；既有GHA镜像层缓存继续保留。未在本机执行Docker。离线结构与发布工具测试通过不代表镜像资源、身份、大小或上传提速已由runner验证。
+
 ## 公开构建参数
 
 VITE_API_BASE_URL 默认 /api；VITE_COMPANY_API_BASE_URL 默认 /company-api，保持原 Docker 构建路径；VITE_ENABLE_TTS 默认 False。工作流从同名 Variables 显式传入，完整 API URL 需含 /api。VITE_* 会写入浏览器，不得传 Key/Token/密码；运行时改服务器 .env 不能改变已编译静态包。

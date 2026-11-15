@@ -5,6 +5,8 @@ import json
 import os
 import re
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 COMPONENTS = ('backend', 'frontend')
@@ -28,12 +30,44 @@ def coordinates(registry, namespace, commit, extra_tag=''):
     return {name: f'{registry}/{namespace}/cs-career-guide-{name}' for name in COMPONENTS}
 
 
+DOCKER_TIMEOUTS = {'push': 900, 'load': 300, 'save': 300}
+HEARTBEAT_SECONDS = 15
+
+
 def docker(*arguments):
-    result = subprocess.run(['docker', *arguments], capture_output=True, text=True, check=False)
-    if result.returncode:
-        # Do not echo registry configuration, credentials or arbitrary CLI output.
-        raise RuntimeError(f'Docker {arguments[0]} failed with exit code {result.returncode}.')
-    return result.stdout
+    operation = arguments[0]
+    timeout = DOCKER_TIMEOUTS.get(operation, 120)
+    started = time.monotonic()
+    # Raw Docker output can contain private registry data. Keep it in an
+    # unnamed temporary file, never echo arguments/output, and log safe stages.
+    print(f'Docker {operation}: started (timeout {timeout}s).', flush=True)
+    with tempfile.TemporaryFile(mode='w+t', encoding='utf-8') as output:
+        try:
+            process = subprocess.Popen(['docker', *arguments], stdout=output, stderr=subprocess.STDOUT)
+        except OSError:
+            raise RuntimeError(f'Docker {operation} could not be started.') from None
+        try:
+            while True:
+                remaining = timeout - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise TimeoutError()
+                try:
+                    code = process.wait(timeout=min(HEARTBEAT_SECONDS, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    print(f'Docker {operation}: running, elapsed {time.monotonic() - started:.0f}s.', flush=True)
+        except (TimeoutError, KeyboardInterrupt):
+            process.kill()
+            process.wait()
+            print(f'Docker {operation}: stopped after {time.monotonic() - started:.1f}s.', flush=True)
+            raise RuntimeError(f'Docker {operation} exceeded its time budget or was interrupted.') from None
+        elapsed = time.monotonic() - started
+        if code:
+            print(f'Docker {operation}: failed after {elapsed:.1f}s.', flush=True)
+            raise RuntimeError(f'Docker {operation} failed with exit code {code}.')
+        print(f'Docker {operation}: completed in {elapsed:.1f}s.', flush=True)
+        output.seek(0)
+        return output.read()
 
 
 def inspect_image(image):
@@ -75,7 +109,9 @@ def load_verified_images(directory, commit, components=COMPONENTS):
             raise RuntimeError('The verified image archive is missing.')
         verified[component] = metadata
     for component, metadata in verified.items():
-        docker('load', '--input', str(directory / f'{component}-image.tar'))
+        archive = directory / f'{component}-image.tar'
+        print(f'Loading verified {component} archive ({archive.stat().st_size / 1048576:.1f} MiB).', flush=True)
+        docker('load', '--input', str(archive))
         if inspect_image(metadata['source_image']) != metadata['image_id']:
             raise RuntimeError('Loaded image ID differs from the validated artifact.')
     return verified
@@ -108,19 +144,24 @@ def publish_images(directory, registry, namespace, commit, extra_tag, output, su
     if compatibility not in ('not-recorded', 'component-contracts', 'candidate-integration'):
         raise ValueError('Unsupported compatibility evidence scope.')
     repositories = coordinates(registry, namespace, commit, extra_tag)
-    verified = load_verified_images(directory, commit, components)
+    # Save a failure receipt even if archive loading/identity verification fails.
     release = {'commit': commit, 'components': list(components), 'compatibility': compatibility,
                'complete': False, 'images': {
-        component: {'repository': repositories[component], 'image_id': metadata['image_id'], 'tags': []}
-        for component, metadata in verified.items()
+        component: {'repository': repositories[component], 'tags': []}
+        for component in components
     }}
     version_tags = list(dict.fromkeys([f'sha-{commit[:7]}'] + ([extra_tag] if extra_tag and extra_tag != 'latest' else [])))
     try:
+        verified = load_verified_images(directory, commit, components)
+        for component, metadata in verified.items():
+            release['images'][component]['image_id'] = metadata['image_id']
         # Advance rolling tags only for the explicitly selected components.
         for tag in [*version_tags, 'latest']:
             for component, metadata in verified.items():
                 reference = f'{repositories[component]}:{tag}'
+                print(f'Publishing {component} tag {tag}: tagging verified image.', flush=True)
                 docker('tag', metadata['image_id'], reference)
+                print(f'Publishing {component} tag {tag}: pushing and resolving digest.', flush=True)
                 digest = push_digest(docker('push', reference))
                 image = release['images'][component]
                 if image.get('digest', digest) != digest:

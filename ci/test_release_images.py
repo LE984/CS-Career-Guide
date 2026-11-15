@@ -1,18 +1,54 @@
 """Verify publication gates and failure handling without Docker or registry access."""
 
+import io
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import yaml
 
-from release_images import coordinates, export_image, load_verified_images, publish_images, push_digest, source_image
+from release_images import coordinates, docker, export_image, load_verified_images, publish_images, push_digest, source_image
 
 COMMIT = '1' * 40
 IDS = {'backend': 'sha256:' + 'a' * 64, 'frontend': 'sha256:' + 'b' * 64}
 MANIFESTS = {'backend': 'sha256:' + 'c' * 64, 'frontend': 'sha256:' + 'd' * 64}
+
+
+class DockerProgressTests(unittest.TestCase):
+    def test_heartbeat_and_completion_are_safe_and_return_digest(self):
+        def spawn(command, **kwargs):
+            kwargs['stdout'].write('private-token registry.example/user\ndigest: ' + MANIFESTS['frontend'])
+            return process
+        process = Mock()
+        process.wait.side_effect = [subprocess.TimeoutExpired('docker', 15), 0]
+        with patch('release_images.subprocess.Popen', side_effect=spawn), patch('sys.stdout', new_callable=io.StringIO) as log:
+            result = docker('push', 'private-registry/secret-reference')
+        self.assertIn(MANIFESTS['frontend'], result)
+        self.assertIn('running, elapsed', log.getvalue())
+        self.assertIn('completed in', log.getvalue())
+        self.assertNotIn('private', log.getvalue())
+        self.assertNotIn('registry.example', log.getvalue())
+        process.kill.assert_not_called()
+
+    def test_timeout_kills_and_reaps_process_without_exposing_output(self):
+        process = Mock()
+        with patch('release_images.subprocess.Popen', return_value=process), \
+                patch('release_images.time.monotonic', side_effect=[0, 901, 902]), \
+                patch('builtins.print'), self.assertRaisesRegex(RuntimeError, 'time budget'):
+            docker('push', 'secret-reference')
+        process.kill.assert_called_once()
+        process.wait.assert_called_once_with()
+
+    def test_nonzero_exit_is_sanitized(self):
+        process = Mock()
+        process.wait.return_value = 1
+        with patch('release_images.subprocess.Popen', return_value=process), patch('builtins.print'):
+            with self.assertRaisesRegex(RuntimeError, 'exit code 1') as error:
+                docker('load', '--input', 'private/path')
+        self.assertNotIn('private', str(error.exception))
 
 
 class ReleaseImageTests(unittest.TestCase):
@@ -63,6 +99,17 @@ class ReleaseImageTests(unittest.TestCase):
             self.assertEqual(metadata['image_id'], IDS['backend'])
             self.assertEqual(metadata['commit'], COMMIT)
             self.assertEqual(calls[-1], ('save', '--output', str(root / 'backend-image.tar'), source_image('backend', COMMIT)))
+
+    def test_failed_load_records_incomplete_release_before_any_push(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.artifacts(root)
+            with patch('release_images.docker', side_effect=RuntimeError('load timed out')), patch('builtins.print'):
+                with self.assertRaisesRegex(RuntimeError, 'load timed out'):
+                    publish_images(root, 'registry.example', 'demo', COMMIT, '', root / 'release.json', root / 'summary.md')
+            record = json.loads((root / 'release.json').read_text())
+            self.assertFalse(record['complete'])
+            self.assertTrue(all(not image['tags'] for image in record['images'].values()))
 
     def test_wrong_commit_is_rejected_before_any_docker_operation(self):
         with tempfile.TemporaryDirectory() as directory:
