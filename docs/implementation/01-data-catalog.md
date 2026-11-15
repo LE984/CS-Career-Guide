@@ -23,6 +23,7 @@
 - 线上 API：`data/career-platform/import_catalog_via_api.py` 从 `CATALOG_IMPORT_TOKEN` 读取 staff Token，默认 dry-run，`--commit` 才写；不打印 Token、不跟随重定向。
 - 未配置 `index_notifier` 时返回 `index_notification=not_configured`；正式检索由 `DjangoQuestionRetriever` 读取数据库 `allowed` 记录，不依赖 LanceDB。
 - 导入后由 `catalog/questions/`、练习页正式检索、成员4逐题反馈和成员2评估共同消费；成员2/4基线需重跑。
+- 上线执行、验收、回滚和签收步骤见 [授权题库导入交接](01-data-catalog-import-handover.md)。
 
 ## 目标、目录和边界
 

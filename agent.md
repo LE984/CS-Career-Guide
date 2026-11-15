@@ -16,6 +16,7 @@
 五人开发先读 [公共约定](docs/implementation/00-shared-contracts.md)，再读对应专用文档：
 
 - [成员1：数据目录](docs/implementation/01-data-catalog.md)：来源、导入、岗位/企业/题库与专项验收。
+- [成员1：授权题库导入交接](docs/implementation/01-data-catalog-import-handover.md)：943 道题的导入命令、验收、回滚和签收清单。
 - [成员2：评估调优](docs/implementation/02-evaluation.md)：数据集拆分、指标、策略和对照。
 - [成员3：简历优化](docs/implementation/03-resume-optimization.md)：证据、编辑确认和版本冲突。
 - [成员4：面试RAG](docs/implementation/04-interview-rag.md)：检索、来源、反馈和记录交接。
