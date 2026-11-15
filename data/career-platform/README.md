@@ -50,7 +50,7 @@ curl -X POST /api/career-platform/catalog/imports/ \
 - 清洗：离线解析公开 HTML，移除导航、图片、广告和公众号推广，保留代码块、列表和表格文本；不登录、不处理验证码、不绕过访问控制，抓取限速 2 秒/页。
 - 分类：`topic` 使用 16 个规范主题，便于按 role/topic/difficulty 精确筛选；`difficulty` 为 `rule-based-v1` 规则分类，需人工复核。
 - 去重：规范化题干 SHA-256 生成 `dedupe_key`；跨页面重复保留答案更长者，并在 `tags` 写 `另见:<url>`。943 条记录无重复 key 或重复题干。
-- 验证：943/943 通过 `backend/career_platform/catalog/source.py` 的字段校验原语；`xiaolincoding-questions-report.json` 记录逐页数量、跳过项和跨页重复。未导入实际数据库，未重跑 RAG 或成员2评估基线。
+- 验证：运行 `python data/career-platform/validate_xiaolincoding.py data/career-platform/xiaolincoding-questions.json`，943/943 通过 `backend/career_platform/catalog/source.py` 的字段校验原语；`xiaolincoding-questions-report.json` 记录逐页数量、跳过项和跨页重复。未导入实际数据库，未重跑 RAG 或成员2评估基线。
 - 敏感信息：扫描未发现真实密钥或个人信息；命中项均为示例占位值（`example@example.com`、`13800138000`、示例密码 `root`）。
 
 ## 复核记录

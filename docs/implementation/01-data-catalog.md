@@ -14,7 +14,7 @@
 - 采集：离线读取公开页面，遵守 robots.txt，使用项目标识 UA 和 2 秒/页限速；不登录、不处理验证码、不绕过访问控制。原始 HTML 不进入仓库，交付物是清洗后的 JSON。
 - 清洗与字段：移除导航、图片、广告和公众号推广，保留代码块、列表和表格文本；字段遵循现有 `catalog/imports/` 契约。`topic` 使用 16 个规范主题，`difficulty` 为 `rule-based-v1` 规则分类，需人工复核；`key_points` 从原文要点、列表和首句提取，`reference_answer` 保留清洗后的参考答案。
 - 去重：规范化题干 SHA-256 生成 `dedupe_key`；跨页面重复保留答案更长者，并在 `tags` 写 `另见:<url>`。943 条记录无重复 key、无重复题干。逐页数量、跳过项和跨页重复见 `xiaolincoding-questions-report.json`。
-- 验证：943/943 通过项目 `catalog/source.py` 的字段校验原语（必填、长度、枚举、URL、时间、数组、未知字段）；未导入实际数据库，未运行 MySQL、浏览器、真实 Embedding 或模型。导入时先 `dry_run=true`，再 `dry_run=false`；`records` 取文件中的 `questions` 数组。
+- 验证：运行 `python data/career-platform/validate_xiaolincoding.py data/career-platform/xiaolincoding-questions.json`，943/943 通过项目 `catalog/source.py` 的字段校验原语（必填、长度、枚举、URL、时间、数组、未知字段）；未导入实际数据库，未运行 MySQL、浏览器、真实 Embedding 或模型。导入时先 `dry_run=true`，再 `dry_run=false`；`records` 取文件中的 `questions` 数组。
 - 影响：943 条 `allowed` 题会进入成员4的正式检索候选，成员2的评估与成员4的 Top-K/分数基线需在导入后重跑，不能沿用旧结果。难度、主题和答案是自动整理，仍需人工抽检，不能把规则分类当作人审证据。
 
 ## 目标、目录和边界
@@ -303,4 +303,16 @@
 
 ```acceptance-record
 {"commit":"1782fec + dirty","command":"node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module all","result":"failed","environment":"2026-11-15；Windows；隔离SQLite；模拟浏览器API","scope":"前端99项与构建通过；浏览器12视图无溢出、无pageerror。完整17项13通过4失败，catalog4项通过，resume3与integration1因501失败。","limitations":"result为共享改动整体结果，不否定catalog专项通过；未审核或导入正式题库，无真实模型、MySQL、CI或部署验收。","evidence":"frontend/tests/default-questions.test.mjs; output/resume-default-complete.log; output/playwright/resume-default-check.js（output为本机产物）"}
+```
+
+```acceptance-record
+{
+  "commit": "0061aa1",
+  "command": "python data/career-platform/validate_xiaolincoding.py data/career-platform/xiaolincoding-questions.json; python -m json.tool data/career-platform/xiaolincoding-questions.json >/dev/null; git diff --check",
+  "result": "passed",
+  "environment": "2026-11-15；Windows 11；Python 3.11.9；临时隔离 venv Django 4.2.7；离线解析，无数据库和真实模型",
+  "scope": "离线解析 xiaolincoding.com/interview/ 的 16 个公开主题页并生成 943 条题目记录；943/943 通过 catalog/source.py 字段校验原语；无重复 dedupe_key 或题干；JSON 解析、敏感信息扫描和 git diff --check 通过。",
+  "limitations": "难度和主题为 rule-based-v1 自动分类，需人工抽检；授权由成员1声明，书面凭证未入库，待集成人核对；未导入实际数据库，未运行 MySQL、浏览器、真实 Embedding/模型、成员2评估或成员4检索基线；java2top.cn 未采集。",
+  "evidence": "data/career-platform/xiaolincoding-questions.json; data/career-platform/xiaolincoding-questions-report.json; data/career-platform/validate_xiaolincoding.py; PR #37"
+}
 ```
