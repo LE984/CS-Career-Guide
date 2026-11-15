@@ -30,7 +30,7 @@ function response(events) {
 }
 
 for (const scenario of baseline.turns) {
-  test(`legacy ${scenario.style}: start, answer and review match original requests`, async () => {
+  test(`legacy ${scenario.style}: staged prompts preserve routes, review and request options`, async () => {
     const calls = []
     const service = createInterviewService(new LegacyInterviewImplementation({
       readResume: () => JSON.stringify(scenario.resume),
@@ -44,7 +44,12 @@ for (const scenario of baseline.turns) {
     await service.start(context)
     await service.answer({ ...context, answer: scenario.answer })
     const review = await service.generateReview({ ...context, messages: scenario.conversation })
-    assert.deepEqual(calls.map(args => args.slice(0, 4)), scenario.requests)
+    assert.deepEqual(calls.map(args => args.slice(1, 4)), scenario.requests.map(args=>args.slice(1,4)))
+    assert.equal(calls[2][0],scenario.requests[2][0])
+    assert.match(calls[0][0],/首轮不要提出技术题/)
+    assert.match(calls[0][0],/每轮一个主问题/)
+    assert.match(calls[1][0],/最多附带一个紧密相关的小点/)
+    assert.ok(calls[1][0].includes(scenario.answer))
     assert.ok(calls.every(args => args[4].enableTts === false))
     assert.deepEqual(review, { skipped: false, content: '测试内容' })
   })

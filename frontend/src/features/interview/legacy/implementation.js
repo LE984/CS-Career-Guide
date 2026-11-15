@@ -29,17 +29,17 @@ export class LegacyInterviewImplementation {
 【面试者简历信息】
 ${resumePrompt}
 
-请根据以上简历信息，提出针对性的面试问题。`
+简历仅作为后续项目追问的参考，不要跳过候选人的自我介绍。`
     }
 
     interviewPrompt += `
 
 要求：
-1. 首先进行简短的自我介绍（说明你是面试官，面试风格）
-2. 然后提出第一个面试问题
-3. 在整个面试过程中，你只需要扮演面试官角色
-4. 根据用户的回答，提出下一个相关问题
-5. 保持${style === 'pressure' ? '压力面试' : style === 'technical' ? '技术面试' : style === 'behavioral' ? '行为面试' : '温和友好'}的风格
+1. 简短问候后，只邀请候选人做1至2分钟的自我介绍；首轮不要提出技术题或项目细节题。
+2. 候选人完成自我介绍后，再邀请介绍一个最熟悉的项目，重点说明自己的职责。
+3. 项目介绍后，围绕候选人实际提到的内容逐步提问；每轮一个主问题，最多附带一个紧密相关的小点。
+4. 每轮等待候选人作答，禁止一次列出问题清单、多个无关话题或替候选人回答。
+5. 保持${style === 'pressure' ? '压力面试' : style === 'technical' ? '技术面试' : style === 'behavioral' ? '行为面试' : '温和友好'}的风格，但不催促或连续轰炸问题。
 
 现在开始面试。`
     let timeout
@@ -56,15 +56,16 @@ ${resumePrompt}
     }
   }
 
-  async answer({ answer, style, sessionId, enableTts = false, signal }, onEvent) {
+  async answer({ answer, style, sessionId, answerNumber, enableTts = false, signal }, onEvent) {
     const userMessage = answer
     const promptType = style === 'pressure' ? 'pressure_interview' : 'interview'
     const response = await this.chatStream(
       `【面试模式】用户的回答是："${userMessage}"
 
 作为${getStyleDescription(style)}面试官，请：
-1. 简要评价用户的回答（可选）
-2. 提出下一个面试问题
+1. ${answerNumber === 1 ? '候选人刚完成自我介绍。只邀请介绍一个最熟悉的项目及个人职责，不要立即列技术题。' : answerNumber === 2 ? '候选人刚完成项目介绍。只围绕该项目提出一个具体问题，最多带一个相关小点。' : '按自我介绍、项目介绍、围绕真实经历逐步追问的顺序继续；已完成的介绍不要反复要求。'}
+2. 每轮只问一个主问题，最多附带一个紧密相关的小点，等待回答后再继续。
+3. 评价至多一句，不列长篇点评、参考答案或多题清单。
 
 注意：你只需扮演面试官角色，不要查询任何数据库信息。`, promptType, style, sessionId, { enableTts, signal }
     )

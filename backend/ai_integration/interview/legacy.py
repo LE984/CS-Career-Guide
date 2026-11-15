@@ -23,8 +23,10 @@ class LegacyPromptInterview:
                 if item['ai']:
                     context += f"面试官：{item['ai']}\n"
         prompt = context + message
-        if len(prompt) > 3000:
-            prompt = prompt[:3000] + '...'
+        if len(prompt) > 12000:
+            # Keep the latest answer/instruction; retaining only the prefix made
+            # long interviews repeatedly answer an old question.
+            prompt = '（较早对话已省略）\n' + prompt[-12000:]
         if review:
             # Compatibility: the original review path used chat as its system
             # prompt, with the review instruction prepended to the user text.
@@ -37,6 +39,10 @@ class LegacyPromptInterview:
             }
             description = styles.get(style, '语气友好亲切，侧重引导与交流，适合舒缓紧张感。')
             system = self.prompt_loader('interview') + '\n\n风格：' + description
+            system += ('\n\n面试节奏约束（优先于泛化提问要求）：开场只邀请候选人做自我介绍，'
+                       '完成后邀请介绍一个最熟悉的项目与个人职责，再围绕真实回答逐步追问。'
+                       '每轮只提出一个主问题，最多附带一个紧密相关的小点，然后等待回答。'
+                       '不一次列出多道题，不输出长篇参考答案，不代替候选人回答。')
         system += ('\n\n输出要求：只输出纯文本，不使用 Markdown 标记、代码围栏、表格、标题符号或星号。'
                    '代码和技术名词用普通文本表达。复盘使用中文段落标题和换行，'
                    '保留“回答的优点：”“需要改进的地方：”“具体改进建议：”“综合评分：”等字段。')
