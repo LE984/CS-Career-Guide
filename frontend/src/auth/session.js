@@ -1,9 +1,12 @@
+import { clearInterviewWorkspace } from '../features/interview/workspace-state.js'
+
 const publicPaths = new Set(['/login', '/register'])
 
 export const getToken = () => localStorage.getItem('token')
 export const isPublicPath = path => publicPaths.has(path.replace(/\/+$/, '').toLowerCase())
 
 export function clearSession() {
+  clearInterviewWorkspace()
   for (const key of [
     'token', 'user', 'selfIntroduction', 'careerAnalysis', 'careerRecommendations',
     'careerRecommendationRaw', 'careerRecommendationSessionId', 'selectedCareers',

@@ -25,7 +25,7 @@
             <div class="interview-duration-choice"><label for="interview-duration">面试时长</label><select id="interview-duration" v-model.number="selectedDuration"><option v-for="minutes in INTERVIEW_DURATIONS" :key="minutes" :value="minutes">{{ minutes }} 分钟</option></select><span>按自己的节奏选择，随时可以提前结束。</span></div>
             <div class="interview-start"><p>建议先保存简历，面试会结合已有的简历内容展开。</p><button type="button" class="career-button career-button-primary" @click="startInterview">开始面试<WorkspaceIcon name="arrow" /></button></div>
           </div>
-          <div v-if="isInterviewing || messages.length" ref="chatRef" class="interview-chat" aria-label="面试对话" aria-live="polite" aria-relevant="additions text" @scroll="trackConversationScroll">
+          <div v-if="isInterviewing || messages.length" ref="chatRef" class="interview-chat" aria-label="面试对话" aria-live="off" @scroll="trackConversationScroll" @wheel.passive="interruptConversationFollow" @touchmove.passive="interruptConversationFollow" @pointerdown="interruptConversationFollow" @keydown="interruptConversationFollow" tabindex="0">
             <div v-for="(msg,index) in messages" :key="index" class="interview-message" :class="{ 'is-user': msg.type !== 'ai' }">
               <span class="interview-message-avatar">{{ msg.type === 'ai' ? 'AI' : '我' }}</span>
               <div class="interview-message-body"><span class="interview-message-label">{{ msg.type === 'ai' ? '面试官' : '我的回答' }}</span><p v-if="msg.content"><StreamingText v-if="msg.type === 'ai'" :text="interviewPlainText(msg.content)" :active="msg.streaming" @reveal="followConversation" /><template v-else>{{ msg.content }}</template></p><span v-else class="interview-thinking" role="status">正在组织问题…</span></div>
@@ -34,6 +34,7 @@
           <div v-if="isInterviewing" class="interview-input">
             <p class="recording-state" role="status"><span :class="{ 'is-recording': isRecording }"></span>{{ isRecording ? (isSpeaking ? '正在识别语音' : '麦克风已开启，等待说话') : '麦克风未开启，可直接输入回答' }}<span v-if="isPaused" class="paused-state">面试已暂停</span></p>
             <label class="sr-only" for="interview-answer">你的面试回答</label>
+            <button v-if="!followLatest.following" type="button" class="career-button" @click="scrollToBottom">回到最新消息 ↓</button>
             <textarea id="interview-answer" ref="inputRef" v-model="inputMessage" placeholder="输入你的回答，也可以点击麦克风使用语音…" :disabled="isPaused" @keydown="handleAnswerKeydown"></textarea>
             <p v-if="audioStatus" class="audio-status" role="status">{{ audioStatus }}</p>
             <div class="interview-input-actions"><span>{{ isLoading ? '回复中也可编辑下一条回答' : 'Enter 发送 · Shift+Enter 换行' }}</span><div><button type="button" class="career-button microphone-button" :disabled="isPaused || isStartingRecording" :class="{ 'is-recording': isRecording }" :aria-pressed="isRecording" :aria-label="isRecording ? '关闭麦克风' : '开启麦克风'" @click="toggleRecording"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>{{ isStartingRecording ? '开启中…' : isRecording ? '关闭麦克风' : '语音回答' }}</button><button type="button" class="career-button career-button-primary" :disabled="isLoading || isPaused || !inputMessage.trim()" @click="sendMessage">{{ isLoading ? '回复中…' : '发送回答' }}<WorkspaceIcon name="arrow" /></button></div></div>
@@ -63,6 +64,8 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { userAPI } from '@/api'
 import { interviewService } from '@/features/interview'
+import { getToken } from '@/auth/session.js'
+import { saveInterviewWorkspace, restoreInterviewWorkspace, createConversationFollow } from '@/features/interview/workspace-state.js'
 import { createInterviewAudio } from '@/features/interview/audio.js'
 import { interviewPlainText } from '@/features/interview/plain-text.js'
 import StreamingText from '@/features/interview/StreamingText.vue'
@@ -70,6 +73,7 @@ import ResumePreview from '@/features/interview/ResumePreview.vue'
 import { INTERVIEW_DURATIONS, DEFAULT_DURATION, createSessionClock } from '@/features/interview/session-clock.js'
 
 const router = useRouter()
+const workspaceOwner = getToken()
 
 const user = ref(null)
 
@@ -236,7 +240,7 @@ async function presentInterviewEvent(index, event) {
     followConversation()
   } else if (event.type === 'end') {
     if (event.session_id) sessionId.value = event.session_id
-    nextTick(() => inputRef.value?.focus())
+    // Do not steal focus or scroll position while the user reads older turns.
   } else if (event.type === 'audio' && ENABLE_TTS && voiceOutputEnabled.value && event.audio) {
     playback.append(event.audio)
   } else if (event.type === 'debug' && event.message?.includes('task-finished')) {
@@ -257,7 +261,7 @@ async function startInterview() {
   totalDurationSeconds.value = selectedDuration.value * 60
   remainingTime.value = totalDurationSeconds.value
   sessionClock = createSessionClock(totalDurationSeconds.value)
-  followLatest = true
+  followLatest.value.resume()
   startTimer()
   const index = messages.value.length
   messages.value.push({ type: 'ai', content: '', streaming: true })
@@ -276,7 +280,7 @@ async function startInterview() {
   } finally {
     if (messages.value[index]) messages.value[index].streaming = false
     if (activeController === controller) isLoading.value = false
-    nextTick(() => inputRef.value?.focus())
+    if (followLatest.value.following) nextTick(() => inputRef.value?.focus({ preventScroll: true }))
   }
 }
 
@@ -319,6 +323,7 @@ async function sendMessage(event, audioMsg = null) {
     preparePlayback()
     await interviewService.answer({
       answer: content, style: selectedStyle.value, sessionId: sessionId.value,
+      answerNumber: messages.value.filter(message => message.type === 'user').length,
       enableTts: voiceOutputEnabled.value && ENABLE_TTS, signal: controller.signal
     }, event => controller.signal.aborted ? undefined : presentInterviewEvent(index, event))
     playback.finish()
@@ -329,7 +334,7 @@ async function sendMessage(event, audioMsg = null) {
   } finally {
     if (messages.value[index]) messages.value[index].streaming = false
     if (activeController === controller) isLoading.value = false
-    nextTick(() => inputRef.value?.focus())
+    if (followLatest.value.following) nextTick(() => inputRef.value?.focus({ preventScroll: true }))
   }
 }
 
@@ -588,34 +593,69 @@ async function toggleRecording() {
 
 
 async function scrollToBottom() {
-  followLatest = true
+  followLatest.value.resume()
   await nextTick()
   if (chatRef.value) {
     chatRef.value.scrollTop = chatRef.value.scrollHeight
   }
 }
 
-let followLatest = true, scrollFrame = null
+const followLatest = ref(createConversationFollow())
+let scrollFrame = null
+function interruptConversationFollow() {
+  followLatest.value.interrupt()
+  if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
+  scrollFrame = null
+}
 function trackConversationScroll() {
-  const el = chatRef.value
-  if (el) followLatest = el.scrollHeight - el.clientHeight - el.scrollTop < 64
+  if (chatRef.value) followLatest.value.track(chatRef.value)
 }
 function followConversation() {
-  if (!followLatest || scrollFrame !== null) return
+  if (!followLatest.value.following || scrollFrame !== null) return
   scrollFrame = requestAnimationFrame(() => {
     scrollFrame = null
-    if (chatRef.value && followLatest) chatRef.value.scrollTop = chatRef.value.scrollHeight
+    if (chatRef.value && followLatest.value.following) chatRef.value.scrollTop = chatRef.value.scrollHeight
   })
+}
+function persistWorkspace() {
+  if (getToken() !== workspaceOwner) return
+  saveInterviewWorkspace(workspaceOwner, {
+    selectedStyle: selectedStyle.value, selectedDuration: selectedDuration.value,
+    totalDurationSeconds: totalDurationSeconds.value,
+    remainingTime: sessionClock?.remaining() ?? remainingTime.value,
+    isInterviewing: isInterviewing.value, sessionId: sessionId.value,
+    inputMessage: inputMessage.value,
+    messages: messages.value.map(message => ({ type: message.type, content: message.content, streaming: false })),
+    interrupted: isLoading.value, reviewContent: reviewContent.value,
+    scrollTop: chatRef.value?.scrollTop ?? 0,
+  })
+}
+function restoreWorkspace() {
+  const saved = restoreInterviewWorkspace(workspaceOwner)
+  if (!saved) return
+  selectedStyle.value=saved.selectedStyle; selectedDuration.value=saved.selectedDuration
+  totalDurationSeconds.value=saved.totalDurationSeconds; remainingTime.value=saved.remainingTime
+  sessionId.value=saved.sessionId; inputMessage.value=saved.inputMessage; messages.value=saved.messages
+  reviewContent.value=saved.reviewContent; isInterviewing.value=saved.isInterviewing
+  if (saved.isInterviewing) {
+    sessionClock=createSessionClock(saved.remainingTime)
+    sessionClock.pause(); isPaused.value=true; startTimer()
+    audioStatus.value=saved.interrupted?'已恢复对话。离开时的回复已中断，点击继续面试后可继续回答。':'已恢复对话，点击继续面试接着练习。'
+  }
+  followLatest.value.interrupt()
+  nextTick(()=>{if(chatRef.value)chatRef.value.scrollTop=saved.scrollTop})
 }
 
 // 生命周期
 onMounted(() => {
   updateUserFromLocalStorage()
   syncUserProfile()
+  restoreWorkspace()
   window.addEventListener('keydown', handleEscape)
 })
 
 onUnmounted(() => {
+  persistWorkspace()
   narrowScreen.removeEventListener('change', updateNarrowScreen)
   if (scrollFrame !== null) cancelAnimationFrame(scrollFrame)
   clearInterval(timer)
