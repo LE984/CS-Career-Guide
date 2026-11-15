@@ -1,93 +1,75 @@
 <template>
-  <main class="career-container retrieval-demo">
+  <main class="career-container practice-workspace">
     <CourseNav />
-    <header class="demo-header course-content-enter">
-      <div><p class="demo-eyebrow">岗位题库练习 / 文本检索</p><h1>让每一道题，都有据可查。</h1>
-      <p class="demo-intro">选择岗位和知识点，观察题目如何筛选、排序，再查看原始参考要点。</p></div>
-      <span class="demo-badge">演示版 · 自编虚构题</span>
-    </header>
-    <p class="demo-alternative">想直接练习对话？<router-link to="/interview">进入自由模拟面试 →</router-link></p>
-    <aside class="demo-notice">当前仅演示题目检索。材料为专门编写的虚构示例，不是正式题库；不调用大模型、不保存回答或练习记录。</aside>
-    <div class="demo-layout course-content-enter">
-      <section class="demo-controls" aria-labelledby="filter-title">
-        <h2 id="filter-title">检索条件</h2>
-        <form @submit.prevent="search">
-          <label>岗位方向<select v-model="form.role"><option>Java后端</option><option>Python后端</option></select></label>
-          <label>知识点<input v-model="form.topic" list="demo-topics" placeholder="留空表示不限" maxlength="100" /></label>
-          <datalist id="demo-topics"><option value="集合"/><option value="并发"/><option value="数据库"/></datalist>
-          <label>难度<select v-model="form.difficulty"><option value="easy">基础 · easy</option><option value="medium">进阶 · medium</option><option value="hard">深入 · hard</option></select></label>
-          <label>查询文本<input v-model="form.query" maxlength="500" placeholder="如 ArrayList、顺序、遍历" /></label>
-          <label>返回数量<select v-model.number="form.top_k"><option :value="1">1 道</option><option :value="3">3 道</option><option :value="5">5 道</option></select></label>
-          <button class="demo-primary" :disabled="busy">{{ busy ? '正在检索…' : '检索候选题' }}</button>
-        </form>
-        <div class="demo-scenarios"><h3>试一试</h3>
-          <button type="button" :disabled="busy" @click="preset('basic')">集合基础题 <span>↗</span></button>
-          <button type="button" :disabled="busy" @click="preset('rank')">ArrayList 排序 <span>↗</span></button>
-          <button type="button" :disabled="busy" @click="preset('empty')">不存在的知识点 <span>↗</span></button>
-        </div>
-        <p class="demo-policy">候选材料中包含 pending 和 restricted 示例，用于观察许可过滤；这两类题不会出现在结果中。</p>
+    <header class="practice-header"><div><p class="eyebrow">岗位题库练习 / 有据可查</p><h1>把知识点，练成自己的回答。</h1><p class="muted">从题库选题，独立作答，再对照原文与参考要点复盘。</p></div><router-link class="quiet-link" to="/interview">自由模拟面试 ↗</router-link></header>
+    <ol class="steps" aria-label="练习流程"><li :class="{current:!session}">01 · 检索与选题</li><li :class="{current:session?.status==='active'}">02 · 独立作答</li><li :class="{current:session?.status==='ended'}">03 · 结束复盘</li></ol>
+    <p v-if="status" class="notice" :class="{'is-error':error}" role="status">{{ status }}</p>
+    <section v-if="!session && route.query.id" class="empty-state"><h2>读取已有练习</h2><p>正在恢复本次会话。读取失败时请重试，不会自动创建另一条记录。</p><button class="career-button" :disabled="busy" @click="refresh">重新读取会话</button></section>
+    <div v-else-if="!session" class="workspace-grid">
+      <aside class="filter-panel panel"><h2>这次想练什么？</h2><p class="muted">仅检索已审核题库，不补入虚构题目。</p>
+        <form @submit.prevent="retrieve"><label>岗位方向<input v-model="form.role" required maxlength="100" placeholder="如 Java后端" :disabled="busy" /></label><label>知识点（选填）<input v-model="form.topic" maxlength="100" placeholder="如 集合、数据库" :disabled="busy" /></label><div class="pair"><label>难度<select v-model="form.difficulty" :disabled="busy"><option value="easy">基础</option><option value="medium">进阶</option><option value="hard">深入</option></select></label><label>候选题数<select v-model.number="form.top_k" :disabled="busy"><option :value="3">3 道</option><option :value="5">5 道</option><option :value="10">10 道</option><option :value="20">20 道</option></select></label></div><label>目标岗位 JD（选填）<textarea v-model="form.jd_text" maxlength="20000" rows="5" placeholder="粘贴岗位要求，让检索更贴近你的目标。" :disabled="busy" /></label><button class="career-button career-button-primary" :disabled="busy">{{ operation==='retrieve'?'正在检索…':'检索题库' }}</button></form>
+        <p class="fine-print">当前采用文本相关性检索。匹配值不代表能力得分。修改筛选项后需重新检索。</p>
+      </aside>
+      <section class="candidate-panel" aria-labelledby="candidate-title" :aria-busy="busy"><div class="section-heading"><div><p class="eyebrow">练习准备</p><h2 id="candidate-title">候选题目</h2></div><span class="muted">{{ retrieval?`${retrieval.results.length} 道匹配`:'等待检索' }}</span></div>
+        <div v-if="!retrieval" class="empty-state"><span class="empty-mark" aria-hidden="true">问 / 答</span><h3>先确定方向，再认真回答。</h3><p>填写条件，选择适合自己的题目。开始前可查看来源，参考要点会在提交回答后展开。</p></div>
+        <div v-else-if="!retrieval.results.length" class="empty-state"><h3>没有符合条件的题目</h3><p>试着清空知识点或调整岗位方向。未审核、受限或不相关的题目不会补入结果。</p></div>
+        <template v-else><p class="fine-print">本次检索：{{ retrieval.context.role }} / {{ retrieval.context.topic||'不限知识点' }} / {{ difficultyLabel(retrieval.context.difficulty) }}</p>
+          <article v-for="(item,index) in retrieval.results" :key="item.question_id" class="candidate-card panel" :class="{selected:selected.includes(item.question_id)}"><label class="question-choice"><input v-model="selected" type="checkbox" :value="item.question_id" :disabled="busy" /><span><span class="question-meta">候选 {{ String(index+1).padStart(2,'0') }} · {{ item.origin==='generated'?'生成内容':'题库来源' }}<span v-if="Number.isFinite(item.score)"> · 相关度 {{ item.score.toFixed(3) }}</span></span><strong>{{ item.question }}</strong></span></label><details><summary>查看题目来源</summary><p>{{ source(item) }}</p><p v-if="item.source_url">{{ item.source_url }}</p><p class="fine-print">题目 ID：{{ item.question_id }}</p></details></article>
+          <div class="selection-bar"><span>已选 <strong>{{ selected.length }}</strong> 道 · 按检索顺序练习</span><button class="career-button career-button-primary" :disabled="busy||!selected.length" @click="start">{{ operation==='start'?'正在创建…':'开始练习 →' }}</button></div><p class="fine-print">开始后保存题目与岗位快照。检索凭证失效时，请重新检索。</p>
+        </template>
       </section>
-      <section class="demo-results" aria-labelledby="results-title" :aria-busy="busy">
-        <div class="demo-results-heading"><h2 id="results-title">候选题目</h2><span v-if="response">{{ response.count }} 道匹配</span></div>
-        <p class="demo-status" :class="{ 'demo-error': error }" role="status">{{ status }}</p>
-        <p v-if="submitted" class="demo-query">本次条件：{{ submitted.role }} / {{ submitted.topic || '全部知识点' }} / {{ submitted.difficulty }} · {{ submitted.query || '仅筛选' }}</p>
-        <div v-if="response && !response.results.length" class="demo-empty"><h3>没有符合条件的题目</h3><p>试试其他知识点，或清空查询文本扩大范围。这里不会补入不相关题目。</p></div>
-        <article v-for="(item, index) in response?.results || []" :key="item.question_id" class="demo-question">
-          <div class="demo-question-meta"><span>候选 {{ index + 1 }} · 演示题</span><span>文本匹配 {{ item.score.toFixed(3) }}</span></div>
-          <h3>{{ item.question }}</h3>
-          <div class="demo-points"><h4>参考要点</h4><ul><li v-for="point in item.key_points" :key="point">{{ point }}</li></ul></div>
-          <p class="demo-source">来源：{{ item.evidence.find(e => e.field_path === 'source')?.quote }}</p>
-          <details><summary>查看来源证据</summary><p class="demo-id">题目 ID：{{ item.question_id }}</p><dl v-for="(evidence, i) in item.evidence" :key="i"><dt>{{ evidence.field_path }}</dt><dd>{{ evidence.quote }}</dd></dl></details>
-        </article>
-        <p class="demo-footnote">匹配值只用于比较文本相关程度，不是答案正确率或能力评分。同分按题目 ID 稳定排序。</p>
+    </div>
+    <div v-else-if="session" class="workspace-grid">
+      <aside class="session-sidebar panel"><p class="eyebrow">{{ session.status==='ended'?'已结束':'练习进行中' }}</p><h2>{{ session.job_snapshot?.title||session.role }}</h2><p class="muted">{{ session.topic||'不限知识点' }} · {{ difficultyLabel(session.difficulty) }}</p><div class="progress-caption"><span>已保存回答</span><strong>{{ session.answers?.length||0 }} / {{ questions.length }}</strong></div><progress :value="session.answers?.length||0" :max="questions.length||1" aria-label="回答进度" /><nav class="question-nav" aria-label="本次题目"><button v-for="(item,index) in questions" :key="item.question_id" type="button" :class="{active:activeId===item.question_id}" :aria-current="activeId===item.question_id?'true':undefined" @click="activeId=item.question_id"><span>{{ String(index+1).padStart(2,'0') }}. {{ item.question }}</span><small>{{ answerFor(item.question_id)?'已保存':'待回答' }}</small></button></nav><button class="career-button" :disabled="busy" @click="refresh">刷新会话状态</button><router-link class="quiet-link" :to="recordLink">查看本次记录 ↗</router-link><p class="fine-print">未提交草稿仅保留在本页内存，离开页面会丢失。已保存记录可随时查看。</p></aside>
+      <section class="answer-panel" :aria-busy="busy"><template v-if="currentQuestion"><div class="section-heading"><p class="eyebrow">题目 {{ activeIndex+1 }} / {{ questions.length }}</p><span class="state-tag">{{ session.status==='ended'?'已结束':currentAnswer?'回答已保存':'独立作答' }}</span></div><h2 class="question-title">{{ currentQuestion.question }}</h2><p class="fine-print">来源：{{ source(currentQuestion) }}</p>
+        <form v-if="!currentAnswer&&session.status==='active'" class="answer-form" @submit.prevent="submitAnswer"><label for="practice-answer">我的回答</label><textarea id="practice-answer" v-model="drafts[activeId]" maxlength="20000" rows="10" placeholder="先说结论，再解释原理，最后补充一个具体例子。" :disabled="busy" /><div class="section-heading"><span class="fine-print">{{ (drafts[activeId]||'').length }} / 20000 字</span><button class="career-button career-button-primary" :disabled="busy||!drafts[activeId]?.trim()">{{ operation==='answer'?'保存并生成反馈…':'提交回答' }}</button></div></form>
+        <p v-else-if="!currentAnswer" class="empty-state">本题未提交回答，会话已结束。</p>
+        <template v-else><section class="saved-answer panel"><h3>我的回答</h3><p>{{ currentAnswer.answer }}</p></section><section class="feedback-panel"><div class="section-heading"><h3>逐题反馈</h3><span class="state-tag">{{ currentAnswer.status==='succeeded'?'已生成':currentAnswer.status==='failed'?'生成失败':'处理中' }}</span></div><template v-if="currentAnswer.status==='succeeded'"><blockquote v-if="currentAnswer.feedback?.answer_quote">{{ currentAnswer.feedback.answer_quote }}</blockquote><div class="feedback-columns"><div><h4>已覆盖要点</h4><ul><li v-for="point in currentAnswer.feedback?.key_points_covered||[]" :key="point">{{ point }}</li></ul><p v-if="!currentAnswer.feedback?.key_points_covered?.length" class="muted">暂无已覆盖要点。</p></div><div><h4>还可补充</h4><ul><li v-for="point in currentAnswer.feedback?.missing_points||[]" :key="point">{{ point }}</li></ul><p v-if="!currentAnswer.feedback?.missing_points?.length" class="muted">暂无补充项。</p></div></div><p v-if="currentAnswer.feedback?.follow_up">延伸思考：{{ currentAnswer.feedback.follow_up }}（仅供思考，不自动创建新题）</p><details v-if="currentAnswer.feedback?.evidence?.length"><summary>查看反馈引用证据</summary><p v-for="(e,i) in currentAnswer.feedback.evidence" :key="i">{{ e.field_path }}：{{ e.quote }}</p></details></template><template v-else><p>{{ currentAnswer.status==='failed'?'回答已保存，反馈生成失败。可以重试反馈，无需重新作答。':'回答已保存，反馈尚在处理中。请稍后刷新状态，不要重复提交。' }}</p><button v-if="currentAnswer.status==='failed'" class="career-button" :disabled="busy" @click="retryFeedback">{{ operation==='retry'?'正在重试…':'重试本题反馈' }}</button></template></section><details class="reference-panel"><summary>对照题库参考要点</summary><ul><li v-for="point in currentQuestion.key_points||[]" :key="point">{{ point }}</li></ul><p class="fine-print">参考要点用于复盘，不代表唯一标准答案。</p></details></template>
+        <div class="question-pagination"><button class="career-button" :disabled="activeIndex<=0" @click="move(-1)">上一题</button><button class="career-button" :disabled="activeIndex>=questions.length-1" @click="move(1)">下一题 →</button></div></template>
+        <section v-if="session.status==='ended'" class="finish-panel"><p class="eyebrow">本次练习已结束</p><h3>{{ session.summary?.status==='succeeded'?'回答已归档，继续把薄弱点练扎实。':'题目和回答已保留。' }}</h3><p class="muted">{{ session.summary?.status==='succeeded'?'在练习记录中查看本次总结、逐题反馈与来源。':session.summary?.status==='failed'?'总结未生成成功，可前往练习记录查看原因或重试。':'总结尚在处理中，请稍后刷新或前往练习记录查看。' }}</p><div class="button-row"><router-link class="career-button career-button-primary" :to="recordLink">查看完整复盘 ↗</router-link><button class="career-button" :disabled="busy" @click="newPractice">准备下一次练习</button></div></section>
+        <section v-else class="finish-panel"><template v-if="confirmFinish"><h3>确认结束本次练习？</h3><p>已保存 {{ session.answers?.length||0 }} 道回答；未提交草稿不会进入总结，结束后不能继续作答。</p><div class="button-row"><button class="career-button career-button-primary" :disabled="busy" @click="finish">{{ operation==='finish'?'正在结束并生成总结…':'确认结束并生成总结' }}</button><button class="career-button" :disabled="busy" @click="confirmFinish=false">继续练习</button></div></template><template v-else><h3>按自己的节奏，完成这次练习。</h3><p class="muted">可以全部答完，也可以提前结束，复盘只依据实际回答。</p><button class="career-button" :disabled="busy" @click="confirmFinish=true">结束练习</button></template></section>
       </section>
     </div>
   </main>
 </template>
 <script setup>
-import { ref, reactive, onUnmounted } from 'vue'
-import client from '@/api'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import CourseNav from '@/features/career-platform/CourseNav.vue'
-const form = reactive({role:'Java后端',topic:'集合',difficulty:'easy',query:'集合',top_k:5})
-const busy = ref(false), response = ref(null), submitted = ref(null), error = ref(false)
-const status = ref('选择条件后开始检索，或点击左侧示例。')
-const controller = new AbortController()
-onUnmounted(() => controller.abort())
-async function search() {
-  if (busy.value) return
-  busy.value = true; error.value = false; response.value = null
-  const conditions = {...form}
-  submitted.value = conditions
-  status.value = '正在筛选并排序候选题目…'
-  try {
-    const result = await client.post('/career-platform/questions/demo-retrieve/', conditions, {signal:controller.signal})
-    if (controller.signal.aborted) return
-    if (result.is_demo !== true || !Array.isArray(result.results)) throw new Error('invalid demo response')
-    response.value = result
-    status.value = result.count ? `检索完成，返回 ${result.count} 道有来源的演示题。` : '检索完成，没有匹配结果。'
-  } catch (failure) {
-    if (controller.signal.aborted) return
-    error.value = true
-    status.value = failure.response?.status === 400 ? '条件无效，请检查输入后重试。' : '检索暂时不可用，请稍后重试。'
-  } finally { if (!controller.signal.aborted) busy.value = false }
-}
-function preset(kind) {
-  Object.assign(form, {role:'Java后端',topic:kind === 'empty' ? '不存在的知识点' : '集合',difficulty:'easy',query:kind === 'rank' ? 'ArrayList' : '集合',top_k:5})
-  search()
-}
+import { platformAPI as api } from '@/features/career-platform'
+import { createPracticeActions, difficultyLabel, payload, practiceFailure, questionId } from './practice.js'
+const route=useRoute(),router=useRouter(),actions=createPracticeActions(api)
+const form=reactive({role:'Java后端',topic:'',difficulty:'easy',top_k:5,jd_text:''})
+const retrieval=ref(null),selected=ref([]),session=ref(null),activeId=ref(''),drafts=reactive({})
+const operation=ref(''),status=ref(''),error=ref(false),confirmFinish=ref(false)
+const busy=computed(()=>!!operation.value),questions=computed(()=>session.value?.presented_questions||[])
+const activeIndex=computed(()=>questions.value.findIndex(q=>questionId(q)===activeId.value))
+const currentQuestion=computed(()=>questions.value[activeIndex.value])
+const answerFor=id=>session.value?.answers?.find(a=>String(a.question_id)===id)
+const currentAnswer=computed(()=>answerFor(activeId.value))
+const recordLink=computed(()=>({path:'/career-platform/records',query:{id:session.value?.id}}))
+const source=q=>q.source||q.evidence?.find(e=>e.field_path==='source')?.quote||'未提供来源说明'
+let alive=true
+function setSession(value){session.value=value;if(!questions.value.some(q=>questionId(q)===activeId.value))activeId.value=questionId(questions.value[0]);for(const a of value.answers||[])delete drafts[String(a.question_id)]}
+async function run(name,work){if(busy.value)return;operation.value=name;error.value=false;status.value='';try{await work()}catch(failure){if(alive){error.value=true;status.value=practiceFailure(failure)}}finally{if(alive)operation.value=''}}
+async function retrieve(){await run('retrieve',async()=>{const result=await actions.retrieve({...form});if(!alive)return;retrieval.value=result;selected.value=result.results.map(questionId);status.value=result.results.length?'检索完成。勾选想练习的题目，再开始作答。':'没有匹配结果，请调整检索条件。'})}
+async function start(){await run('start',async()=>{const result=await actions.start(retrieval.value,[...selected.value]);if(!alive)return;setSession(result);status.value='练习已创建。回答提交后才能查看反馈。';await router.replace({query:{...route.query,id:result.id}})})}
+async function readSession(){const id=session.value?.id||(typeof route.query.id==='string'?route.query.id:'');if(!id)return;const result=payload(await api.session(id));if(alive)setSession(result)}
+async function refresh(){await run('refresh',async()=>{await readSession();if(alive)status.value='会话状态已更新。'})}
+async function submitAnswer(){await run('answer',async()=>{const id=activeId.value,text=drafts[id]||'';try{await actions.answer(session.value.id,id,text)}catch(failure){try{await readSession()}catch{}throw failure}await readSession();if(alive)status.value='回答已保存，请查看反馈。'})}
+async function retryFeedback(){await run('retry',async()=>{const id=session.value.id,answerId=currentAnswer.value.id;try{await actions.retryFeedback(id,answerId)}catch(failure){try{await readSession();if(answerFor(activeId.value)?.status==='failed')actions.resetFeedbackRetry(id,answerId)}catch{}throw failure}await readSession();if(alive)status.value='反馈状态已更新。'})}
+async function finish(){await run('finish',async()=>{const result=await actions.finish(session.value.id);if(!alive)return;setSession(result);confirmFinish.value=false;status.value='练习已结束，题目与实际回答已归档。'})}
+function move(offset){activeId.value=questionId(questions.value[activeIndex.value+offset])}
+async function newPractice(){session.value=null;retrieval.value=null;selected.value=[];activeId.value='';status.value='';for(const key of Object.keys(drafts))delete drafts[key];const query={...route.query};delete query.id;await router.replace({query})}
+const hasDrafts=()=>Object.values(drafts).some(value=>value?.trim())
+function beforeUnload(event){if(hasDrafts()||busy.value){event.preventDefault();event.returnValue=''}}
+onBeforeRouteLeave(()=>!(hasDrafts()||busy.value)||window.confirm('有未提交草稿或请求仍在处理中。离开前请确认，已保存记录可在练习历史中查看。'))
+onMounted(()=>{window.addEventListener('beforeunload',beforeUnload);if(typeof route.query.id==='string')refresh()})
+onBeforeUnmount(()=>{alive=false;window.removeEventListener('beforeunload',beforeUnload)})
 </script>
 <style scoped>
-.retrieval-demo{padding-top:48px;padding-bottom:64px;color:#293b34;max-width:1200px}
-.demo-header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}.demo-eyebrow{font-size:12px;letter-spacing:.12em;color:#60796b}.demo-header h1{font-family:inherit;font-size:32px;font-weight:600;line-height:1.3;margin:12px 0}.demo-intro{font-size:14px;color:#68766e;line-height:1.9}.demo-badge{white-space:nowrap;border:1px solid #d5c5a0;background:#faf6ea;color:#80672f;border-radius:6px;padding:8px 12px;font-size:12px;margin-top:8px}.demo-nav{display:flex;flex-wrap:wrap;gap:24px;padding:24px 0 16px;border-bottom:1px solid #dce3dc;font-size:13px}.demo-nav span{color:#286347;font-weight:600}.demo-notice{background:#edf3ed;border-left:3px solid #527c60;padding:14px 18px;font-size:13px;line-height:1.9;margin:24px 0}.demo-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:40px;align-items:start}.demo-controls{background:#fff;border:1px solid #dce3dc;border-radius:12px;padding:24px}.demo-controls h2,.demo-results h2{font-size:18px;font-weight:600;margin:0 0 20px}.demo-controls form{display:grid;gap:16px}.demo-controls label{display:grid;gap:8px;font-size:12px;color:#53675b}.demo-controls input,.demo-controls select{width:100%;min-width:0;border:1px solid #ccd8ce;border-radius:6px;background:#fff;padding:10px;font-size:14px;color:#293b34}.demo-primary{border-radius:6px;padding:12px;background:#365e45;color:#fff;font-size:14px;margin-top:4px}.demo-primary:disabled{opacity:.6}.demo-scenarios{border-top:1px solid #e3e9e3;margin-top:24px;padding-top:18px}.demo-scenarios h3{font-size:12px;color:#6c7b70;margin:0 0 8px}.demo-scenarios button{display:flex;justify-content:space-between;width:100%;text-align:left;padding:10px 0;font-size:13px;color:#365e45}.demo-policy{font-size:12px;line-height:1.9;color:#7a8178;margin-top:18px}.demo-results-heading{display:flex;justify-content:space-between;align-items:baseline}.demo-results-heading h2{margin-bottom:12px}.demo-results-heading span{font-size:12px;color:#60796b}.demo-status{font-size:13px;color:#4e6955;padding:12px 0;line-height:1.8}.demo-error{color:#a33d32}.demo-query{font-size:12px;color:#788179;margin-bottom:18px;overflow-wrap:anywhere}.demo-question{padding:24px 0;border-top:1px solid #dce3dc}.demo-question-meta{display:flex;justify-content:space-between;gap:12px;color:#718273;font-size:11px}.demo-question h3{font-size:20px;line-height:1.65;font-weight:600;margin:12px 0 20px}.demo-points{padding:16px 20px;background:#f2f5ef;border-radius:8px}.demo-points h4{font-size:12px;color:#667e6a;margin:0 0 10px}.demo-points ul{list-style:disc;padding-left:18px;font-size:14px;line-height:1.9}.demo-source{font-size:11px;color:#7a8178;line-height:1.8;margin:16px 0 12px}.demo-question summary{font-size:12px;cursor:pointer;color:#365e45}.demo-question details{overflow-wrap:anywhere}.demo-id{font:inherit;color:#788179;margin-top:16px}.demo-question dl{margin-top:14px}.demo-question dt{font:inherit;color:#66836d}.demo-question dd{font-size:12px;line-height:1.8;margin-top:4px}.demo-footnote{border-top:1px solid #dce3dc;padding-top:18px;font-size:11px;line-height:1.8;color:#788179}.demo-empty{padding:50px 24px;background:#f2f5ef;border-radius:10px;margin:16px 0 24px}.demo-empty h3{font-size:20px;margin-bottom:12px}.demo-empty p{font-size:13px;color:#6c7b70;line-height:1.8}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid #527c60;outline-offset:4px}
-.demo-alternative{font-size:14px;color:var(--career-muted);margin-top:16px;line-height:1.8}
-.demo-alternative a{color:#365e45;text-decoration:underline;text-underline-offset:4px}
-/* Match the shared course workspace type scale; IDs and evidence remain readable. */
-.retrieval-demo{font-size:14px;line-height:1.8}
-.demo-nav,.demo-notice,.demo-controls label,.demo-scenarios button,.demo-status,.demo-empty p,.demo-question dd{font-size:14px}
-.demo-eyebrow,.demo-badge,.demo-scenarios h3,.demo-policy,.demo-results-heading span,.demo-query,.demo-question-meta,.demo-points h4,.demo-source,.demo-question summary,.demo-id,.demo-question dt,.demo-footnote{font-size:12px}
-.demo-controls h2,.demo-results h2,.demo-question h3,.demo-empty h3{font-size:18px;font-weight:600;line-height:1.5}
-.demo-controls input,.demo-controls select,.demo-primary{font-family:inherit;font-weight:400}
-.demo-primary{font-weight:500}
-@media(max-width:760px){.retrieval-demo{padding-top:48px}.demo-header{flex-direction:column;gap:8px}.demo-header h1{font-size:28px}.demo-layout{grid-template-columns:1fr;gap:28px}.demo-controls{padding:20px}.demo-controls form{grid-template-columns:1fr 1fr}.demo-primary{grid-column:1/-1}.demo-badge{margin-top:0}.demo-question h3{font-size:18px}.demo-nav{gap:16px}}
-@media(max-width:380px){.demo-controls form{grid-template-columns:1fr}}
+.practice-workspace{padding-top:32px;padding-bottom:64px;color:var(--career-text,#293b34);font-size:14px;line-height:1.8}.practice-header,.section-heading,.selection-bar,.question-pagination{display:flex;justify-content:space-between;align-items:center;gap:16px}.practice-header{padding:24px 0 28px}.practice-header h1{font-size:32px;line-height:1.35;font-weight:600;margin:12px 0}.eyebrow,.fine-print,.question-meta{font-size:12px;color:#718273}.eyebrow{letter-spacing:.08em}.muted{color:var(--career-muted,#6b776e)}.quiet-link{color:#365e45;text-decoration:underline;text-underline-offset:5px;font-size:13px}.steps{display:grid;grid-template-columns:repeat(3,1fr);list-style:none;border-block:1px solid #dce3dc;padding:0;margin:0 0 28px}.steps li{padding:15px 0;border-bottom:2px solid transparent;color:#7b837d}.steps .current{color:#365e45;border-bottom-color:#527c60;font-weight:600}.notice{padding:14px 18px;background:#edf3ed;border-left:3px solid #527c60;margin-bottom:24px}.notice.is-error{color:#953f30;background:#fff3ef;border-color:#b46a56}.workspace-grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:36px;align-items:start}.panel{border:1px solid #dce3dc;border-radius:12px;padding:24px;background:#fff;min-width:0}.practice-workspace h2{font-size:18px;font-weight:600;margin:0 0 10px}.practice-workspace h3{font-size:16px;font-weight:600;margin:0 0 8px}.practice-workspace h4{font-size:13px;font-weight:600;margin-bottom:8px}.filter-panel form,.answer-form{display:grid;gap:18px;margin-top:24px}.filter-panel label{display:grid;gap:7px;font-size:13px}.filter-panel :is(input,select,textarea),.answer-form textarea{width:100%;min-width:0;padding:10px 12px;border:1px solid #ccd8ce;border-radius:6px;background:white;color:inherit;font:inherit}.filter-panel textarea,.answer-form textarea{resize:vertical}.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fine-print{margin-top:18px;overflow-wrap:anywhere}.candidate-panel,.answer-panel{min-width:0}.empty-state{padding:64px 32px;text-align:center;background:#f1f5ee;border:1px dashed #cbd7c9;border-radius:12px;margin-top:24px;color:#6b776e}.empty-state h3{color:#365e45}.empty-mark{display:block;font-size:28px;letter-spacing:.25em;color:#6d8a73;margin-bottom:24px}.empty-state p{max-width:370px;margin:12px auto 0}.candidate-card{padding:20px;margin-top:14px}.candidate-card.selected{border-color:#7b9b7f;background:#fafcf8}.question-choice{display:flex;gap:14px;align-items:flex-start;cursor:pointer}.question-choice input{margin-top:6px;accent-color:#365e45;width:17px;height:17px;flex-shrink:0}.question-choice strong{display:block;font-size:17px;font-weight:500;line-height:1.7}.question-meta{display:block;margin-bottom:7px}.practice-workspace details{font-size:12px;margin-top:16px;overflow-wrap:anywhere}.practice-workspace summary{cursor:pointer;color:#45694e}.practice-workspace details p{margin-top:10px}.selection-bar{border-top:1px solid #dce3dc;margin-top:24px;padding-top:20px}.selection-bar strong{font-size:20px;color:#365e45}.career-button{font:inherit;font-size:13px;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;min-height:42px}.career-button:disabled{opacity:.5;cursor:not-allowed}.progress-caption{display:flex;justify-content:space-between;margin-top:24px;font-size:12px;color:#62796b}progress{width:100%;height:5px;accent-color:#527c60;display:block;margin:10px 0 22px}.question-nav{display:grid;gap:8px;margin-bottom:20px}.question-nav button{display:flex;justify-content:space-between;align-items:start;gap:10px;text-align:left;padding:12px;border:1px solid transparent;border-radius:6px;font:inherit;color:#69776b}.question-nav button span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.question-nav button.active{background:#edf3e9;border-color:#cedcc9;color:#365e45}.question-nav small{white-space:nowrap;font-size:11px}.session-sidebar>.career-button{width:100%;margin-bottom:14px}.session-sidebar>.quiet-link{display:block;text-align:center}.state-tag{font-size:12px;padding:4px 10px;background:#edf3e9;border-radius:5px;color:#52745b;white-space:nowrap}.practice-workspace .question-title{font-size:24px;line-height:1.65;margin:22px 0 16px}.answer-form textarea{padding:20px;min-height:220px;line-height:1.9}.saved-answer{margin-top:24px}.saved-answer p{white-space:pre-wrap;margin-top:12px}.feedback-panel{padding:24px;margin-top:20px;background:#eef4e9;border-radius:10px}.feedback-panel blockquote{margin:20px 0;border-left:2px solid #83a17e;padding-left:16px;white-space:pre-wrap;color:#52745b}.feedback-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px}.practice-workspace ul{list-style:disc;padding-left:20px}.practice-workspace li{margin:6px 0}.reference-panel{padding:18px 0;border-bottom:1px solid #dce3dc}.question-pagination{margin-top:24px}.finish-panel{border-top:1px solid #dce3dc;padding-top:24px;margin-top:32px}.button-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}.practice-workspace :is(p,strong,h2,li,blockquote){overflow-wrap:anywhere}.practice-workspace :is(button,input,select,textarea,summary,a):focus-visible{outline:2px solid #527c60;outline-offset:4px}
+@media(max-width:980px){.workspace-grid{grid-template-columns:250px minmax(0,1fr);gap:24px}.panel{padding:20px}}
+@media(max-width:760px){.practice-header{flex-direction:column;align-items:flex-start;gap:16px}.practice-header h1{font-size:28px}.workspace-grid{grid-template-columns:1fr}.steps li{font-size:12px}.question-nav{grid-template-columns:repeat(2,minmax(0,1fr));max-height:220px;overflow-y:auto}.feedback-columns{grid-template-columns:1fr;gap:18px}.practice-workspace .question-title{font-size:21px}.empty-state{padding:40px 22px}}
+@media(max-width:400px){.selection-bar{align-items:stretch;flex-direction:column}.question-nav{grid-template-columns:1fr}.answer-form .section-heading{align-items:stretch;flex-direction:column}.feedback-panel{padding:18px}}
 </style>

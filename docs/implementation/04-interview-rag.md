@@ -1,6 +1,27 @@
 # 成员4：题库检索与逐题反馈
 
-依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。2026-11-10 本地补丁已接通正式文本检索、短期 retrieval receipt、逐题反馈和统一 PracticeStore；真实模型、MySQL、远端 CI 与正式 Practice 页面仍未验收。
+依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。2026-11-10 后端已接通正式文本检索、短期 retrieval receipt、逐题反馈和统一 PracticeStore。2026-11-15 本地网页接入正式练习流程并完成隔离模拟浏览器验证，见下节；真实模型、MySQL、前后端真实联调、远端 CI 和部署仍须独立验收。
+
+## 2026-11-15 正式岗位练习前端
+
+- 入口仍为 `/career-platform/practice`，沿用课程导航、暖白背景、灰绿强调色与细边框；不改 `/interview` legacy、Android 客户端、后端契约或公共 API 工厂。原演示接口保留，但此页面不再调用 `demo-retrieve/`。
+- 通过已有 `platformAPI` 完成：岗位方向/知识点/难度/JD 检索 → 勾选候选 → 携带 `retrieval_id` 和原检索条件创建会话 → 逐题作答与反馈 → 确认结束 → 跳转成员5记录详情。候选按原检索顺序提交，修改表单不改变已检索上下文；零命中不填充假题。
+- 来源在选题时可查看；参考要点在回答保存后展开。反馈展示真实回答引文、覆盖/遗漏要点及引用证据；生成追问仅供思考，不自动作为下一题。所有模型与用户内容使用文本插值，不执行 HTML。
+- `frontend/src/views/career-platform/practice.js` 封装输入与动作：同内容的开始/回答/结束操作在网络结果不确定时复用 request_id；失败反馈用独立 retry-feedback 重试，不新建回答。请求期间禁用提交；反馈失败后重新读取服务端会话，判断回答是否已经保存。
+- 会话 ID 写入 URL `?id=`，刷新后从服务端恢复。读取已有会话失败时只显示重读入口，不自动新建。未提交草稿仅在页面内存保留，离开/刷新前提示；不将私人回答写入 localStorage。当前反馈不自动轮询，可手动刷新；总结失败与 pending 引导去记录页查看/重试。
+- 来源元数据缺口、多 worker 缓存和正式题库审核等后端限制保持不变。页面采用正式 API 不代表真实模型或完整业务验收成功。
+
+```acceptance-record
+{
+  "commit": "576d70f + dirty",
+  "command": "node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; playwright-cli -s=member4 run-code --filename output/playwright/member4-check.js; git diff --check",
+  "result": "passed",
+  "environment": "2026-11-15；Windows；Node；本地 Chromium 与隔离模拟 API",
+  "scope": "前端96项测试通过，含新增7项请求与幂等测试；生产构建通过。浏览器覆盖检索、选题、正式会话创建、回答保存后模型503、反馈重试、结束与复盘入口、刷新恢复、零命中；五种流程状态在1440/820/390/320px下共20视图无横向溢出，无pageerror，回答接口仅调用一次。",
+  "limitations": "仅离线前端验证，未调用真实模型、未写业务数据库、未验证MySQL/真实前后端联调/远端CI/发布/部署。测试基于576d70f；已fetch的origin/master d4d7ff8仅新增Android目录与协作说明，未合并。",
+  "evidence": "frontend/tests/practice.test.mjs; frontend/src/views/career-platform/practice.js; frontend/src/views/career-platform/Practice.vue; output/playwright/member4-check.js（本机产物）; output/playwright/member4-*.png（本机产物）; output/practice-build.log（本机产物）"
+}
+```
 
 ## 目录与范围
 
@@ -354,5 +375,21 @@ Actions 42776569360 的文档、SQLite/MySQL业务验收及前端镜像成功，
   "scope": "records/rag/runtime/scaffold组合18项通过（rag固定3项通过）；旧backend/tests/test_retrieval_demo.py为5通过、1失败，原因是test_regular_retrieval_still_explicitly_unimplemented仍要求501，SimpleTestCase中正式ORM访问产生500。完整all为9通过8失败。",
   "limitations": "result=failed表示RAG固定专项以外仍有回归/CI阻塞。未接正式Practice页面闭环、LanceDB或真实模型；collected_at透传、多worker回执、许可撤销语义及真实并发仍未验收。不得以删除501测试或关闭CI来代替正确的测试迁移。",
   "evidence": "ci/check_project_changes.py; ci/test_project_changes.py; backend/career_platform/tests/test_records_runtime.py; backend/tests/test_retrieval_demo.py; .runtime/docs-sync-20261110/all.json（本机忽略产物，可按命令复现）; GitHub Actions 42771897363 job状态查询"
+}
+```
+
+### 2026-11-15 前端交付前回归
+
+练习动作属于本页面，放在 `frontend/src/views/career-platform/practice.js`，不修改共享 API 契约、所有权映射或验收门禁。用户授权推送、合并 master 并构建镜像；CI、发布和部署结果按实际运行另行确认。
+
+```acceptance-record
+{
+  "commit": "576d70f + dirty",
+  "command": "node --test frontend/tests/*.test.mjs; npm run build --prefix frontend; python ci/project_acceptance.py --stage complete --module rag --output output/practice-rag-final.json; python ci/project_acceptance.py --stage scaffold --output output/practice-scaffold-final.json; git diff --check",
+  "result": "passed",
+  "environment": "2026-11-15；Windows；Node；现有.venv Python/Django 4.2.7；隔离内存SQLite",
+  "scope": "前端96项、生产构建、RAG固定3项、骨架7项通过。此前隔离模拟浏览器已通过五种状态四种尺寸共20视图及反馈失败重试、结束复盘、刷新恢复和零命中检查。动作文件移动到页面目录后重新通过前端测试与构建。",
+  "limitations": "未调用真实模型或写真实业务数据库；无MySQL、真实前后端联调、远端CI或部署结论。固定RAG通过不等于全模块MVP完成。",
+  "evidence": "frontend/tests/practice.test.mjs; output/practice-tests.log; output/practice-build.log; output/practice-rag-final.json; output/practice-scaffold-final.json; output/practice-browser.log（output均为本机产物）"
 }
 ```
