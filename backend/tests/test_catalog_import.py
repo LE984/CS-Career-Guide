@@ -6,6 +6,8 @@ from career_platform.tests.accept_support import AcceptanceCase
 from company_reviews.models import Company, Job
 
 DATA_FILE = Path(__file__).resolve().parents[2] / 'data' / 'career-platform' / 'java-backend.json'
+AUTHORIZED_FILE = (Path(__file__).resolve().parents[2]
+                   / 'data' / 'career-platform' / 'xiaolincoding-questions.json')
 
 
 class CatalogImportTests(AcceptanceCase):
@@ -108,3 +110,37 @@ class CatalogImportTests(AcceptanceCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'questions')
         self.assertEqual(len(calls[0][1]), 1)
+
+    def test_management_command_imports_authorized_questions_idempotently(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from career_platform.models import InterviewQuestion
+        from career_platform.rag.retrieval import DjangoQuestionRetriever
+
+        first = StringIO()
+        call_command('import_catalog', str(AUTHORIZED_FILE), '--kind', 'questions',
+                     '--commit', stdout=first)
+        self.assertEqual(InterviewQuestion.objects.count(), 943)
+        self.assertEqual(
+            InterviewQuestion.objects.filter(permission_status='allowed').count(), 943)
+        self.assertIn('created=943', first.getvalue())
+
+        catalog = self.get('catalog/questions/?role=Java后端&topic=集合&page_size=1')
+        self.assertGreater(catalog['count'], 0)
+        self.assertTrue(catalog['results'][0]['source_url'])
+
+        candidate = InterviewQuestion.objects.filter(
+            topic='集合', question__icontains='ArrayList').first()
+        self.assertIsNotNone(candidate)
+        results = DjangoQuestionRetriever().retrieve(
+            query='ArrayList', role='Java后端', topic=candidate.topic,
+            difficulty=candidate.difficulty, top_k=5)
+        self.assertTrue(results)
+        self.assertEqual(results[0].origin, 'catalog')
+
+        second = StringIO()
+        call_command('import_catalog', str(AUTHORIZED_FILE), '--kind', 'questions',
+                     '--commit', stdout=second)
+        self.assertEqual(InterviewQuestion.objects.count(), 943)
+        self.assertIn('created=0', second.getvalue())
+        self.assertIn('unchanged=943', second.getvalue())

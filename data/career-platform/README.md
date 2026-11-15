@@ -40,6 +40,40 @@ curl -X POST /api/career-platform/catalog/imports/ \
 - 任一记录校验失败时整批返回 400，错误定位到 `records[行号].字段`，整批零写入。
 - 公开查询只返回 `permission_status=allowed` 的记录；岗位还会排除已过 `valid_until` 的记录。
 
+### 导入到运行环境
+
+**方式 A：HTTP API（适合已部署环境，需要 staff Token）**
+
+```bash
+export CATALOG_IMPORT_TOKEN='<staff-token>'
+python data/career-platform/import_catalog_via_api.py \
+  data/career-platform/xiaolincoding-questions.json --dry-run
+python data/career-platform/import_catalog_via_api.py \
+  data/career-platform/xiaolincoding-questions.json --commit
+```
+
+- Token 只从环境变量读取，脚本不回显，也不跟随重定向。
+- 默认 base URL 为 `http://123.207.252.243/api`，可用 `--base-url` 覆盖；HTTP 明文仅用于当前演示环境，正式环境应使用 HTTPS。
+- 未设置 Token 时脚本直接退出；Token 必须来自 `is_staff=true` 的账号。
+
+**方式 B：管理命令（在能访问目标数据库的环境中运行）**
+
+```bash
+python backend/manage.py import_catalog data/career-platform/xiaolincoding-questions.json --dry-run
+python backend/manage.py import_catalog data/career-platform/xiaolincoding-questions.json --commit
+```
+
+- 默认 dry-run；`--commit` 才写库。命令复用 `CatalogService`，先校验整批记录，再按 `dedupe_key` 幂等写入，单批最多 1000 条。
+- 对 `java-backend.json` 使用 `--kind all` 会按企业 → 岗位 → 题库顺序导入；30 道团队题仍为 `pending`，不会进入公开查询。
+- 未配置 `index_notifier` 时输出 `index_notification=not_configured`；正式检索由 `DjangoQuestionRetriever` 直接读取数据库 `allowed` 记录，不依赖 LanceDB。
+
+### 导入后数据流向
+
+- `GET /api/career-platform/catalog/questions/`：按 `role`、`topic`、`difficulty` 精确筛选，返回来源和采集时间。
+- `/career-platform/practice`：正式检索使用 `DjangoQuestionRetriever` 读取 `allowed` 题目，随后创建练习会话。
+- 成员4：逐题检索结果、参考要点和来源证据来自同一批 `InterviewQuestion`。
+- 成员2：评估与检索基线需在导入后重跑，不能沿用旧 Top-K/分数结果。
+
 ## 小林coding 授权题库（2026-11-15）
 
 `xiaolincoding-questions.json` 包含 943 道 Java 后端相关面试题，来源为 xiaolincoding.com/interview/ 的 16 个公开主题页。文件顶层保留 `authorization`、`counts` 和 `questions`；导入时只取 `questions` 数组作为 `records`。

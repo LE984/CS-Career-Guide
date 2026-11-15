@@ -8,7 +8,7 @@
 
 ## 2026-11-15 授权题库扩充
 
-成员1新增 943 道 `allowed` 的 Java 后端面试题（`data/career-platform/xiaolincoding-questions.json`），来源、授权声明和清洗规则见成员1数据说明。正式检索的 allowed 候选规模因此扩大；本模块未修改检索协议、阈值、索引或评估基线。成员2的评估与成员4的检索验收在导入后需重新运行，不能沿用旧 Top-K 或分数结果。成员1声明的授权凭证需在合并前核对。
+成员1新增 943 道 `allowed` 的 Java 后端面试题（`data/career-platform/xiaolincoding-questions.json`），来源、授权声明和清洗规则见成员1数据说明。正式检索的 allowed 候选规模因此扩大；本模块未修改检索协议、阈值、索引或评估基线。成员2的评估与成员4的检索验收在导入后需重新运行，不能沿用旧 Top-K 或分数结果。成员1声明的授权凭证需在合并前核对。导入后 `DjangoQuestionRetriever` 直接读取数据库 `allowed` 题目；未配置 `index_notifier` 时 `index_notification=not_configured`，不影响 ORM 文本检索。
 
 
 依照 [当前方案](../career_platform_plan.md) 与 [公共约定](00-shared-contracts.md)。新增岗位练习是独立文字入口，默认自由面试保持 legacy。2026-11-10 后端已接通正式文本检索、短期 retrieval receipt、逐题反馈和统一 PracticeStore。2026-11-15 本地网页接入正式练习流程并完成隔离模拟浏览器验证，见下节；真实模型、MySQL、前后端真实联调、远端 CI 和部署仍须独立验收。
